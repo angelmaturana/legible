@@ -21,21 +21,21 @@ import unittest
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-SCRIPTS = REPO / 'scripts'
+LEGIBLE = REPO / 'legible'
 
 # build.py lee SITE_URL al importarse: que el entorno de quien ejecuta no influya en las pruebas.
 os.environ.pop('SITE_URL', None)
-sys.path.insert(0, str(SCRIPTS))
+sys.path.insert(0, str(LEGIBLE))
 import build  # noqa: E402
 
 
 # --------------------------------------------------------------------------- utilidades
 
 def copy_project(dest):
-    """Copia src/ y scripts/ a `dest` para poder modificar el proyecto sin tocar el original."""
+    """Copia src/ y legible/ a `dest` para poder modificar el proyecto sin tocar el original."""
     ignore = shutil.ignore_patterns('__pycache__', '*.pyc', 'dist', '.dev-dist')
     shutil.copytree(REPO / 'src', dest / 'src', ignore=ignore)
-    shutil.copytree(SCRIPTS, dest / 'scripts', ignore=ignore)
+    shutil.copytree(LEGIBLE, dest / 'legible', ignore=ignore)
     return dest
 
 
@@ -45,7 +45,7 @@ def run_build(project, out, site_url=None, minify=True):
     if site_url is not None:
         env['SITE_URL'] = site_url
     return subprocess.run(
-        [sys.executable, str(project / 'scripts' / 'build.py'),
+        [sys.executable, str(project / 'legible' / 'build.py'),
          '--out', str(out), '--minify', 'true' if minify else 'false', '--no-validate'],
         capture_output=True, text=True, env=env, cwd=project)
 
@@ -55,7 +55,7 @@ def run_check(project, out, site_url=None, strict=True):
     env = {k: v for k, v in os.environ.items() if k != 'SITE_URL'}
     if site_url is not None:
         env['SITE_URL'] = site_url
-    cmd = [sys.executable, str(project / 'scripts' / 'check_site.py'), '--dir', str(out)]
+    cmd = [sys.executable, str(project / 'legible' / 'check_site.py'), '--dir', str(out)]
     if strict:
         cmd.append('--strict')
     return subprocess.run(cmd, capture_output=True, text=True, env=env, cwd=project)
@@ -574,7 +574,7 @@ class TestColeccionesEnElBuild(ProyectoTemporal):
     def test_guia_real_pasa_el_validador_estricto(self):
         # Fallo conocido: con una guía, el índice /guias/ tiene unas 120 palabras (mínimo 250) y nadie
         # enlaza a él desde un <main>, así que `build.sh` (estricto) falla en cuanto hay una guía.
-        # Lo mismo con /blog/ (≈195 palabras y sin enlace contextual). Ver mejoras/05-pruebas-minimas.md.
+        # Lo mismo con /blog/ (≈195 palabras y sin enlace contextual).
         add_pieza(self.project, 'guias', 'mi-primera-guia')
         self.build_ok()
         self.check_ok(strict=True)

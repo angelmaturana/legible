@@ -2,7 +2,7 @@
    SEO Valdemoro · site.css (rediseño)
    Reglas: sin JS, sin movimiento (transition/animation/scroll suave), sin
    fuentes descargadas, sin efectos costosos. Mobile-first.
-   NOTA PARA EL MINIFICADOR de scripts/build.py:
+   NOTA PARA EL MINIFICADOR de legible/build.py:
    - nada de espacios tras ")" en selectores (":not(.a) b" se rompería)
    - nada de "var(--x)" dentro de calc/min/max/clamp (rompe los guiones)
    - no usar "and" en media queries

@@ -50,8 +50,9 @@ Measured on the included template (11 pages), 2026-10-21:
 Requires Python 3.10+. Clone the repository (or download the ZIP), enter the folder and run:
 
 ```bash
-./scripts/build.sh            # builds into dist/ and validates in strict mode
-python3 scripts/dev.py        # local server at http://localhost:3001, rebuilds on save
+python3 legible/run_all.py    # tests -> build + validation -> local server, stopping at the first failure
+./legible/build.sh            # builds into dist/ and validates in strict mode
+python3 legible/dev.py        # local server at http://localhost:3001, rebuilds on save
 python3 -m unittest discover tests   # run the tests
 ```
 
@@ -63,7 +64,9 @@ python3 -m unittest discover tests   # run the tests
 | `CSS_MINIFY` | `TRUE` | `FALSE` leaves HTML and CSS unminified (useful for debugging). |
 | `CHECK_STRICT` | `TRUE` | `FALSE`: warnings no longer fail the build (errors always do). |
 
-Validate an already built folder: `python3 scripts/check_site.py --dir dist --strict --site-url https://your-domain.com` (without `--site-url` it assumes the default domain).
+`run_all.py` options: `--no-dev` (no server, handy before publishing), `--skip-tests` (when you only touched `src/`) and `--port N`. It honours the `build.sh` environment variables.
+
+Validate an already built folder: `python3 legible/check_site.py --dir dist --strict --site-url https://your-domain.com` (without `--site-url` it assumes the default domain).
 
 ## How it works
 
@@ -95,11 +98,11 @@ flowchart LR
 ## Set it up for a business
 
 1. Edit `src/data/entity.json`: name, email, phone, cities, services and prices.
-2. Set the domain once: `SITE_URL=https://example.com ./scripts/build.sh`. Pages, `entity.json`, `robots.txt` and `llms.txt` all use the `{{site_url}}` placeholder.
+2. Set the domain once: `SITE_URL=https://example.com ./legible/build.sh`. Pages, `entity.json`, `robots.txt` and `llms.txt` all use the `{{site_url}}` placeholder.
 3. Replace the generic copy in `src/data/textos.json` (no Python needed), or write the text straight into each page.
 4. Replace the images in `src/static/images/` (logo, `og-image`, favicon).
 5. For a new service, copy `src/pages/servicios/servicio-generico/`, adjust its front matter, JSON-LD and content, and link it from `servicios/`, `precios/`, `header.html` and `footer.html`.
-6. `./scripts/build.sh` and publish `dist/`.
+6. `./legible/build.sh` and publish `dist/`.
 
 > The template content is in Spanish. The `geo.placename` meta tag is currently fixed to "Valdemoro" (`geo.region` = `ES-MD`).
 
@@ -108,7 +111,7 @@ flowchart LR
 The output is plain static files: serve `dist/` from Render Static Sites, Netlify, Cloudflare Pages, GitHub Pages, S3, Nginx… No runtime on the server.
 
 ```
-Build command:     ./scripts/build.sh
+Build command:     ./legible/build.sh
 Publish directory: dist
 Environment:       SITE_URL=https://your-domain.com
 ```
@@ -131,13 +134,11 @@ Environment:       SITE_URL=https://your-domain.com
 
 The template builds and passes the strict validator, with and without minification. The test suite (`python3 -m unittest discover tests`) covers a full build and validation, both minifiers, guides and blog (valid and invalid front matter), and domain and placeholder handling. To check that the tests really catch regressions, the generator was deliberately broken in 11 different ways and the suite failed every time.
 
-Known issues, each pinned by an `expectedFailure` test and described in [`mejoras/05-pruebas-minimas.md`](mejoras/05-pruebas-minimas.md):
+Known issues, each pinned by an `expectedFailure` test:
 
 - **`minify_css` limits.** It can mangle `a:not(.b) .c`, `var()` inside `calc()`, negative numbers in `calc()`, `0.0px` and `) and (` in media queries. The template's CSS avoids all of them (the header of `site.css` says so); custom CSS must too.
 - **First guide or blog post.** The generated `/guias/` and `/blog/` indexes are short and not linked from a page body, so the strict validator reports a warning until they are expanded.
 - **Geo tags** are fixed to Valdemoro / `ES-MD`.
-
-The roadmap lives in [`mejoras/`](mejoras/).
 
 ## Compared with alternatives
 
@@ -168,15 +169,16 @@ Any coding agent (Claude Code, Kilo, Cursor…) can turn the template into a rea
 >
 > **Rules:** no JavaScript; every image with `alt`, `width` and `height`; every indexable page linked from the `<main>` of another page; no `TODO`, `[CONFIRMAR` or `{{...}}` left.
 >
-> **Finish when** `SITE_URL=https://tallermecanicogarcia.com ./scripts/build.sh` ends with CHECK PASSED and `python3 -m unittest discover tests` passes. First plan the list of files to change, then work in small groups, building after each one. If the build fails, read the report and fix it; do not weaken the validator.
+> **Finish when** `SITE_URL=https://tallermecanicogarcia.com ./legible/build.sh` ends with CHECK PASSED and `python3 -m unittest discover tests` passes. First plan the list of files to change, then work in small groups, building after each one. If the build fails, read the report and fix it; do not weaken the validator.
 
 ## Project layout
 
 ```
-scripts/
+legible/
   build.py          Generator: templates, JSON-LD, minifiers, sitemap, llms.txt, collections
   check_site.py     Validator for the built output
   dev.py            Local server that rebuilds when src/ changes
+  run_all.py        Runs tests, build.sh and dev.py in order; stops at the first failure
   build.sh          build.py + check_site.py --strict
 tests/
   test_legible.py   Smoke build, minifiers, guides/blog, domain and placeholders
@@ -187,14 +189,13 @@ src/
   data/             entity.json (business data) and textos.json (default copy)
   css/site.css      The single stylesheet
   static/           Images, robots.txt and llms.txt template, copied as they are
-mejoras/            Improvement roadmap, phase by phase
 ```
 
 Pages included: home, services (index + one example service), pricing, about, contact, featured action, legal notice, privacy and cookies (these three `noindex`) and 404.
 
 ## Contributing
 
-Issues and pull requests are welcome. Before opening one: `python3 -m unittest discover tests` and `./scripts/build.sh` must pass. If you fix a known issue, remove its `expectedFailure` decorator (the test runner will tell you when one starts passing).
+Issues and pull requests are welcome. Before opening one: `python3 -m unittest discover tests` and `./legible/build.sh` must pass. If you fix a known issue, remove its `expectedFailure` decorator (the test runner will tell you when one starts passing).
 
 ## License
 

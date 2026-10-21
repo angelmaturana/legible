@@ -5,7 +5,7 @@ from datetime import datetime
 
 REPO = Path(__file__).resolve().parent.parent
 # Dominio del sitio: se define aquí o con la variable de entorno SITE_URL
-# (SITE_URL=https://midominio.es ./scripts/build.sh). El resto del proyecto usa {{site_url}}.
+# (SITE_URL=https://midominio.es ./legible/build.sh). El resto del proyecto usa {{site_url}}.
 SITE_URL = os.environ.get('SITE_URL', 'https://TU-DOMINIO.com').strip().rstrip('/')
 if not SITE_URL.startswith('https://'):
     sys.exit(f'✗ SITE_URL debe empezar por https:// (valor actual: {SITE_URL!r})')
@@ -796,14 +796,14 @@ def get_git_info():
 def check_out_dir(out):
     """Aborta si la carpeta de salida pondría en riesgo el proyecto (el build la vacía entera)."""
     out = Path(out).resolve()
-    protegidas = [REPO / 'src', REPO / 'scripts']
+    protegidas = [REPO / 'src', REPO / 'legible']
     en_riesgo = (
         out == REPO or out in REPO.parents
         or any(out == p or p in out.parents for p in protegidas)
         or any((out / p.name).exists() for p in protegidas)
     )
     if en_riesgo:
-        print(f'✗ BUILD ABORTADO: la carpeta de salida {out} es el proyecto, src/, scripts/ o contiene alguno de ellos, '
+        print(f'✗ BUILD ABORTADO: la carpeta de salida {out} es el proyecto, src/, legible/ o contiene alguno de ellos, '
               'y se vaciaría. Usa una carpeta propia, como dist/.', file=sys.stderr)
         raise SystemExit(1)
 

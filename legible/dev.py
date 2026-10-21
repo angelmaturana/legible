@@ -40,7 +40,7 @@ class DevHandler(SimpleHTTPRequestHandler):
         return super().do_GET()
 
 def build_dev(minify):
-    args = [sys.executable, str(REPO / 'scripts' / 'build.py'), '--out', str(DEV_DIST), '--minify', 'true' if minify else 'false']
+    args = [sys.executable, str(REPO / 'legible' / 'build.py'), '--out', str(DEV_DIST), '--minify', 'true' if minify else 'false']
     result = subprocess.run(args, cwd=REPO, capture_output=True, text=True)
     return result.returncode, result.stdout, result.stderr
 

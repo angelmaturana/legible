@@ -2,11 +2,11 @@
 """Validador SEO/integridad de la salida compilada (dist/).
 
 Uso:
-    python3 scripts/check_site.py                 # revisa dist/
-    python3 scripts/check_site.py --dir .dev-dist # otra carpeta
-    python3 scripts/check_site.py --strict        # los avisos también hacen fallar
+    python3 legible/check_site.py                 # revisa dist/
+    python3 legible/check_site.py --dir .dev-dist # otra carpeta
+    python3 legible/check_site.py --strict        # los avisos también hacen fallar
 
-También lo ejecuta scripts/build.py al terminar cada compilación.
+También lo ejecuta legible/build.py al terminar cada compilación.
 Código de salida: 0 = correcto, 1 = hay errores (o avisos con --strict).
 """
 import argparse

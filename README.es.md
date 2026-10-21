@@ -50,8 +50,9 @@ Medido sobre la plantilla incluida (11 páginas), 2026-10-21:
 Requiere Python 3.10+. Clona el repositorio (o descarga el ZIP), entra en la carpeta y ejecuta:
 
 ```bash
-./scripts/build.sh            # compila en dist/ y valida en modo estricto
-python3 scripts/dev.py        # servidor local en http://localhost:3001, recompila al guardar
+python3 legible/run_all.py    # pruebas -> build + validación -> servidor local, se detiene en el primer fallo
+./legible/build.sh            # compila en dist/ y valida en modo estricto
+python3 legible/dev.py        # servidor local en http://localhost:3001, recompila al guardar
 python3 -m unittest discover tests   # ejecuta las pruebas
 ```
 
@@ -63,7 +64,9 @@ Opciones de `build.sh` (variables de entorno):
 | `CSS_MINIFY` | `TRUE` | `FALSE` deja HTML y CSS sin minimizar (útil para depurar). |
 | `CHECK_STRICT` | `TRUE` | `FALSE`: los avisos ya no hacen fallar el build (los errores siempre sí). |
 
-Validar una carpeta ya compilada: `python3 scripts/check_site.py --dir dist --strict --site-url https://tu-dominio.com` (sin `--site-url` se asume el dominio por defecto).
+Opciones de `run_all.py`: `--no-dev` (sin servidor, útil antes de publicar), `--skip-tests` (cuando solo has tocado `src/`) y `--port N`. Respeta las variables de entorno de `build.sh`.
+
+Validar una carpeta ya compilada: `python3 legible/check_site.py --dir dist --strict --site-url https://tu-dominio.com` (sin `--site-url` se asume el dominio por defecto).
 
 ## Cómo funciona
 
@@ -95,11 +98,11 @@ flowchart LR
 ## Personalizar para un negocio
 
 1. Edita `src/data/entity.json`: nombre, email, teléfono, ciudades, servicios y precios.
-2. Define el dominio una sola vez: `SITE_URL=https://ejemplo.es ./scripts/build.sh`. Páginas, `entity.json`, `robots.txt` y `llms.txt` usan el marcador `{{site_url}}`.
+2. Define el dominio una sola vez: `SITE_URL=https://ejemplo.es ./legible/build.sh`. Páginas, `entity.json`, `robots.txt` y `llms.txt` usan el marcador `{{site_url}}`.
 3. Sustituye los textos genéricos de `src/data/textos.json` (no hace falta tocar Python), o escribe el texto directamente en cada página.
 4. Reemplaza las imágenes de `src/static/images/` (logo, `og-image`, favicon).
 5. Para un servicio nuevo, copia `src/pages/servicios/servicio-generico/`, ajusta su front matter, JSON-LD y contenido, y enlázalo desde `servicios/`, `precios/`, `header.html` y `footer.html`.
-6. `./scripts/build.sh` y publica `dist/`.
+6. `./legible/build.sh` y publica `dist/`.
 
 > El contenido de la plantilla está en español. La etiqueta `geo.placename` está fijada de momento a «Valdemoro» (`geo.region` = `ES-MD`).
 
@@ -108,7 +111,7 @@ flowchart LR
 La salida son archivos estáticos: sirve `dist/` desde Render Static Sites, Netlify, Cloudflare Pages, GitHub Pages, S3, Nginx… Sin ningún runtime en el servidor.
 
 ```
-Build command:     ./scripts/build.sh
+Build command:     ./legible/build.sh
 Publish directory: dist
 Variable:          SITE_URL=https://tu-dominio.com
 ```
@@ -131,13 +134,11 @@ Variable:          SITE_URL=https://tu-dominio.com
 
 La plantilla compila y pasa el validador estricto, con y sin minificar. La batería de pruebas (`python3 -m unittest discover tests`) cubre un build completo con validación, los dos minificadores, guías y blog (front matter válido e inválido) y el tratamiento del dominio y de los marcadores. Para comprobar que las pruebas detectan regresiones de verdad, se estropeó el generador a propósito de 11 maneras distintas y la batería falló todas las veces.
 
-Errores conocidos, cada uno fijado con una prueba `expectedFailure` y descrito en [`mejoras/05-pruebas-minimas.md`](mejoras/05-pruebas-minimas.md):
+Errores conocidos, cada uno fijado con una prueba `expectedFailure`:
 
 - **Límites de `minify_css`.** Puede estropear `a:not(.b) .c`, `var()` dentro de `calc()`, números negativos en `calc()`, `0.0px` y `) and (` en media queries. El CSS de la plantilla evita todos (la cabecera de `site.css` lo avisa); el CSS propio también debe evitarlos.
 - **Primera guía o artículo.** Los índices `/guias/` y `/blog/` generados son cortos y no se enlazan desde el cuerpo de ninguna página, así que el validador estricto da un aviso hasta que se amplíen.
 - **Etiquetas geo** fijadas a Valdemoro / `ES-MD`.
-
-La hoja de ruta está en [`mejoras/`](mejoras/).
 
 ## Comparación con alternativas
 
@@ -168,15 +169,16 @@ Cualquier agente de programación (Claude Code, Kilo, Cursor…) puede convertir
 >
 > **Reglas:** sin JavaScript; toda imagen con `alt`, `width` y `height`; toda página indexable enlazada desde el `<main>` de otra; sin `TODO`, `[CONFIRMAR` ni `{{...}}` sobrantes.
 >
-> **Termina cuando** `SITE_URL=https://tallermecanicogarcia.com ./scripts/build.sh` acabe con CHECK PASSED y `python3 -m unittest discover tests` pase. Primero planifica la lista de archivos a cambiar y trabaja en grupos pequeños, compilando tras cada uno. Si el build falla, lee el informe y corrige; no debilites el validador.
+> **Termina cuando** `SITE_URL=https://tallermecanicogarcia.com ./legible/build.sh` acabe con CHECK PASSED y `python3 -m unittest discover tests` pase. Primero planifica la lista de archivos a cambiar y trabaja en grupos pequeños, compilando tras cada uno. Si el build falla, lee el informe y corrige; no debilites el validador.
 
 ## Estructura del proyecto
 
 ```
-scripts/
+legible/
   build.py          Generador: plantillas, JSON-LD, minificadores, sitemap, llms.txt, colecciones
   check_site.py     Validador de la salida compilada
   dev.py            Servidor local que recompila al cambiar src/
+  run_all.py        Ejecuta pruebas, build.sh y dev.py en orden; se detiene en el primer fallo
   build.sh          build.py + check_site.py --strict
 tests/
   test_legible.py   Build de humo, minificadores, guías/blog, dominio y marcadores
@@ -187,14 +189,13 @@ src/
   data/             entity.json (datos del negocio) y textos.json (textos por defecto)
   css/site.css      La única hoja de estilos
   static/           Imágenes, robots.txt y plantilla de llms.txt, se copian tal cual
-mejoras/            Hoja de ruta de mejoras, fase a fase
 ```
 
 Páginas incluidas: inicio, servicios (índice + un servicio de ejemplo), precios, sobre nosotros, contacto, acción destacada, aviso legal, privacidad y cookies (estas tres `noindex`) y 404.
 
 ## Contribuir
 
-Se agradecen issues y pull requests. Antes de abrir uno: `python3 -m unittest discover tests` y `./scripts/build.sh` deben pasar. Si corriges un error conocido, quita el decorador `expectedFailure` de su prueba (el ejecutor te avisará cuando una empiece a pasar).
+Se agradecen issues y pull requests. Antes de abrir uno: `python3 -m unittest discover tests` y `./legible/build.sh` deben pasar. Si corriges un error conocido, quita el decorador `expectedFailure` de su prueba (el ejecutor te avisará cuando una empiece a pasar).
 
 ## Licencia
 
