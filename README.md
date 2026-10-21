@@ -1,206 +1,339 @@
 <div align="center">
 
-# legible
+# `legible`
 
-**Websites for local service businesses that search engines and AI assistants can actually read.**
+**A lightweight static-site generator for local service businesses, built with Python’s standard library.**
 
-Plain HTML, no JavaScript, complete structured data, and a validator that stops the build before a SEO mistake reaches production. Python standard library only: nothing to install.
+Plain HTML. No client-side JavaScript. Structured data and SEO checks built into the build pipeline.
 
-[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org)
-[![Dependencies: none](https://img.shields.io/badge/dependencies-none-2ea44f)](#design-decisions-and-trade-offs)
-[![Client JavaScript: none](https://img.shields.io/badge/client%20JavaScript-none-ff6b6b)](#at-a-glance)
-[![Schema.org JSON-LD](https://img.shields.io/badge/Schema.org-JSON--LD-1a73e8)](https://schema.org)
-[![License: MIT](https://img.shields.io/badge/license-MIT-yellow)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Dependencies](https://img.shields.io/badge/runtime%20dependencies-0-2ea44f)](#design-principles)
+[![Client JavaScript](https://img.shields.io/badge/client%20JavaScript-none-ff6b6b)](#what-it-generates)
+[![Schema.org](https://img.shields.io/badge/structured%20data-Schema.org-1a73e8)](https://schema.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**English** · [Español](README.es.md)
+[English](README.md) · [Español](README.es.md)
 
 </div>
 
+## Contents
+
+- [Overview](#overview)
+- [Why this approach?](#why-this-approach)
+- [What it generates](#what-it-generates)
+- [Quick start](#quick-start)
+- [Configure a site](#configure-a-site)
+- [Build configuration](#build-configuration)
+- [Validation](#validation)
+- [Architecture](#architecture)
+- [Design principles](#design-principles)
+- [Performance notes](#performance-notes)
+- [Testing](#testing)
+- [Deployment](#deployment)
+- [Example: build a client site with an AI coding agent](#example-build-a-client-site-with-an-ai-coding-agent)
+- [Scope and limitations](#scope-and-limitations)
+- [Contributing](#contributing)
+- [License](#license)
+- [Author](#author)
+
+
 ---
 
-## Why legible
+## Overview
 
-A plumber, a clinic or a workshop needs a website that loads instantly, says clearly what the business does, where, and for how much, and is understood by Google and by AI assistants. Most stacks for that are heavy (frameworks, plugins, build tooling) and nobody checks the SEO details until traffic is already lost.
+`legible` builds static websites for local service businesses from HTML templates and a small set of shared data files. It is intentionally opinionated: the project focuses on service-business websites rather than trying to be a general-purpose publishing platform.
 
-legible takes a different route:
+Business details are maintained in `src/data/entity.json`; reusable copy lives in `src/data/textos.json`. The build process uses these inputs to compose pages, generate metadata and JSON-LD, and produce supporting files for publication. A separate validator checks the compiled site and can fail the build on warnings as well as errors.
 
-- **One file describes the business.** Name, phone, cities, services and prices live in `entity.json`; every page, the structured data, the sitemap and `llms.txt` are generated from it, so nothing drifts out of sync.
-- **Fast by construction.** Static HTML and a single stylesheet. No client-side JavaScript at all.
-- **Mistakes stop the build.** `check_site.py` validates the result (headings, canonicals, images, links, JSON-LD, sitemap, FAQ consistency…) and fails on errors *and* warnings.
-- **Nothing to install, nothing to maintain.** Python 3 standard library. Deploy the output to any static host.
+**The goal is predictable, inspectable output—not a promise of search rankings.** Technical checks can catch common implementation mistakes, but they cannot guarantee indexing, rich results, traffic, or visibility in AI assistants.
 
-It does not promise rankings. It makes sure that the information search engines and AI assistants receive is clean, complete and consistent.
+## Why this approach?
 
-## At a glance
+- **One source for business facts.** Shared details are maintained centrally instead of being copied into every page.
+- **Static output.** The generated site is made of files that can be served by a static host; no application runtime is required in production.
+- **No client-side JavaScript.** The template does not ship browser-side application code. JSON-LD is embedded as data in `<script>` elements.
+- **Fail-fast placeholders.** Unresolved template markers stop the build instead of silently leaking into the published site.
+- **SEO-oriented validation.** The validator checks page metadata, headings, links, images, structured data and generated site files.
+- **Standard-library implementation.** The generator and test suite use Python's standard library, avoiding third-party Python runtime dependencies.
 
-Measured on the included template (11 pages), 2026-10-21:
+## What it generates
 
-| | |
-|---|---|
-| Runtime dependencies | **0** (Python standard library) |
-| JavaScript sent to the browser | **0 bytes** (the only `<script>` tags are JSON-LD data) |
-| Home page weight | 22 KB HTML (5.9 KB gzip) + 20 KB CSS (4.9 KB gzip) |
-| Build + strict validation | **~0.25 s** |
-| Structured data | `ProfessionalService`, `WebSite`, `WebPage`, `FAQPage`, `Service`/`Offer`, `BreadcrumbList` merged into one `@graph` per page |
-| Generated files | `sitemap.xml` (with `lastmod`), `robots.txt`, `llms.txt`, optional `/guias/` and `/blog/` indexes |
-| Tests | 94 (`unittest`, ~5 s), see [Status](#status) |
+The build output is written to `dist/` by default.
+
+| Output | Purpose |
+| --- | --- |
+| Static HTML pages | Rendered pages composed from templates and page content |
+| CSS | The site's stylesheet, with optional minification |
+| JSON-LD | Structured data assembled into a page-level `@graph` |
+| `sitemap.xml` | URLs for the generated site |
+| `robots.txt` | Crawler directives and sitemap reference |
+| `llms.txt` | A plain-text index of selected site information |
+| Guide/blog indexes | Generated when the corresponding content collections meet the project's rules |
+
+The template includes business-oriented page examples, legal-page placeholders, a 404 page, and support for guide and blog collections. Review and replace example content before publishing a real business site.
 
 ## Quick start
 
-Requires Python 3.10+. Clone the repository (or download the ZIP), enter the folder and run:
+### Requirements
+
+- Python 3.10 or newer
+- `bash` to run `legible/build.sh` (on Windows, use Git Bash or WSL)
+- No third-party Python packages are required by the project
+
+### Run the checks and start the local server
+
+From the repository root:
 
 ```bash
-python3 legible/run_all.py    # tests -> build + validation -> local server, stopping at the first failure
-./legible/build.sh            # builds into dist/ and validates in strict mode
-python3 legible/dev.py        # local server at http://localhost:3001, rebuilds on save
-python3 -m unittest discover tests   # run the tests
+python3 legible/run_all.py
 ```
 
-`build.sh` options (environment variables):
+This runs the test suite, builds and validates the site, then starts the local development server. The process stops at the first failed step.
+
+Useful alternatives:
+
+```bash
+# Build and validate without starting the development server
+python3 legible/run_all.py --no-dev
+
+# Build and validate only
+./legible/build.sh
+
+# Run the test suite
+python3 -m unittest discover tests
+
+# Start the development server
+python3 legible/dev.py
+```
+
+The development server is available at `http://localhost:3001` by default and rebuilds when files under `src/` change.
+
+## Configure a site
+
+### 1. Set the canonical site URL
+
+Pass the production URL through `SITE_URL`:
+
+```bash
+SITE_URL=https://example.com ./legible/build.sh
+```
+
+Use the final HTTPS origin for the site. The value is used by the generator and validator for canonical URLs and related output, including structured data and sitemap-related files. Avoid hard-coding the production domain in individual pages.
+
+### 2. Edit business data and copy
+
+- `src/data/entity.json` — shared business identity and service information.
+- `src/data/textos.json` — default reusable text and configuration values.
+- `src/pages/` — page content and front matter.
+- `src/partials/` — shared header and footer.
+- `src/css/site.css` — site styling.
+- `src/static/` — static assets and supporting files.
+
+Replace all sample details, placeholder images, and generic copy before launch. Ensure prices, service areas, contact information, claims, and offers reflect the real business.
+
+### 3. Add a service page
+
+Use `src/pages/servicios/servicio-generico/` as the example template. Update its front matter, visible content and structured data, then link it from the relevant service index and navigation where appropriate.
+
+### 4. Build and validate
+
+```bash
+SITE_URL=https://example.com ./legible/build.sh
+```
+
+The default strict mode treats warnings as build failures. This is deliberate: warnings should be reviewed rather than ignored by default.
+
+## Build configuration
+
+`legible/build.sh` reads these environment variables:
 
 | Variable | Default | Effect |
-|---|---|---|
-| `SITE_URL` | `https://TU-DOMINIO.com` | Site domain: canonicals, JSON-LD, sitemap, `robots.txt`, `llms.txt`. Must start with `https://`. |
-| `CSS_MINIFY` | `TRUE` | `FALSE` leaves HTML and CSS unminified (useful for debugging). |
-| `CHECK_STRICT` | `TRUE` | `FALSE`: warnings no longer fail the build (errors always do). |
+| --- | --- | --- |
+| `SITE_URL` | `https://TU-DOMINIO.com` | Base HTTPS URL used for canonical URLs and generated site references |
+| `CSS_MINIFY` | `TRUE` | Set to `FALSE` to leave generated HTML/CSS unminified where supported, for debugging |
+| `CHECK_STRICT` | `TRUE` | Set to `FALSE` so warnings do not fail validation; errors still fail |
 
-`run_all.py` options: `--no-dev` (no server, handy before publishing), `--skip-tests` (when you only touched `src/`) and `--port N`. It honours the `build.sh` environment variables.
+`run_all.py` also supports:
 
-Validate an already built folder: `python3 legible/check_site.py --dir dist --strict --site-url https://your-domain.com` (without `--site-url` it assumes the default domain).
+```bash
+python3 legible/run_all.py --no-dev
+python3 legible/run_all.py --skip-tests
+python3 legible/run_all.py --port 8080
+```
 
-## How it works
+Use `--skip-tests` only when you have a specific reason to skip the test suite.
+
+## Validation
+
+`legible/check_site.py` validates the generated output, not the source files in isolation. In strict mode, both errors and warnings cause a non-zero exit status.
+
+Checks include:
+
+- **Document metadata:** language, viewport, title and description constraints, robots directives, HTTPS canonicals, Open Graph and Twitter metadata.
+- **Content structure:** heading hierarchy, one primary `h1`, minimum main-content length for indexable pages, and unresolved placeholder or draft markers.
+- **Images:** required alternative text and explicit dimensions.
+- **Links:** broken internal paths and anchors, orphan pages, and basic checks for external-tab, email and telephone links.
+- **Structured data:** JSON parsing, required fields/nodes, duplicate `@id` values, unresolved references, and consistency between visible FAQs and FAQ structured data.
+- **Site files:** required output files, sitemap consistency, and basic `robots.txt` checks.
+
+Run the validator directly against an existing build:
+
+```bash
+python3 legible/check_site.py --dir dist --strict --site-url https://example.com
+```
+
+These checks are project-specific guardrails, not a substitute for testing in browsers, reviewing accessibility, checking real structured-data eligibility, or using search-engine webmaster tools.
+
+## Architecture
 
 ```mermaid
 flowchart LR
-    A["src/<br/>pages · entity.json · textos.json"] --> B["build.py<br/>compose · JSON-LD · minify"]
-    B --> C["dist/<br/>HTML · CSS · sitemap · llms.txt · robots"]
-    C --> D{"check_site.py<br/>--strict"}
-    D -- passes --> E["Deploy to any static host"]
-    D -- errors or warnings --> F["Build fails with a report"]
+    A["src/<br/>HTML · entity.json · textos.json"] --> B["legible/build.py<br/>templates · metadata · JSON-LD"]
+    B --> C["dist/<br/>static site output"]
+    C --> D{"legible/check_site.py<br/>--strict"}
+    D -- valid --> E["Deploy dist/ to a static host"]
+    D -- errors or warnings --> F["Non-zero exit + report"]
 ```
 
-- **Templates.** Each page is an `.html` file with front matter (`title`, `description`, optionally `robots`, `canonical`, `geo`, `active`). The build inserts it into `layout.html`, marks the active menu item with `aria-current` and adds canonical and Open Graph tags.
-- **Placeholders `{{...}}`.** Some are computed from `entity.json` (name, email, phone, cities, prices, domain); the rest are plain texts in `src/data/textos.json`. If a placeholder has no value, the build stops and tells you which one and on which page.
-- **JSON-LD.** The nodes of `entity.json` are merged with each page's own JSON-LD in a single `@graph`; duplicate `@id`s are never emitted.
-- **Guides and blog.** Drop a file in `src/pages/guias/<slug>/` or `src/pages/blog/<slug>/` with the required front matter (`type`, `topic`, `published`, `updated`, `summary`, `service`; optional `related`, max. 2) and the build generates the index, the sitemap entry and the `llms.txt` entry. `/guias/` appears with 1+ guides; `/blog/` stays `noindex` with 1–2 articles and goes public (menu, footer, sitemap) from 3. The home links to whatever is public through the `{{home_recursos}}` placeholder, which gives those indexes the contextual inbound link the validator asks for: keep it in `src/pages/index.html`.
+| Path | Responsibility |
+| --- | --- |
+| `legible/build.py` | Template composition, placeholder replacement, JSON-LD assembly, minification and generated files |
+| `legible/check_site.py` | Validation of the compiled output |
+| `legible/build.sh` | Build followed by validation |
+| `legible/dev.py` | Local development server and rebuild workflow |
+| `legible/run_all.py` | Orchestrates tests, build/validation and optional local server |
+| `tests/test_legible.py` | Regression tests for the build, minifiers, collections, URL handling and placeholders |
+| `src/layout.html` | Shared document layout and metadata |
+| `src/pages/` | Page templates and content |
+| `src/data/` | Shared business data and default text |
+| `src/partials/` | Shared page fragments |
+| `src/css/site.css` | Stylesheet |
+| `src/static/` | Static assets and supporting files |
 
-## What the validator checks
+## Design principles
 
-`check_site.py` is the only validator. With `--strict`, warnings fail the build too.
+| Choice | Benefit | Trade-off |
+| --- | --- | --- |
+| Python standard library only | No third-party Python runtime packages to install | Custom code replaces the features a template or Markdown library might provide |
+| Shared `entity.json` | Reduces duplicated business facts across output | The data model needs to be maintained carefully |
+| No client-side JavaScript | Less browser-side code and no JS hydration step | Not intended for interactions that require client-side application logic |
+| Strict validation by default | Common regressions are caught before publication | Existing warnings must be resolved or consciously reviewed |
+| Folder-based guide/blog collections | Content indexes and related entries can be generated by convention | The directory structure and front matter are opinionated |
+| Small custom minifiers | Keeps the dependency footprint small | Custom minification code needs ongoing regression tests |
 
-- **Head:** `lang`, `viewport`, `title` and `description` (with length limits), `robots`, HTTPS canonical consistent with the URL, Open Graph and Twitter tags.
-- **Content:** a single `h1`, no skipped heading levels, at least 250 words in `<main>` on indexable pages, no `TODO`, `[CONFIRMAR` or `{{...}}` left over.
-- **Images:** `alt`, `width` and `height` on every image.
-- **Links:** absolute internal paths, no broken links or anchors, `rel="noopener"` on `target="_blank"`, well-formed `mailto:` and `tel:`, no orphan pages.
-- **JSON-LD:** valid, with `@context`, no duplicate `@id`, no dangling references, required nodes present, and the FAQ in the markup must match the visible FAQ.
-- **Site:** no duplicate titles or descriptions; complete and consistent `sitemap.xml`; `robots.txt` without `Disallow: /` and with the sitemap declared; required files present.
+## Performance notes
 
-## Set it up for a business
+Static output and the absence of client-side JavaScript reduce moving parts, but they do **not** guarantee that every page will be fast under every condition. Actual performance also depends on HTML/CSS size, images, fonts, hosting, caching, network conditions and third-party resources added later.
 
-1. Edit `src/data/entity.json`: name, email, phone, cities, services and prices.
-2. Set the domain once: `SITE_URL=https://example.com ./legible/build.sh`. Pages, `entity.json`, `robots.txt` and `llms.txt` all use the `{{site_url}}` placeholder.
-3. Replace the generic copy in `src/data/textos.json` (no Python needed), or write the text straight into each page.
-4. Replace the images in `src/static/images/` (logo, `og-image`, favicon).
-5. For a new service, copy `src/pages/servicios/servicio-generico/`, adjust its front matter, JSON-LD and content, and link it from `servicios/`, `precios/`, `header.html` and `footer.html`.
-6. `./legible/build.sh` and publish `dist/`.
+The repository's README measurements describe the included template, not a universal benchmark. Re-measure the production build after changing content or assets, ideally with both transfer-size checks and real browser performance tools.
 
-> The template content is in Spanish. The `geo.placename` meta tag takes the city from `entity.json`, and `geo.region` takes the ISO 3166-2 code from `geo_region` in `src/data/textos.json` (`ES-MD` by default; leave it empty to omit the tag).
+## Testing
 
-## Deploy
+Run the tests from the repository root:
 
-The output is plain static files: serve `dist/` from Render Static Sites, Netlify, Cloudflare Pages, GitHub Pages, S3, Nginx… No runtime on the server.
-
-```
-Build command:     ./legible/build.sh
-Publish directory: dist
-Environment:       SITE_URL=https://your-domain.com
-```
-
-## Design decisions and trade-offs
-
-| Decision | Why | Trade-off |
-|---|---|---|
-| **Python standard library only** | No supply chain to audit, runs anywhere Python does, nothing to update | No Jinja or Markdown: templates are plain HTML with front matter |
-| **One `entity.json` as the source of truth** | Business data is defined once and injected everywhere | Some upfront modelling per client |
-| **No client-side JavaScript** | Nothing to hydrate or secure, no main-thread cost | No progressive enhancement; fine for content sites |
-| **Validator fails on warnings** | SEO regressions are caught in CI, not in Search Console | Requires a clean base; no "I'll fix it later" |
-| **Placeholders fail fast** | An unresolved `{{x}}` can never ship | Every placeholder must exist in `entity.json` or `textos.json` |
-| **One `@graph` per page, deduplicated by `@id`** | Entities exist once and reference each other | Slightly more merge logic |
-| **Collections by folder convention** | Zero configuration; indexes, sitemap and `llms.txt` follow | Opinionated structure |
-| **Custom CSS and HTML minifiers** | Keep the "no dependencies" promise | Small on purpose and covered by tests (see [Status](#status)) |
-| **System font stack, CSS-only menu** | No font downloads, no layout shift | No brand typography; the checkbox menu has accessibility edge cases |
-
-## Status
-
-The template builds and passes the strict validator, with and without minification, and it keeps passing once you add a guide or a blog. The test suite (`python3 -m unittest discover tests`) covers a full build and validation, both minifiers, guides and blog (valid and invalid front matter, and strict validation with content), geo tags, and domain and placeholder handling. To check that the tests really catch regressions, the generator was deliberately broken in different ways and the suite failed every time.
-
-The minifiers are small on purpose (no dependencies). If some CSS or HTML ever comes out wrong, build with `CSS_MINIFY=FALSE`, compare both outputs and open an issue with the snippet.
-
-## Compared with alternatives
-
-Checked on 2026-10-21 against each project's own page:
-
-| | **legible** | [lintc](https://pypi.org/project/lintc/) 0.11 | [stattic](https://pypi.org/project/stattic) 1.0 |
-|---|---|---|---|
-| Dependencies | None | None (single file) | 8 (Jinja2, Markdown, PyYAML, Pillow…) |
-| Validation after build | Yes, strict, SEO-specific | Yes, configurable plugins | Not documented |
-| Schema.org JSON-LD | Built in, merged `@graph` | Not documented | Not documented |
-| `sitemap.xml` | Yes | Not documented | Yes |
-| `llms.txt` | Yes | Not documented | Yes |
-| Aimed at | Local business sites | General sites | Blogs |
-
-General-purpose generators such as Eleventy, Hugo or Astro (which ships zero JavaScript by default) are far more flexible and have bigger ecosystems. legible is narrower on purpose: it builds one kind of site and ships its SEO rules with it. If you need a custom design system, a CMS or a large content site, use one of them.
-
-*Sources: [lintc on PyPI](https://pypi.org/project/lintc/), [stattic on PyPI](https://pypi.org/project/stattic), [SSG comparison 2026](https://jwatte.com/blog/blog-ssg-comparison-2026/).*
-
-## Build a client site with an AI coding agent
-
-Any coding agent (Claude Code, Kilo, Cursor…) can turn the template into a real site. Example prompt:
-
-> You have the **legible** static site generator in this folder. Turn it into a website for **Taller Mecánico García**, a car repair shop in Madrid.
->
-> **Data:** domain `tallermecanicogarcia.com`; email `hola@tallermecanicogarcia.com`; phone `+34912345678`; address Calle de la Industria 12, 28005 Madrid; area served: Madrid, Alcobendas, San Sebastián de los Reyes, Las Rozas, Pozuelo de Alarcón, Majadahonda; services: general mechanics, electronic diagnosis, tyres, brakes, air conditioning, pre-ITV inspection, scheduled maintenance; price range 30 € – 800 €; featured action: free diagnosis (0 €).
->
-> **Do:** (1) update `src/data/entity.json` and `src/data/textos.json`; never write the domain by hand, use `{{site_url}}`; (2) create one page per service by copying `src/pages/servicios/servicio-generico/` (slugs without accents, e.g. `neumaticos`), each with its own JSON-LD, a visible FAQ identical to the FAQ in the JSON-LD, and at least 250 words; (3) update `servicios/`, `precios/`, `accion-destacada/`, `contacto/`, `sobre-nosotros/`, `header.html` and `footer.html`; (4) replace the placeholder images.
->
-> **Rules:** no JavaScript; every image with `alt`, `width` and `height`; every indexable page linked from the `<main>` of another page; no `TODO`, `[CONFIRMAR` or `{{...}}` left.
->
-> **Finish when** `SITE_URL=https://tallermecanicogarcia.com ./legible/build.sh` ends with CHECK PASSED and `python3 -m unittest discover tests` passes. First plan the list of files to change, then work in small groups, building after each one. If the build fails, read the report and fix it; do not weaken the validator.
-
-## Project layout
-
-```
-legible/
-  build.py          Generator: templates, JSON-LD, minifiers, sitemap, llms.txt, collections
-  check_site.py     Validator for the built output
-  dev.py            Local server that rebuilds when src/ changes
-  run_all.py        Runs tests, build.sh and dev.py in order; stops at the first failure
-  build.sh          build.py + check_site.py --strict
-tests/
-  test_legible.py   Smoke build, minifiers, guides/blog, domain and placeholders
-src/
-  layout.html       Base template (head, meta, Open Graph, JSON-LD)
-  partials/         header.html and footer.html
-  pages/            One folder per page, each with index.html (+ 404.html)
-  data/             entity.json (business data) and textos.json (default copy)
-  css/site.css      The single stylesheet
-  static/           Images, robots.txt and llms.txt template, copied as they are
+```bash
+python3 -m unittest discover tests
 ```
 
-Pages included: home, services (index + one example service), pricing, about, contact, featured action, legal notice, privacy and cookies (these three `noindex`) and 404.
+The current suite covers a build/validation smoke test, CSS and HTML minification, guide/blog front matter, URL handling, placeholder handling, geo metadata and contextual links. Add regression tests when changing generator or validator behavior.
+
+Before opening a pull request, run:
+
+```bash
+python3 -m unittest discover tests
+./legible/build.sh
+```
+
+## Deployment
+
+Publish the contents of `dist/` with a static hosting provider or web server, such as Cloudflare Pages, GitHub Pages, Netlify, Render Static Sites, S3 or Nginx.
+
+Typical settings:
+
+```text
+Build command:      ./legible/build.sh
+Publish directory:  dist
+Environment:        SITE_URL=https://example.com
+```
+
+Adapt these settings to the hosting provider's actual build environment. The deploy environment needs Python 3.10+ and `bash` to run the included build script.
+
+## Example: build a client site with an AI coding agent
+
+This is a reusable example prompt for adapting the starter site to a local business. The business details below are **illustrative sample data**, not verified facts. Replace them with information confirmed by the client before publishing.
+
+Copy the prompt into your coding agent from the repository root:
+
+```text
+Act as a careful senior web developer working inside this repository. Adapt the existing `legible` project into a complete, coherent website for the example mechanical workshop described below. First inspect the repository, its README, templates, data model, build process, validator and tests. Reuse the project's conventions; do not replace its architecture with a different framework.
+
+EXAMPLE BUSINESS DATA — verify every value before production
+- Business name: Taller Mecánico García
+- Domain: tallermecanicogarcia.com
+- Email: hola@tallermecanicogarcia.com
+- Phone: +34912345678
+- Address: Calle de la Industria 12, 28005 Madrid, Spain
+- Service area: Madrid, Alcobendas, San Sebastián de los Reyes, Las Rozas, Pozuelo de Alarcón and Majadahonda
+- Services: general mechanics, electronic diagnostics, tyres, brakes, air conditioning, pre-ITV inspections and scheduled maintenance
+- Example price range: €30–€800
+- Featured offer: free vehicle diagnosis (€0)
+
+Treat all values above as placeholders. Do not claim that the business, address, contact details, prices, offer, opening hours, certifications, reviews or guarantees are real unless verified. Do not invent testimonials, awards, qualifications or performance claims. Clearly flag any missing facts that must be confirmed.
+
+IMPLEMENTATION
+1. Inspect the project before editing. Briefly outline the files you intend to change, then implement the site in small, reviewable groups.
+2. Update `src/data/entity.json` and `src/data/textos.json` as the shared source of business facts and reusable copy. Use the project's `{{site_url}}` convention for canonical URLs; set the build URL through `SITE_URL`, not by scattering a hard-coded domain across templates.
+3. Build out the home, services, pricing, featured offer, contact and about pages, plus shared header and footer where needed. Keep navigation consistent and useful.
+4. Create individual service pages by following `src/pages/servicios/servicio-generico/`. Give each page a distinct purpose and genuinely useful content; do not generate near-duplicate pages just to target locations or keywords.
+5. Keep visible content and structured data consistent. Add valid JSON-LD only where it accurately represents the page. If a page includes an FAQ in JSON-LD, render the same questions and answers visibly on that page.
+6. Replace placeholder imagery with suitable, properly licensed assets. Give every meaningful image an accurate `alt` value and explicit `width` and `height`; do not describe an image as depicting something it does not show.
+7. Preserve the project's constraints and conventions: static HTML output, no client-side JavaScript, existing templates, Python standard-library runtime and current build/validation workflow. Do not add dependencies or introduce a framework unless the task explicitly requires it.
+8. Ensure every indexable page is reachable through meaningful internal links from another page, especially from the main content (`<main>`), service index or relevant navigation.
+9. Review mobile layout, semantic HTML, heading hierarchy, accessible link text, metadata, canonical URLs, internal links, image paths and structured data. Keep the copy natural, specific and useful; avoid keyword stuffing and unsupported claims.
+10. Remove unresolved template markers, TODOs and draft placeholders from pages intended for publication, including strings such as `TODO`, `[CONFIRMAR` and unexpanded `{{...}}`. If a fact cannot be verified, document it clearly rather than fabricating it.
+
+VALIDATION AND DEFINITION OF DONE
+- After each group of changes, run the relevant checks and fix regressions before continuing.
+- Run `SITE_URL=https://tallermecanicogarcia.com ./legible/build.sh`.
+- Run `python3 -m unittest discover tests`.
+- Inspect the generated `dist/` output, not just the source templates. Resolve all validation failures; do not weaken or bypass the validator simply to get a passing build.
+- Finish by summarizing what changed, which checks passed, and which business facts still need client verification. Never report a command as passed unless you actually ran it.
+```
+
+The build URL in this example is also illustrative. Use the real production domain only after the client has confirmed ownership and launch details.
+
+## Scope and limitations
+
+`legible` is a focused generator for relatively conventional local-business websites. It is not a CMS, a general-purpose static-site framework, or a guarantee of SEO results.
+
+- It does not guarantee rankings, indexing, rich results, traffic or AI citations.
+- Structured data must accurately describe visible page content and does not itself guarantee enhanced search results.
+- `llms.txt` is an informational file; support and impact vary by consumer.
+- Example business details and legal copy must be reviewed and replaced before production.
+- The validator checks specific technical rules. It cannot judge whether marketing claims are true, whether content satisfies user intent, or whether a site complies with every applicable legal requirement.
+- If you need a CMS, complex interactive features, a large editorial platform or a highly customizable build pipeline, consider a broader framework.
 
 ## Contributing
 
-Issues and pull requests are welcome. Before opening one: `python3 -m unittest discover tests` and `./legible/build.sh` must pass. If you fix a bug, add a test that fails without the fix.
+Issues and pull requests are welcome. Keep changes focused, explain the behavior being changed, and include a regression test for bug fixes where practical.
+
+Before submitting:
+
+```bash
+python3 -m unittest discover tests
+./legible/build.sh
+```
+
+Do not weaken validation rules merely to make a failing build pass; investigate whether the source content or the rule needs a justified change.
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+Released under the [MIT License](LICENSE).
 
-## About the author
+## Author
 
-**Angel Maturana Clavero** — Software architect with 26+ years in core banking, now building GenAI agents and zero-JavaScript SEO tooling. Previously at Santander: global security framework, the Gravity migration, a 40-ATM lab and the bank's first e-commerce. legible is the tool I use to deliver fast, well-structured sites for local businesses through [seovaldemoro.com](https://seovaldemoro.com).
+**Angel Maturana Clavero** — Software architect with more than 26 years of experience in core banking, now building generative-AI agents and SEO tooling. `legible` is developed for creating fast, structured websites for local businesses through [SEO Valdemoro](https://seovaldemoro.com).
 
-- LinkedIn: [linkedin.com/in/angelmaturana](https://linkedin.com/in/angelmaturana)
-- GitHub: [github.com/angelmaturana](https://github.com/angelmaturana)
-- Agency: [seovaldemoro.com](https://seovaldemoro.com)
+- GitHub: [angelmaturana](https://github.com/angelmaturana)
+- LinkedIn: [angelmaturana](https://linkedin.com/in/angelmaturana)
+- Website: [seovaldemoro.com](https://seovaldemoro.com)

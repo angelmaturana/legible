@@ -1,206 +1,339 @@
 <div align="center">
 
-# legible
+# `legible`
 
-**Webs para negocios de servicios locales que los buscadores y los asistentes de IA pueden leer de verdad.**
+**Un generador estático y ligero para negocios locales, construido con la librería estándar de Python.**
 
-HTML plano, sin JavaScript, con datos estructurados completos y un validador que corta el build antes de que un error de SEO llegue a producción. Solo librería estándar de Python: no hay nada que instalar.
+HTML plano. Sin JavaScript en el cliente. Datos estructurados y comprobaciones SEO integradas en el proceso de build.
 
-[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org)
-[![Dependencias: ninguna](https://img.shields.io/badge/dependencias-ninguna-2ea44f)](#decisiones-de-diseño-y-compromisos)
-[![JavaScript en el cliente: ninguno](https://img.shields.io/badge/JavaScript%20en%20el%20cliente-ninguno-ff6b6b)](#de-un-vistazo)
-[![Schema.org JSON-LD](https://img.shields.io/badge/Schema.org-JSON--LD-1a73e8)](https://schema.org)
-[![Licencia: MIT](https://img.shields.io/badge/licencia-MIT-yellow)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Dependencias](https://img.shields.io/badge/dependencias%20de%20ejecución-0-2ea44f)](#principios-de-diseño)
+[![JavaScript en cliente](https://img.shields.io/badge/JavaScript%20en%20cliente-ninguno-ff6b6b)](#qué-genera)
+[![Schema.org](https://img.shields.io/badge/datos%20estructurados-Schema.org-1a73e8)](https://schema.org/)
+[![Licencia: MIT](https://img.shields.io/badge/Licencia-MIT-yellow.svg)](LICENSE)
 
-[English](README.md) · **Español**
+[English](README.md) · [Español](README.es.md)
 
 </div>
 
+## Índice
+
+- [Resumen](#resumen)
+- [Por qué este enfoque](#por-que-este-enfoque)
+- [Qué genera](#que-genera)
+- [Inicio rápido](#inicio-rapido)
+- [Configurar un sitio](#configurar-un-sitio)
+- [Configuración del build](#configuracion-del-build)
+- [Validación](#validacion)
+- [Arquitectura](#arquitectura)
+- [Principios de diseño](#principios-de-diseno)
+- [Rendimiento](#rendimiento)
+- [Pruebas](#pruebas)
+- [Despliegue](#despliegue)
+- [Ejemplo: crear la web de un cliente con un agente de IA](#ejemplo-crear-la-web-de-un-cliente-con-un-agente-de-ia)
+- [Alcance y limitaciones](#alcance-y-limitaciones)
+- [Contribuir](#contribuir)
+- [Licencia](#licencia)
+- [Autor](#autor)
+
+
 ---
 
-## Por qué legible
+## Resumen
 
-Un fontanero, una clínica o un taller necesitan una web que cargue al instante, que diga con claridad qué hace el negocio, dónde y por cuánto, y que Google y los asistentes de IA entiendan. Casi todas las soluciones para eso son pesadas (frameworks, plugins, herramientas de compilación) y nadie revisa los detalles de SEO hasta que ya se ha perdido tráfico.
+`legible` genera webs estáticas para negocios de servicios locales a partir de plantillas HTML y unos pocos archivos de datos compartidos. Tiene un alcance deliberadamente concreto: está pensado para webs de negocios de servicios, no para sustituir a una plataforma editorial o a un generador estático de propósito general.
 
-legible va por otro camino:
+Los datos del negocio se mantienen en `src/data/entity.json` y los textos reutilizables en `src/data/textos.json`. El proceso de build compone las páginas, genera metadatos y JSON-LD y produce archivos auxiliares para publicar el sitio. Después, un validador revisa el resultado compilado y puede detener el build tanto por errores como por avisos.
 
-- **Un solo archivo describe el negocio.** Nombre, teléfono, ciudades, servicios y precios viven en `entity.json`; de ahí salen todas las páginas, los datos estructurados, el sitemap y `llms.txt`, así que nada se desincroniza.
-- **Rápida por construcción.** HTML estático y una sola hoja de estilos. Nada de JavaScript en el cliente.
-- **Los errores paran el build.** `check_site.py` valida el resultado (encabezados, canonicals, imágenes, enlaces, JSON-LD, sitemap, coherencia de las FAQ…) y falla con errores *y* con avisos.
-- **Nada que instalar ni mantener.** Librería estándar de Python. La salida se publica en cualquier hosting estático.
+**El objetivo es obtener una salida predecible y fácil de inspeccionar, no prometer posiciones en buscadores.** Las comprobaciones técnicas detectan errores habituales de implementación, pero no garantizan indexación, resultados enriquecidos, tráfico ni visibilidad en asistentes de IA.
 
-No promete posiciones. Garantiza que la información que reciben buscadores y asistentes de IA es limpia, completa y coherente.
+## Por qué este enfoque
 
-## De un vistazo
+- **Una fuente para los datos del negocio.** La información compartida se mantiene centralizada en lugar de duplicarse en cada página.
+- **Salida estática.** La web generada son archivos que puede servir un hosting estático; no requiere un runtime de aplicación en producción.
+- **Sin JavaScript en el cliente.** La plantilla no envía código de aplicación al navegador. El JSON-LD se incluye como datos dentro de elementos `<script>`.
+- **Marcadores *fail-fast*.** Los marcadores de plantilla sin resolver detienen el build en lugar de filtrarse silenciosamente a producción.
+- **Validación orientada a SEO.** Se revisan metadatos, encabezados, enlaces, imágenes, datos estructurados y archivos generados.
+- **Implementación con la librería estándar.** El generador y las pruebas usan la librería estándar de Python, sin dependencias de terceros para su ejecución.
 
-Medido sobre la plantilla incluida (11 páginas), 2026-10-21:
+## Qué genera
 
-| | |
-|---|---|
-| Dependencias en ejecución | **0** (librería estándar de Python) |
-| JavaScript enviado al navegador | **0 bytes** (los únicos `<script>` son datos JSON-LD) |
-| Peso de la portada | 22 KB de HTML (5,9 KB gzip) + 20 KB de CSS (4,9 KB gzip) |
-| Build + validación estricta | **~0,25 s** |
-| Datos estructurados | `ProfessionalService`, `WebSite`, `WebPage`, `FAQPage`, `Service`/`Offer`, `BreadcrumbList` combinados en un único `@graph` por página |
-| Archivos generados | `sitemap.xml` (con `lastmod`), `robots.txt`, `llms.txt` y, si existen, los índices de `/guias/` y `/blog/` |
-| Pruebas | 94 (`unittest`, ~5 s), ver [Estado](#estado) |
+Por defecto, el resultado del build se escribe en `dist/`.
+
+| Salida | Función |
+| --- | --- |
+| Páginas HTML estáticas | Páginas compuestas a partir de plantillas y contenido |
+| CSS | Hoja de estilos del sitio, con minificación opcional |
+| JSON-LD | Datos estructurados combinados en un `@graph` por página |
+| `sitemap.xml` | URLs del sitio generado |
+| `robots.txt` | Directivas para rastreadores y referencia al sitemap |
+| `llms.txt` | Índice en texto plano de información seleccionada del sitio |
+| Índices de guías/blog | Se generan cuando las colecciones cumplen las reglas del proyecto |
+
+La plantilla incluye ejemplos de páginas para negocios, páginas legales de ejemplo, una página 404 y soporte para colecciones de guías y blog. Antes de publicar una web real, revisa y sustituye el contenido de ejemplo.
 
 ## Inicio rápido
 
-Requiere Python 3.10+. Clona el repositorio (o descarga el ZIP), entra en la carpeta y ejecuta:
+### Requisitos
+
+- Python 3.10 o posterior.
+- `bash` para ejecutar `legible/build.sh` (en Windows, Git Bash o WSL).
+- El proyecto no requiere paquetes Python de terceros.
+
+### Ejecutar comprobaciones y arrancar el servidor local
+
+Desde la raíz del repositorio:
 
 ```bash
-python3 legible/run_all.py    # pruebas -> build + validación -> servidor local, se detiene en el primer fallo
-./legible/build.sh            # compila en dist/ y valida en modo estricto
-python3 legible/dev.py        # servidor local en http://localhost:3001, recompila al guardar
-python3 -m unittest discover tests   # ejecuta las pruebas
+python3 legible/run_all.py
 ```
 
-Opciones de `build.sh` (variables de entorno):
+Este comando ejecuta las pruebas, compila y valida el sitio y, si todo termina correctamente, inicia el servidor de desarrollo. Se detiene en el primer paso que falla.
 
-| Variable | Por defecto | Efecto |
-|---|---|---|
-| `SITE_URL` | `https://TU-DOMINIO.com` | Dominio del sitio: canonicals, JSON-LD, sitemap, `robots.txt`, `llms.txt`. Debe empezar por `https://`. |
-| `CSS_MINIFY` | `TRUE` | `FALSE` deja HTML y CSS sin minimizar (útil para depurar). |
-| `CHECK_STRICT` | `TRUE` | `FALSE`: los avisos ya no hacen fallar el build (los errores siempre sí). |
+Comandos alternativos:
 
-Opciones de `run_all.py`: `--no-dev` (sin servidor, útil antes de publicar), `--skip-tests` (cuando solo has tocado `src/`) y `--port N`. Respeta las variables de entorno de `build.sh`.
+```bash
+# Compilar y validar sin iniciar el servidor de desarrollo
+python3 legible/run_all.py --no-dev
 
-Validar una carpeta ya compilada: `python3 legible/check_site.py --dir dist --strict --site-url https://tu-dominio.com` (sin `--site-url` se asume el dominio por defecto).
+# Compilar y validar
+./legible/build.sh
 
-## Cómo funciona
+# Ejecutar las pruebas
+python3 -m unittest discover tests
+
+# Iniciar el servidor local
+python3 legible/dev.py
+```
+
+Por defecto, el servidor de desarrollo está disponible en `http://localhost:3001` y recompila cuando cambian archivos bajo `src/`.
+
+## Configurar un sitio
+
+### 1. Definir la URL canónica
+
+Pasa la URL definitiva del sitio mediante `SITE_URL`:
+
+```bash
+SITE_URL=https://ejemplo.es ./legible/build.sh
+```
+
+Usa el origen HTTPS final. El generador y el validador utilizan este valor para las URLs canónicas y otras referencias generadas, incluidos los datos estructurados y los archivos relacionados con el sitemap. Evita escribir el dominio manualmente en cada página.
+
+### 2. Editar los datos y los textos
+
+- `src/data/entity.json` — identidad del negocio e información compartida de servicios.
+- `src/data/textos.json` — textos reutilizables y valores predeterminados.
+- `src/pages/` — contenido de las páginas y *front matter*.
+- `src/partials/` — cabecera y pie compartidos.
+- `src/css/site.css` — estilos del sitio.
+- `src/static/` — recursos estáticos y archivos auxiliares.
+
+Antes del lanzamiento, sustituye los datos de ejemplo, las imágenes provisionales y los textos genéricos. Comprueba que los precios, las zonas de servicio, los datos de contacto, las afirmaciones comerciales y las ofertas sean reales.
+
+### 3. Añadir una página de servicio
+
+Usa `src/pages/servicios/servicio-generico/` como plantilla de referencia. Actualiza su *front matter*, contenido visible y datos estructurados. Después, enlaza la nueva página desde el índice de servicios y la navegación cuando corresponda.
+
+### 4. Compilar y validar
+
+```bash
+SITE_URL=https://ejemplo.es ./legible/build.sh
+```
+
+Por defecto, el modo estricto trata los avisos como fallos del build. La intención es revisarlos, no ignorarlos automáticamente.
+
+## Configuración del build
+
+`legible/build.sh` lee estas variables de entorno:
+
+| Variable | Valor predeterminado | Efecto |
+| --- | --- | --- |
+| `SITE_URL` | `https://TU-DOMINIO.com` | URL base HTTPS para canonicals y referencias generadas |
+| `CSS_MINIFY` | `TRUE` | Con `FALSE`, desactiva la minificación donde está soportado; útil para depurar |
+| `CHECK_STRICT` | `TRUE` | Con `FALSE`, los avisos no hacen fallar la validación; los errores siguen fallando |
+
+`run_all.py` también admite:
+
+```bash
+python3 legible/run_all.py --no-dev
+python3 legible/run_all.py --skip-tests
+python3 legible/run_all.py --port 8080
+```
+
+Usa `--skip-tests` solo cuando tengas un motivo concreto para omitir las pruebas.
+
+## Validación
+
+`legible/check_site.py` valida la salida compilada, no los archivos fuente de forma aislada. En modo estricto, los errores y los avisos producen un código de salida distinto de cero.
+
+Entre las comprobaciones se incluyen:
+
+- **Metadatos del documento:** idioma, viewport, límites de longitud de título y descripción, directivas robots, canonicals HTTPS y metadatos Open Graph y Twitter.
+- **Estructura del contenido:** jerarquía de encabezados, un `h1` principal, longitud mínima del contenido principal para páginas indexables y detección de marcadores o textos provisionales sin resolver.
+- **Imágenes:** texto alternativo y dimensiones explícitas.
+- **Enlaces:** rutas internas y anclas rotas, páginas huérfanas y comprobaciones básicas de enlaces a nuevas pestañas, correo y teléfono.
+- **Datos estructurados:** JSON válido, nodos/campos requeridos, `@id` duplicados, referencias sin resolver y coherencia entre las FAQ visibles y las FAQ del marcado.
+- **Archivos del sitio:** presencia de archivos requeridos, coherencia del sitemap y comprobaciones básicas de `robots.txt`.
+
+Para validar un build existente:
+
+```bash
+python3 legible/check_site.py --dir dist --strict --site-url https://ejemplo.es
+```
+
+Estas reglas son controles técnicos específicos del proyecto. No sustituyen las pruebas en navegadores, la revisión de accesibilidad, la comprobación de elegibilidad real para resultados enriquecidos ni las herramientas para webmasters de los buscadores.
+
+## Arquitectura
 
 ```mermaid
 flowchart LR
-    A["src/<br/>páginas · entity.json · textos.json"] --> B["build.py<br/>componer · JSON-LD · minimizar"]
-    B --> C["dist/<br/>HTML · CSS · sitemap · llms.txt · robots"]
-    C --> D{"check_site.py<br/>--strict"}
-    D -- pasa --> E["Publicar en cualquier hosting estático"]
-    D -- errores o avisos --> F["El build falla con un informe"]
+    A["src/<br/>HTML · entity.json · textos.json"] --> B["legible/build.py<br/>plantillas · metadatos · JSON-LD"]
+    B --> C["dist/<br/>salida estática"]
+    C --> D{"legible/check_site.py<br/>--strict"}
+    D -- válido --> E["Publicar dist/ en un hosting estático"]
+    D -- errores o avisos --> F["Código de salida distinto de cero + informe"]
 ```
 
-- **Plantillas.** Cada página es un `.html` con *front matter* (`title`, `description` y, opcionalmente, `robots`, `canonical`, `geo`, `active`). El build lo inserta en `layout.html`, marca el enlace activo del menú con `aria-current` y añade canonical y Open Graph.
-- **Marcadores `{{...}}`.** Unos se calculan desde `entity.json` (nombre, email, teléfono, ciudades, precios, dominio); el resto son textos en `src/data/textos.json`. Si un marcador no tiene valor, el build se detiene y te dice cuál es y en qué página.
-- **JSON-LD.** Los nodos de `entity.json` se combinan con el JSON-LD de cada página en un único `@graph`; nunca se emiten `@id` duplicados.
-- **Guías y blog.** Crea un archivo en `src/pages/guias/<slug>/` o `src/pages/blog/<slug>/` con el front matter requerido (`type`, `topic`, `published`, `updated`, `summary`, `service`; opcional `related`, máx. 2) y el build genera el índice, la entrada del sitemap y la de `llms.txt`. `/guias/` aparece con 1 guía o más; `/blog/` sale `noindex` con 1–2 artículos y pasa a público (menú, pie, sitemap) desde 3. La home enlaza a lo que sea público mediante el marcador `{{home_recursos}}`, que da a esos índices el enlace contextual entrante que pide el validador: mantenlo en `src/pages/index.html`.
+| Ruta | Responsabilidad |
+| --- | --- |
+| `legible/build.py` | Composición de plantillas, sustitución de marcadores, ensamblado de JSON-LD, minificación y archivos generados |
+| `legible/check_site.py` | Validación de la salida compilada |
+| `legible/build.sh` | Build seguido de validación |
+| `legible/dev.py` | Servidor local y flujo de recompilación |
+| `legible/run_all.py` | Orquesta pruebas, build/validación y servidor local opcional |
+| `tests/test_legible.py` | Pruebas de regresión del build, minificadores, colecciones, URLs y marcadores |
+| `src/layout.html` | Estructura común del documento y metadatos |
+| `src/pages/` | Plantillas y contenido de páginas |
+| `src/data/` | Datos compartidos del negocio y textos por defecto |
+| `src/partials/` | Fragmentos comunes de página |
+| `src/css/site.css` | Hoja de estilos |
+| `src/static/` | Recursos estáticos y archivos auxiliares |
 
-## Qué valida el validador
+## Principios de diseño
 
-`check_site.py` es el único validador. Con `--strict`, los avisos también hacen fallar el build.
+| Decisión | Ventaja | Compromiso |
+| --- | --- | --- |
+| Solo librería estándar de Python | No requiere paquetes Python de terceros en ejecución | El código propio reemplaza funciones que ofrecerían motores de plantillas o librerías Markdown |
+| `entity.json` compartido | Reduce la duplicación de datos del negocio | El modelo de datos requiere mantenimiento cuidadoso |
+| Sin JavaScript en el cliente | Menos código ejecutado en el navegador y sin hidratación JS | No está pensado para interacciones que necesiten lógica de aplicación en el cliente |
+| Validación estricta por defecto | Detecta regresiones comunes antes de publicar | Hay que resolver o revisar conscientemente los avisos existentes |
+| Colecciones por convención de carpetas | Permite generar índices y entradas relacionadas | La estructura de carpetas y el *front matter* son deliberadamente opinados |
+| Minificadores pequeños propios | Mantiene reducido el conjunto de dependencias | El código de minificación requiere pruebas de regresión continuas |
 
-- **Cabecera:** `lang`, `viewport`, `title` y `description` (con límites de longitud), `robots`, canonical HTTPS coherente con la URL, Open Graph y Twitter.
-- **Contenido:** un solo `h1`, sin saltos de nivel, mínimo de 250 palabras en `<main>` en páginas indexables, sin `TODO`, `[CONFIRMAR` ni `{{...}}` sobrantes.
-- **Imágenes:** `alt`, `width` y `height` en todas.
-- **Enlaces:** rutas internas absolutas, sin enlaces ni anclas rotas, `rel="noopener"` en `target="_blank"`, `mailto:` y `tel:` bien formados, sin páginas huérfanas.
-- **JSON-LD:** válido, con `@context`, sin `@id` duplicados ni referencias sin definir, con los nodos obligatorios, y la FAQ del marcado debe coincidir con la FAQ visible.
-- **Sitio:** sin títulos ni descriptions duplicados; `sitemap.xml` completo y coherente; `robots.txt` sin `Disallow: /` y con el sitemap declarado; archivos obligatorios presentes.
+## Rendimiento
 
-## Personalizar para un negocio
+La salida estática y la ausencia de JavaScript en el cliente reducen piezas móviles, pero **no garantizan que todas las páginas sean rápidas en cualquier condición**. El rendimiento real también depende del tamaño de HTML/CSS, las imágenes, las fuentes, el hosting, la caché, la red y los recursos de terceros que se añadan posteriormente.
 
-1. Edita `src/data/entity.json`: nombre, email, teléfono, ciudades, servicios y precios.
-2. Define el dominio una sola vez: `SITE_URL=https://ejemplo.es ./legible/build.sh`. Páginas, `entity.json`, `robots.txt` y `llms.txt` usan el marcador `{{site_url}}`.
-3. Sustituye los textos genéricos de `src/data/textos.json` (no hace falta tocar Python), o escribe el texto directamente en cada página.
-4. Reemplaza las imágenes de `src/static/images/` (logo, `og-image`, favicon).
-5. Para un servicio nuevo, copia `src/pages/servicios/servicio-generico/`, ajusta su front matter, JSON-LD y contenido, y enlázalo desde `servicios/`, `precios/`, `header.html` y `footer.html`.
-6. `./legible/build.sh` y publica `dist/`.
+Las mediciones del README original describen la plantilla incluida, no un benchmark universal. Vuelve a medir el build de producción tras cambiar contenido o recursos, combinando comprobaciones de transferencia con herramientas de rendimiento en navegador.
 
-> El contenido de la plantilla está en español. La etiqueta `geo.placename` toma la ciudad de `entity.json` y `geo.region` toma el código ISO 3166-2 de `geo_region` en `src/data/textos.json` (`ES-MD` por defecto; déjalo vacío para omitir la etiqueta).
+## Pruebas
+
+Ejecuta las pruebas desde la raíz del repositorio:
+
+```bash
+python3 -m unittest discover tests
+```
+
+La batería actual cubre una compilación y validación de humo, minificación CSS/HTML, *front matter* de guías y blog, gestión de URLs y marcadores, metadatos geográficos y enlaces contextuales. Añade pruebas de regresión cuando cambies el comportamiento del generador o del validador.
+
+Antes de abrir un pull request, ejecuta:
+
+```bash
+python3 -m unittest discover tests
+./legible/build.sh
+```
 
 ## Despliegue
 
-La salida son archivos estáticos: sirve `dist/` desde Render Static Sites, Netlify, Cloudflare Pages, GitHub Pages, S3, Nginx… Sin ningún runtime en el servidor.
+Publica el contenido de `dist/` en un proveedor de hosting estático o servidor web, por ejemplo Cloudflare Pages, GitHub Pages, Netlify, Render Static Sites, S3 o Nginx.
 
-```
-Build command:     ./legible/build.sh
-Publish directory: dist
-Variable:          SITE_URL=https://tu-dominio.com
-```
+Configuración habitual:
 
-## Decisiones de diseño y compromisos
-
-| Decisión | Por qué | Coste |
-|---|---|---|
-| **Solo la librería estándar de Python** | Sin cadena de suministro que auditar, funciona donde haya Python, nada que actualizar | Sin Jinja ni Markdown: las plantillas son HTML plano con front matter |
-| **Un `entity.json` como fuente única** | Los datos del negocio se definen una vez y se inyectan en todo | Algo de modelado inicial por cliente |
-| **Sin JavaScript en el cliente** | Nada que hidratar ni proteger, sin coste en el hilo principal | Sin mejora progresiva; vale para webs de contenido |
-| **El validador falla también con avisos** | Las regresiones de SEO se cazan en CI, no en Search Console | Exige una base limpia; no hay «ya lo arreglo luego» |
-| **Los marcadores fallan rápido** | Un `{{x}}` sin resolver nunca llega a producción | Cada marcador debe existir en `entity.json` o `textos.json` |
-| **Un `@graph` por página, deduplicado por `@id`** | Cada entidad existe una vez y se referencian entre sí | Algo más de lógica de combinación |
-| **Colecciones por convención de carpetas** | Sin configuración; índices, sitemap y `llms.txt` salen solos | Estructura con opiniones |
-| **Minificadores propios de CSS y HTML** | Mantienen la promesa de «sin dependencias» | Pequeños a propósito y cubiertos por pruebas (ver [Estado](#estado)) |
-| **Fuentes del sistema y menú solo con CSS** | Sin descargas de fuentes ni saltos de maquetación | Sin tipografía de marca; el menú con checkbox tiene casos límite de accesibilidad |
-
-## Estado
-
-La plantilla compila y pasa el validador estricto, con y sin minificar, y sigue pasándolo cuando añades una guía o un blog. La batería de pruebas (`python3 -m unittest discover tests`) cubre un build completo con validación, los dos minificadores, guías y blog (front matter válido e inválido, y validación estricta con contenido), las etiquetas geo y el tratamiento del dominio y de los marcadores. Para comprobar que las pruebas detectan regresiones de verdad, se estropeó el generador a propósito de distintas maneras y la batería falló todas las veces.
-
-Los minificadores son pequeños a propósito (sin dependencias). Si alguna vez un CSS o un HTML sale mal, compila con `CSS_MINIFY=FALSE`, compara ambas salidas y abre un issue con el fragmento.
-
-## Comparación con alternativas
-
-Comprobado el 2026-10-21 en la página de cada proyecto:
-
-| | **legible** | [lintc](https://pypi.org/project/lintc/) 0.11 | [stattic](https://pypi.org/project/stattic) 1.0 |
-|---|---|---|---|
-| Dependencias | Ninguna | Ninguna (un solo archivo) | 8 (Jinja2, Markdown, PyYAML, Pillow…) |
-| Validación tras el build | Sí, estricta y específica de SEO | Sí, con plugins configurables | No documentada |
-| JSON-LD de Schema.org | Integrado, `@graph` combinado | No documentado | No documentado |
-| `sitemap.xml` | Sí | No documentado | Sí |
-| `llms.txt` | Sí | No documentado | Sí |
-| Orientado a | Webs de negocios locales | Webs en general | Blogs |
-
-Los generadores de propósito general como Eleventy, Hugo o Astro (que no envía JavaScript por defecto) son mucho más flexibles y tienen ecosistemas mayores. legible es más estrecho a propósito: construye un solo tipo de web y trae sus reglas de SEO incluidas. Si necesitas un sistema de diseño propio, un CMS o una web de contenido grande, usa uno de ellos.
-
-*Fuentes: [lintc en PyPI](https://pypi.org/project/lintc/), [stattic en PyPI](https://pypi.org/project/stattic), [comparativa de SSG 2026](https://jwatte.com/blog/blog-ssg-comparison-2026/).*
-
-## Crear la web de un cliente con un agente de IA
-
-Cualquier agente de programación (Claude Code, Kilo, Cursor…) puede convertir la plantilla en una web real. Prompt de ejemplo:
-
-> Tienes en esta carpeta el generador de webs estáticas **legible**. Conviértelo en la web de **Taller Mecánico García**, un taller de reparación de coches en Madrid.
->
-> **Datos:** dominio `tallermecanicogarcia.com`; email `hola@tallermecanicogarcia.com`; teléfono `+34912345678`; dirección Calle de la Industria 12, 28005 Madrid; zona de servicio: Madrid, Alcobendas, San Sebastián de los Reyes, Las Rozas, Pozuelo de Alarcón, Majadahonda; servicios: mecánica general, diagnóstico electrónico, neumáticos, frenos, aire acondicionado, pre-ITV, mantenimiento programado; rango de precios 30 € – 800 €; acción destacada: diagnóstico gratis (0 €).
->
-> **Haz:** (1) actualiza `src/data/entity.json` y `src/data/textos.json`; no escribas el dominio a mano, usa `{{site_url}}`; (2) crea una página por servicio copiando `src/pages/servicios/servicio-generico/` (slugs sin tildes, p. ej. `neumaticos`), cada una con su JSON-LD, una FAQ visible idéntica a la del JSON-LD y al menos 250 palabras; (3) actualiza `servicios/`, `precios/`, `accion-destacada/`, `contacto/`, `sobre-nosotros/`, `header.html` y `footer.html`; (4) sustituye las imágenes de ejemplo.
->
-> **Reglas:** sin JavaScript; toda imagen con `alt`, `width` y `height`; toda página indexable enlazada desde el `<main>` de otra; sin `TODO`, `[CONFIRMAR` ni `{{...}}` sobrantes.
->
-> **Termina cuando** `SITE_URL=https://tallermecanicogarcia.com ./legible/build.sh` acabe con CHECK PASSED y `python3 -m unittest discover tests` pase. Primero planifica la lista de archivos a cambiar y trabaja en grupos pequeños, compilando tras cada uno. Si el build falla, lee el informe y corrige; no debilites el validador.
-
-## Estructura del proyecto
-
-```
-legible/
-  build.py          Generador: plantillas, JSON-LD, minificadores, sitemap, llms.txt, colecciones
-  check_site.py     Validador de la salida compilada
-  dev.py            Servidor local que recompila al cambiar src/
-  run_all.py        Ejecuta pruebas, build.sh y dev.py en orden; se detiene en el primer fallo
-  build.sh          build.py + check_site.py --strict
-tests/
-  test_legible.py   Build de humo, minificadores, guías/blog, dominio y marcadores
-src/
-  layout.html       Plantilla base (head, meta, Open Graph, JSON-LD)
-  partials/         header.html y footer.html
-  pages/            Una carpeta por página, cada una con su index.html (+ 404.html)
-  data/             entity.json (datos del negocio) y textos.json (textos por defecto)
-  css/site.css      La única hoja de estilos
-  static/           Imágenes, robots.txt y plantilla de llms.txt, se copian tal cual
+```text
+Comando de build:    ./legible/build.sh
+Directorio público:  dist
+Variable:            SITE_URL=https://ejemplo.es
 ```
 
-Páginas incluidas: inicio, servicios (índice + un servicio de ejemplo), precios, sobre nosotros, contacto, acción destacada, aviso legal, privacidad y cookies (estas tres `noindex`) y 404.
+Adapta estos valores al entorno real del proveedor. Para ejecutar el script de build se necesita Python 3.10+ y `bash`.
+
+## Ejemplo: crear la web de un cliente con un agente de IA
+
+Este prompt sirve como punto de partida para adaptar la plantilla a un negocio local. Los datos del taller que aparecen a continuación son **datos de ejemplo ilustrativos**, no hechos verificados. Sustitúyelos por información confirmada por el cliente antes de publicar.
+
+Copia el prompt en tu agente de programación desde la raíz del repositorio:
+
+```text
+Actúa como un desarrollador web sénior y cuidadoso que trabaja dentro de este repositorio. Adapta el proyecto `legible` existente para crear una web completa y coherente para el taller mecánico de ejemplo descrito abajo. Antes de modificar nada, inspecciona el repositorio, su README, las plantillas, el modelo de datos, el proceso de build, el validador y las pruebas. Respeta las convenciones del proyecto; no sustituyas su arquitectura por otro framework.
+
+DATOS DE EJEMPLO DEL NEGOCIO — verificar cada valor antes de producción
+- Nombre: Taller Mecánico García
+- Dominio: tallermecanicogarcia.com
+- Correo: hola@tallermecanicogarcia.com
+- Teléfono: +34912345678
+- Dirección: Calle de la Industria 12, 28005 Madrid, España
+- Zona de servicio: Madrid, Alcobendas, San Sebastián de los Reyes, Las Rozas, Pozuelo de Alarcón y Majadahonda
+- Servicios: mecánica general, diagnosis electrónica, neumáticos, frenos, aire acondicionado, pre-ITV y mantenimiento programado
+- Rango de precios de ejemplo: 30–800 €
+- Oferta destacada: diagnosis gratuita del vehículo (0 €)
+
+Trata todos los valores anteriores como marcadores de ejemplo. No afirmes que el negocio, la dirección, los datos de contacto, los precios, la oferta, el horario, las certificaciones, las reseñas o las garantías son reales si no se han verificado. No inventes testimonios, premios, cualificaciones ni afirmaciones de rendimiento. Señala claramente los datos que el cliente deba confirmar.
+
+IMPLEMENTACIÓN
+1. Inspecciona el proyecto antes de editar. Resume brevemente qué archivos vas a modificar y después trabaja en grupos pequeños y revisables.
+2. Actualiza `src/data/entity.json` y `src/data/textos.json` como fuentes compartidas de datos del negocio y textos reutilizables. Respeta la convención `{{site_url}}` para las URLs canónicas y configura la URL del build mediante `SITE_URL`, sin dispersar el dominio escrito a mano por las plantillas.
+3. Desarrolla las páginas de inicio, servicios, precios, oferta destacada, contacto y sobre nosotros; actualiza también la cabecera y el pie compartidos cuando sea necesario. Mantén una navegación coherente y útil.
+4. Crea páginas individuales de servicios siguiendo `src/pages/servicios/servicio-generico/`. Cada página debe tener una finalidad diferenciada y contenido realmente útil; no generes páginas casi idénticas solo para posicionar ciudades o palabras clave.
+5. Mantén alineados el contenido visible y los datos estructurados. Añade JSON-LD válido solo cuando describa con precisión la página. Si una página incluye preguntas frecuentes en JSON-LD, muestra en esa misma página las mismas preguntas y respuestas.
+6. Sustituye las imágenes provisionales por recursos adecuados y con licencia apropiada. Todas las imágenes relevantes deben tener un `alt` preciso y los atributos `width` y `height`; no describas una imagen como algo que no muestra.
+7. Respeta las restricciones y convenciones del proyecto: salida HTML estática, sin JavaScript en el cliente, plantillas existentes, ejecución con la librería estándar de Python y flujo actual de build/validación. No añadas dependencias ni introduzcas un framework salvo que la tarea lo exija expresamente.
+8. Asegúrate de que todas las páginas indexables se puedan alcanzar mediante enlaces internos útiles desde otra página, especialmente desde el contenido principal (`<main>`), el índice de servicios o la navegación pertinente.
+9. Revisa el diseño móvil, HTML semántico, jerarquía de encabezados, textos accesibles de enlaces, metadatos, URLs canónicas, enlaces internos, rutas de imágenes y datos estructurados. El contenido debe ser natural, concreto y útil, sin abuso de palabras clave ni afirmaciones no demostradas.
+10. Elimina marcadores de plantilla sin resolver, TODO y textos provisionales de las páginas que se vayan a publicar, incluidos `TODO`, `[CONFIRMAR` y cualquier `{{...}}` sin expandir. Si un dato no se puede verificar, documéntalo claramente en vez de inventarlo.
+
+VALIDACIÓN Y CRITERIOS DE FINALIZACIÓN
+- Después de cada grupo de cambios, ejecuta las comprobaciones pertinentes y corrige las regresiones antes de continuar.
+- Ejecuta `SITE_URL=https://tallermecanicogarcia.com ./legible/build.sh`.
+- Ejecuta `python3 -m unittest discover tests`.
+- Inspecciona el resultado generado en `dist/`, no solo las plantillas fuente. Resuelve todos los fallos de validación; no debilites ni eludas el validador solo para conseguir que el build termine correctamente.
+- Al terminar, resume los cambios, indica qué comprobaciones se han ejecutado y cuáles han pasado, y enumera los datos del negocio que aún debe confirmar el cliente. Nunca afirmes que un comando ha pasado si no lo has ejecutado realmente.
+```
+
+La URL usada en el comando de build también es ilustrativa. Utiliza el dominio real de producción solo cuando el cliente haya confirmado que le pertenece y que está listo para el lanzamiento.
+
+## Alcance y limitaciones
+
+`legible` es un generador específico para webs relativamente convencionales de negocios locales. No es un CMS, un framework estático de propósito general ni una garantía de resultados SEO.
+
+- No garantiza posiciones, indexación, resultados enriquecidos, tráfico ni citas en asistentes de IA.
+- Los datos estructurados deben describir fielmente el contenido visible y no garantizan por sí mismos resultados destacados.
+- `llms.txt` es un archivo informativo; su soporte e impacto varían según quien lo consuma.
+- Los datos de negocio y textos legales de ejemplo deben revisarse y sustituirse antes de producción.
+- El validador comprueba reglas técnicas concretas. No puede determinar si las afirmaciones comerciales son ciertas, si el contenido responde a la intención de búsqueda o si la web cumple todos los requisitos legales aplicables.
+- Si necesitas un CMS, interacciones complejas, una plataforma editorial grande o una cadena de compilación muy personalizable, considera un framework más amplio.
 
 ## Contribuir
 
-Se agradecen issues y pull requests. Antes de abrir uno: `python3 -m unittest discover tests` y `./legible/build.sh` deben pasar. Si corriges un error, añade una prueba que falle sin la corrección (el ejecutor te avisará cuando una empiece a pasar).
+Se agradecen las incidencias y los pull requests. Mantén los cambios acotados, explica qué comportamiento cambia e incluye una prueba de regresión para las correcciones cuando sea práctico.
+
+Antes de enviar cambios:
+
+```bash
+python3 -m unittest discover tests
+./legible/build.sh
+```
+
+No debilites las reglas de validación solo para hacer pasar un build: comprueba primero si el problema está en el contenido fuente o si la regla necesita un cambio justificado.
 
 ## Licencia
 
-MIT. Ver [LICENSE](LICENSE).
+Publicado bajo la [licencia MIT](LICENSE).
 
-## Sobre el autor
+## Autor
 
-**Angel Maturana Clavero** — Arquitecto de software con más de 26 años en banca core, ahora construyendo agentes de IA generativa y herramientas SEO sin JavaScript. Antes en Santander: marco de seguridad global, la migración Gravity, un laboratorio de 40 cajeros y el primer e-commerce del banco. legible es la herramienta con la que entrego webs rápidas y bien estructuradas a negocios locales a través de [seovaldemoro.com](https://seovaldemoro.com).
+**Angel Maturana Clavero** — Arquitecto de software con más de 26 años de experiencia en banca core, actualmente centrado en agentes de IA generativa y herramientas SEO. `legible` se desarrolla para crear webs rápidas y bien estructuradas para negocios locales a través de [SEO Valdemoro](https://seovaldemoro.com).
 
-- LinkedIn: [linkedin.com/in/angelmaturana](https://linkedin.com/in/angelmaturana)
-- GitHub: [github.com/angelmaturana](https://github.com/angelmaturana)
-- Agencia: [seovaldemoro.com](https://seovaldemoro.com)
+- GitHub: [angelmaturana](https://github.com/angelmaturana)
+- LinkedIn: [angelmaturana](https://linkedin.com/in/angelmaturana)
+- Web: [seovaldemoro.com](https://seovaldemoro.com)
