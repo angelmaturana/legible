@@ -1,0 +1,5 @@
+<svg width="270" height="90" viewBox="0 0 270 90" xmlns="http://www.w3.org/2000/svg">
+  <rect width="270" height="90" fill="#101520" stroke="#232B3B" stroke-width="1"/>
+  <text x="135" y="50" font-family="system-ui, sans-serif" font-size="18" font-weight="700" fill="#00D4FF" text-anchor="middle">{{site_name}}</text>
+  <text x="135" y="70" font-family="system-ui, sans-serif" font-size="11" fill="#A0AEC0" text-anchor="middle">Logo placeholder</text>
+</svg>
