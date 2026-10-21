@@ -1,0 +1,21 @@
+<header class="site-header">
+<div class="page-width">
+            <a class="brand" href="/" aria-label="{{site_name}}, inicio">
+                <picture>
+                    <source srcset="/images/logo-placeholder.webp" type="image/webp">
+                    <img class="brand-logo" src="/images/logo-placeholder.png" alt="{{site_name}}" width="270" height="90" loading="eager" fetchpriority="high" decoding="sync">
+                </picture>
+            </a>
+            <input type="checkbox" id="nav-toggle" class="nav-toggle" aria-label="Abrir menú">
+            <label for="nav-toggle" class="nav-toggle-label"><span aria-hidden="true"></span></label>
+            <nav aria-label="Navegación principal">
+                <ul>
+                    <li><a href="/servicios/">Servicios</a></li>
+                    {{nav_blog}}
+                    <li><a href="/precios/">Precios</a></li>
+                    <li><a href="/sobre-nosotros/">Sobre nosotros</a></li>
+                    <li><a class="nav-action" href="/accion-destacada/">Acción destacada</a></li>
+                </ul>
+            </nav>
+        </div>
+</header>

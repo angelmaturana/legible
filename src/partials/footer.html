@@ -1,0 +1,58 @@
+<footer class="site-footer">
+        <div class="footer-grid">
+            <div class="footer-brand">
+                <p class="footer-entity"><strong>{{site_name}}</strong> es una empresa de <strong>{{service_category_1}}</strong> y <strong>{{service_category_2}}</strong> con base en <strong>{{location}}</strong>. Ayudamos a {{target_audience}} a cuidar cómo aparece su negocio en <strong>Google</strong> y <strong>Google Maps</strong>, y a que los asistentes de IA lo lean bien.</p>
+                <div class="footer-brand-row">
+                    <a href="/" class="footer-logo" aria-label="{{site_name}}, inicio">
+                        <img src="/images/logo-footer-placeholder.webp" alt="{{site_name}}" width="48" height="48" loading="lazy" decoding="async">
+                    </a>
+                    <address class="footer-contact">
+                        <a href="mailto:{{contact_email}}" class="footer-contact-item">
+                            <svg class="footer-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                            <span>{{contact_email}}</span>
+                        </a>
+                        <a href="{{whatsapp_link}}" target="_blank" rel="noopener noreferrer" class="footer-contact-item" aria-label="Contactar por WhatsApp">
+                            <svg class="footer-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 11.5a8.4 8.4 0 0 1-12.4 7.4L3 21l2.1-5.4A8.4 8.4 0 1 1 21 11.5z"/></svg>
+                            <span>Contactar por WhatsApp</span>
+                        </a>
+                    </address>
+                </div>
+            </div>
+            
+            <nav class="footer-nav" aria-label="Servicios">
+                <p class="footer-nav-title">Servicios</p>
+                <ul>
+                    <li><a href="/servicios/">Todos los servicios</a></li>
+                    <li><a href="/servicios/servicio-generico/">Servicio 1</a></li>
+                    <li><a href="/servicios/servicio-generico/">Servicio 2</a></li>
+                    <li><a href="/servicios/servicio-generico/">Servicio 3</a></li>
+                    <li><a href="/servicios/servicio-generico/">Servicio 4</a></li>
+                </ul>
+            </nav>
+            
+            <nav class="footer-nav" aria-label="Empresa">
+                <p class="footer-nav-title">Empresa</p>
+                <ul>
+                    {{footer_blog}}
+                    <li><a href="/precios/">Precios</a></li>
+                    <li><a href="/sobre-nosotros/">Sobre nosotros</a></li>
+                    <li><a href="/accion-destacada/">Acción destacada</a></li>
+                    <li><a href="/contacto/">Contacto</a></li>
+                </ul>
+            </nav>
+            
+            <nav class="footer-nav" aria-label="Legal">
+                <p class="footer-nav-title">Legal</p>
+                <ul>
+                    <li><a href="/aviso-legal/">Aviso Legal</a></li>
+                    <li><a href="/politica-de-privacidad/">Política de Privacidad</a></li>
+                    <li><a href="/politica-de-cookies/">Política de Cookies</a></li>
+                </ul>
+            </nav>
+        </div>
+        
+        <div class="footer-bottom">
+            <p>&copy; {{year}} {{site_name}}. Todos los derechos reservados.</p>
+        </div>
+
+    </footer>

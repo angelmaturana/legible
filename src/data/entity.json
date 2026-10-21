@@ -1,0 +1,156 @@
+[
+    {
+        "@type": "ProfessionalService",
+        "@id": "https://TU-DOMINIO.com/#business",
+        "name": "{{site_name}}",
+        "description": "{{site_description}}",
+        "url": "https://TU-DOMINIO.com",
+        "email": "{{contact_email}}",
+        "logo": "https://TU-DOMINIO.com/images/logo-schema-placeholder.jpg",
+        "image": "https://TU-DOMINIO.com/images/og-placeholder.jpg",
+        "openingHoursSpecification": [
+            {
+                "@type": "OpeningHoursSpecification",
+                "dayOfWeek": [
+                    "Monday",
+                    "Tuesday",
+                    "Wednesday",
+                    "Thursday",
+                    "Friday"
+                ],
+                "opens": "09:00",
+                "closes": "19:00"
+            }
+        ],
+        "contactPoint": {
+            "@type": "ContactPoint",
+            "contactType": "customer service",
+            "email": "{{contact_email}}",
+            "availableLanguage": "es",
+            "telephone": "{{phone_e164}}"
+        },
+        "areaServed": [
+            {
+                "@type": "City",
+                "name": "Ciudad 1"
+            },
+            {
+                "@type": "City",
+                "name": "Ciudad 2"
+            },
+            {
+                "@type": "City",
+                "name": "Ciudad 3"
+            },
+            {
+                "@type": "City",
+                "name": "Ciudad 4"
+            }
+        ],
+        "knowsAbout": [
+            "{{service_category_1}}",
+            "{{service_category_2}}",
+            "{{service_category_3}}",
+            "{{service_category_4}}",
+            "{{service_category_5}}",
+            "{{service_category_6}}"
+        ],
+        "priceRange": "{{price_range}}",
+        "address": {
+            "@type": "PostalAddress",
+            "addressLocality": "{{city}}",
+            "addressRegion": "{{region}}",
+            "addressCountry": "ES"
+        },
+        "hasOfferCatalog": {
+            "@type": "OfferCatalog",
+            "name": "Servicios de {{site_name}}",
+            "itemListElement": [
+                {
+                    "@type": "Offer",
+                    "name": "Servicio 1",
+                    "url": "https://TU-DOMINIO.com/servicios/servicio-generico/",
+                    "priceCurrency": "EUR",
+                    "price": "99",
+                    "priceSpecification": {
+                        "@type": "UnitPriceSpecification",
+                        "price": "99",
+                        "priceCurrency": "EUR"
+                    },
+                    "itemOffered": {
+                        "@type": "Service",
+                        "name": "Servicio 1",
+                        "serviceType": "{{service_category_1}}",
+                        "url": "https://TU-DOMINIO.com/servicios/servicio-generico/"
+                    }
+                },
+                {
+                    "@type": "Offer",
+                    "name": "Servicio 2",
+                    "url": "https://TU-DOMINIO.com/servicios/servicio-generico/",
+                    "priceCurrency": "EUR",
+                    "price": "149",
+                    "priceSpecification": {
+                        "@type": "UnitPriceSpecification",
+                        "price": "149",
+                        "priceCurrency": "EUR"
+                    },
+                    "itemOffered": {
+                        "@type": "Service",
+                        "name": "Servicio 2",
+                        "serviceType": "{{service_category_2}}",
+                        "url": "https://TU-DOMINIO.com/servicios/servicio-generico/"
+                    }
+                },
+                {
+                    "@type": "Offer",
+                    "name": "Servicio 3 (Mensual)",
+                    "url": "https://TU-DOMINIO.com/servicios/servicio-generico/",
+                    "priceCurrency": "EUR",
+                    "price": "49",
+                    "priceSpecification": {
+                        "@type": "UnitPriceSpecification",
+                        "price": "49",
+                        "priceCurrency": "EUR",
+                        "billingDuration": "P1M",
+                        "unitCode": "MON"
+                    },
+                    "itemOffered": {
+                        "@type": "Service",
+                        "name": "Servicio 3 (Mensual)",
+                        "serviceType": "{{service_category_3}}",
+                        "url": "https://TU-DOMINIO.com/servicios/servicio-generico/"
+                    }
+                },
+                {
+                    "@type": "Offer",
+                    "name": "Acción Destacada",
+                    "url": "https://TU-DOMINIO.com/accion-destacada/",
+                    "priceCurrency": "EUR",
+                    "price": "0",
+                    "priceSpecification": {
+                        "@type": "UnitPriceSpecification",
+                        "price": "0",
+                        "priceCurrency": "EUR"
+                    },
+                    "itemOffered": {
+                        "@type": "Service",
+                        "name": "Acción Destacada",
+                        "serviceType": "Consulta inicial",
+                        "url": "https://TU-DOMINIO.com/accion-destacada/"
+                    }
+                }
+            ]
+        }
+    },
+    {
+        "@type": "WebSite",
+        "@id": "https://TU-DOMINIO.com/#website",
+        "url": "https://TU-DOMINIO.com/",
+        "name": "{{site_name}}",
+        "inLanguage": "es-ES",
+        "publisher": {
+            "@id": "https://TU-DOMINIO.com/#business"
+        }
+    }
+]
