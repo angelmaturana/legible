@@ -91,10 +91,17 @@ def apply_active(header_html, active_href, aria_value):
         return re.sub(r'<a((?:\s+[a-zA-Z-]+="[^"]*")+)>', repl, nm.group(0))
     return re.sub(r'<nav\b.*?</nav>', nav_repl, header_html, flags=re.DOTALL)
 
-def render_geo(flag):
-    if flag is True or str(flag).lower() == 'true':
-        return '<meta name="geo.region" content="ES-MD">\n    <meta name="geo.placename" content="Valdemoro">'
-    return ''
+def render_geo(flag, placename='', region=''):
+    """Etiquetas geo.* de la página. placename = ciudad de entity.json; region = código ISO 3166-2 (textos.json: geo_region).
+    Sin dato no se emite la etiqueta correspondiente: mejor omitirla que publicar una ubicación inventada."""
+    if not (flag is True or str(flag).lower() == 'true'):
+        return ''
+    tags = []
+    if region:
+        tags.append(f'<meta name="geo.region" content="{html.escape(region, quote=True)}">')
+    if placename:
+        tags.append(f'<meta name="geo.placename" content="{html.escape(placename, quote=True)}">')
+    return '\n    '.join(tags)
 
 def render_canonical(rel, canonical_mode):
     if canonical_mode == 'none':
@@ -148,7 +155,8 @@ def compose_page(front, content, layout_text, header_text, footer_text, entity_n
     canonical_mode = front.get('canonical', 'auto')
     active_href, aria_value = compute_active(page_rel, front, menu_hrefs(header_text))
     header_text = apply_active(header_text, active_href, aria_value)
-    geo = render_geo(geo_flag)
+    reemplazos = jsonld_replacements or {}
+    geo = render_geo(geo_flag, reemplazos.get('{{city}}', ''), reemplazos.get('{{geo_region}}', ''))
     canonical = render_canonical(page_rel, canonical_mode)
     og_url = render_og_url(page_rel, canonical_mode)
     page_json = None
@@ -189,56 +197,64 @@ def compose_page(front, content, layout_text, header_text, footer_text, entity_n
     check_unrendered(page, page_rel)
     return page
 
+# Lo que minify_css no debe tocar: comentarios (se descartan), strings, url() sin comillas y unicode-range.
+_CSS_PROTECT = re.compile(
+    r'/\*[\s\S]*?\*/'
+    r'|"(?:[^"\\]|\\.)*"|\'(?:[^\'\\]|\\.)*\''
+    r'|\burl\([^)\'"]*\)'
+    r'|(?<![\w-])[uU]\+[0-9A-Fa-f?]+(?:-[0-9A-Fa-f]+)?'
+)
+# Número CSS completo (con signo y unidad): así 0.0px, -0.50em o 1.0 se normalizan de una sola vez.
+_CSS_NUMBER = re.compile(r'(?<![\w.#])(-?)(\d*\.\d+|\d+\.?)([a-zA-Z%]*)')
+# Unidades de longitud que se pueden omitir tras un 0. No incluye s, ms, deg, %, fr...: ahí el 0 sin unidad es inválido.
+_CSS_ZERO_UNITS = frozenset('px em rem vh vw cm mm in pt pc ex ch vmin vmax'.split())
+
+def _css_number(m):
+    sign, num, unit = m.groups()
+    ip, _, fp = num.partition('.')
+    ip, fp = ip.lstrip('0'), fp.rstrip('0')
+    if not ip and not fp:  # cero
+        # En una propiedad personalizada (--x: 0px) la unidad puede hacer falta dentro de un calc() posterior.
+        s = m.string
+        ini = max(s.rfind(c, 0, m.start()) for c in '{};') + 1
+        if unit.lower() in _CSS_ZERO_UNITS and not s[ini:m.start()].lstrip().startswith('--'):
+            unit = ''
+        return '0' + unit
+    return sign + ip + ('.' + fp if fp else '') + unit
+
 def minify_css(css_text: str) -> str:
-    css = css_text
+    # 1) Proteger strings, url() y unicode-range; descartar comentarios (todo en una pasada: un "/*" dentro de un string no es un comentario)
+    protected = []
+    def protect(m):
+        if m.group(0).startswith('/*'):
+            return ''
+        protected.append(m.group(0))
+        return f'__STR_{len(protected)-1}__'
+    css = _CSS_PROTECT.sub(protect, css_text)
 
-    # 1) Comentarios
-    css = re.sub(r'/\*[\s\S]*?\*/', '', css)
-
-    # 2) Proteger strings para que el resto de reglas no altere su contenido
-    strings = []
-    def protect_string(m):
-        strings.append(m.group(0))
-        return f'__STR_{len(strings)-1}__'
-    css = re.sub(r'"(?:[^"\\]|\\.)*"|\'(?:[^\'\\]|\\.)*\'', protect_string, css)
-
-    # 3) Espaciado básico
+    # 2) Espaciado básico
     css = re.sub(r'\s+', ' ', css)
     css = css.replace(' }', '}').replace(' {', '{').replace(': ', ':').replace(' ;', ';')
     css = re.sub(r';\s*}', '}', css)
 
-    # 4) Proteger funciones matemáticas
-    placeholders = {}
+    # 3) Funciones matemáticas: dentro de calc()/min()/max()/clamp() solo se compacta lo que es seguro.
+    #    No se tocan "+" ni "-" (CSS exige espacios alrededor de los operadores y "--x" o "-1px" no son operadores).
+    maths = []
     def extract_math(match):
-        idx = len(placeholders)
-        key = f'__MATH_{idx}__'
-        func = match.group(1)
-        inner = match.group(2)
-        inner = re.sub(r'\s+', ' ', inner)
-        inner = re.sub(r'\s*([,()])\s*', r'\1', inner)
-        inner = re.sub(r'\s*([+-])\s*', r' \1 ', inner)
-        inner = re.sub(r'\s{2,}', ' ', inner).strip()
-        placeholders[key] = f'{func}({inner})'
-        return key
+        inner = re.sub(r'\s+', ' ', match.group(2))
+        inner = re.sub(r'\s*,\s*', ',', inner)
+        inner = re.sub(r'\(\s+', '(', inner)
+        inner = re.sub(r'\s+\)', ')', inner).strip()
+        maths.append(f'{match.group(1)}({inner})')
+        return f'__MATH_{len(maths)-1}__'
     pattern = r'\b(calc|min|max|clamp)\(([^()]*(?:\([^()]*\)[^()]*)*)\)'
     while re.search(pattern, css):
         css = re.sub(pattern, extract_math, css)
 
-    # 5) 0 con unidad -> 0
-    css = re.sub(
-        r'(?<![\d.])0(?:px|em|rem|vh|vw|cm|mm|in|pt|pc|ex|ch|vmin|vmax)\b',
-        '0', css, flags=re.IGNORECASE
-    )
+    # 4) Números: 0px -> 0, 0.5 -> .5, 1.0 -> 1, 1.50 -> 1.5, 0.0px -> 0
+    css = _CSS_NUMBER.sub(_css_number, css)
 
-    # 6) Cero a la izquierda: 0.5 -> .5
-    css = re.sub(r'(?<![\w.])0+\.(?=\d)', '.', css)
-
-    # 7) Ceros a la derecha: 1.0 -> 1, 1.50 -> 1.5, .50 -> .5
-    css = re.sub(r'(\d)\.0+(?=\D|$)', r'\1', css)
-    css = re.sub(r'((?:\d+)?\.\d*?)0+(?=\D|$)', r'\1', css)
-    css = re.sub(r'(?<![\w.])\.(?![\d\w])', '0', css)  # seguro: '.' huérfano -> 0
-
-    # 8) Colores hex cortos: #AABBCC -> #ABC, #AABBCCDD -> #ABCD
+    # 5) Colores hex cortos: #AABBCC -> #ABC, #AABBCCDD -> #ABCD
     css = re.sub(
         r'#([0-9a-fA-F])\1([0-9a-fA-F])\2([0-9a-fA-F])\3(?![0-9a-fA-F])',
         r'#\1\2\3', css
@@ -248,25 +264,26 @@ def minify_css(css_text: str) -> str:
         r'#\1\2\3\4', css
     )
 
-    # 9) !important compacto
+    # 6) !important compacto
     css = re.sub(r'\s*!\s*important\b', '!important', css)
 
-    # 10) Espaciado alrededor de puntuación restante
-    css = re.sub(r'\s*([{}:;,>~()\[\]])\s*', r'\1', css)
+    # 7) Espaciado alrededor de puntuación. Un espacio tras ")" o antes de ":" puede ser significativo
+    #    (combinador descendiente en "a:not(.b) .c" o "a :hover"; "and" en "(a) and (b)"), así que se conserva.
+    css = re.sub(r'\s*([{};,>~])\s*', r'\1', css)
+    css = re.sub(r'\(\s+', '(', css)
+    css = re.sub(r'\s+\)', ')', css)
+    css = re.sub(r'\[\s+', '[', css)
+    css = re.sub(r'\s+\]', ']', css)
     css = re.sub(r'\s*\+\s*', '+', css)
 
-    # 11) Restaurar funciones matemáticas
-    for key, val in placeholders.items():
-        css = css.replace(key, val)
+    # 8) Restaurar funciones matemáticas (pueden ir anidadas) y strings
+    while '__MATH_' in css:
+        css = re.sub(r'__MATH_(\d+)__', lambda m: maths[int(m.group(1))], css)
+    css = re.sub(r'__STR_(\d+)__', lambda m: protected[int(m.group(1))], css)
 
-    # 12) Restaurar strings
-    for i, s in enumerate(strings):
-        css = css.replace(f'__STR_{i}__', s)
-
-    # 13) Limpieza final
+    # 9) Limpieza final
     css = re.sub(r';;+', ';', css)
-    css = css.strip()
-    return css
+    return css.strip()
 
 # Elementos en línea: el espacio entre dos de ellos forma parte del texto visible.
 INLINE_TAGS = frozenset('a abbr b bdi bdo br button cite code data del dfn em i img input ins kbd label mark q s '
@@ -528,6 +545,30 @@ def _card_html(p, link_text, with_date):
                     <a href="{p['rel']}" aria-label="{link_text}: {title}">{link_text}</a>
                 </article>"""
 
+def render_home_recursos(collections):
+    """Sección de la home que enlaza a /guias/ y /blog/ (solo a lo que existe y se anuncia).
+
+    Es el enlace contextual, desde un <main>, que esos índices necesitan para no quedar huérfanos.
+    Devuelve '' si no hay guías ni blog visible."""
+    tarjetas = []
+    if collections['guias']:
+        tarjetas.append(('Guías paso a paso', 'Explicaciones para resolver una duda concreta de tu negocio, con la fecha de su última revisión.',
+                         '/guias/', 'Ver las guías'))
+    if blog_visible(collections['blog']):
+        tarjetas.append(('Artículos y novedades', 'Análisis con fecha sobre cuestiones relevantes para tu negocio, sin promesas.',
+                         '/blog/', 'Ver los artículos'))
+    if not tarjetas:
+        return ''
+    cards = '\n                '.join(
+        f'<article>\n                    <h3>{t}</h3>\n                    <p>{d}</p>\n                    <a href="{href}">{txt}</a>\n                </article>'
+        for t, d, href, txt in tarjetas)
+    return f"""<section class="section page-width" aria-labelledby="home-recursos">
+            <h2 id="home-recursos">Recursos para tu negocio</h2>
+            <div class="service-grid">
+                {cards}
+            </div>
+        </section>"""
+
 def render_guias_index(guias):
     """(front, content) del índice /guias/: tarjetas agrupadas por tema (orden de COLLECTION_TOPICS)."""
     title = 'Guías para tu negocio'
@@ -561,6 +602,13 @@ def render_guias_index(guias):
 
 {chr(10).join(sections)}
 
+        <section class="section page-width" aria-labelledby="guias-como">
+            <h2 id="guias-como">Cómo sacarles partido</h2>
+            <p>Empieza por la guía que más se parezca a tu duda y sigue los pasos en el orden en que aparecen: están pensados para que cada uno apoye al siguiente. Si una guía menciona una herramienta o un ajuste que no tienes, no te preocupes: casi siempre hay una alternativa equivalente y la propia guía la indica.</p>
+            <p>Antes de aplicar nada, mira la fecha de la última revisión. Las plataformas cambian sus opciones con frecuencia y un consejo que sirvió hace dos años puede haber dejado de ser útil. Si tu negocio es distinto al del ejemplo, adapta los pasos en lugar de copiarlos al pie de la letra.</p>
+            <p>Y si prefieres no hacerlo tú, cada guía termina enlazando con el servicio que resuelve ese problema. También puedes <a href="/contacto/">escribirnos</a> con tu caso y te contamos con sinceridad si compensa que lo hagamos nosotros.</p>
+        </section>
+
         {_lead_strip_html()}
     </main>"""
     front = {'title': title, 'description': description, 'canonical': 'auto', 'geo': 'true'}
@@ -590,6 +638,12 @@ def render_blog_index(articulos, guias_exist):
             <div class="service-grid">
                 {cards}
             </div>
+        </section>
+
+        <section class="section page-width" aria-labelledby="blog-criterio">
+            <h2 id="blog-criterio">Qué vas a encontrar aquí</h2>
+            <p>Cada artículo parte de una pregunta que nos hacen, o que nos hacemos, al trabajar con negocios como el tuyo, y la responde con ejemplos concretos y sin tecnicismos innecesarios. No publicamos con una periodicidad fija: preferimos escribir cuando hay algo útil que contar.</p>
+            <p>Si echas en falta algún tema, <a href="/contacto/">propónnoslo</a>: muchas de las piezas nacen de las dudas de quien nos escribe. Y si lo que necesitas es una solución y no una lectura, también puedes ver cómo trabajamos en la página de <a href="/servicios/">servicios</a>.</p>
         </section>
 
         {_lead_strip_html()}
@@ -905,6 +959,7 @@ def build(out_dir=None, minify=None, no_validate=False):
         '{{service_category_6}}': _unwrap_placeholder(knows_about[5] if len(knows_about) > 5 else '{{service_category_6}}', 'Servicio 6'),
         '{{price_range}}': _unwrap_placeholder(business.get('priceRange'), '0 € - 999 €/mes'),
         '{{featured_action_name}}': featured_action_name,
+        '{{home_recursos}}': render_home_recursos(collections),
         '{{service_1_name}}': _unwrap_placeholder(offers[0].get('name') if len(offers) > 0 else '{{service_1_name}}', 'Servicio 1'),
         '{{service_1_price}}': _unwrap_placeholder(str(offers[0].get('price')) if len(offers) > 0 else '{{service_1_price}}', '99 €'),
         '{{service_1_price_number}}': _unwrap_placeholder(str(offers[0].get('price')) if len(offers) > 0 else '{{service_1_price_number}}', '99'),

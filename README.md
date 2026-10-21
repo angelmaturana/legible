@@ -43,7 +43,7 @@ Measured on the included template (11 pages), 2026-10-21:
 | Build + strict validation | **~0.25 s** |
 | Structured data | `ProfessionalService`, `WebSite`, `WebPage`, `FAQPage`, `Service`/`Offer`, `BreadcrumbList` merged into one `@graph` per page |
 | Generated files | `sitemap.xml` (with `lastmod`), `robots.txt`, `llms.txt`, optional `/guias/` and `/blog/` indexes |
-| Tests | 81 (`unittest`, ~5 s); 6 of them document known issues, see [Status](#status-and-known-limitations) |
+| Tests | 94 (`unittest`, ~5 s), see [Status](#status) |
 
 ## Quick start
 
@@ -82,7 +82,7 @@ flowchart LR
 - **Templates.** Each page is an `.html` file with front matter (`title`, `description`, optionally `robots`, `canonical`, `geo`, `active`). The build inserts it into `layout.html`, marks the active menu item with `aria-current` and adds canonical and Open Graph tags.
 - **Placeholders `{{...}}`.** Some are computed from `entity.json` (name, email, phone, cities, prices, domain); the rest are plain texts in `src/data/textos.json`. If a placeholder has no value, the build stops and tells you which one and on which page.
 - **JSON-LD.** The nodes of `entity.json` are merged with each page's own JSON-LD in a single `@graph`; duplicate `@id`s are never emitted.
-- **Guides and blog.** Drop a file in `src/pages/guias/<slug>/` or `src/pages/blog/<slug>/` with the required front matter (`type`, `topic`, `published`, `updated`, `summary`, `service`; optional `related`, max. 2) and the build generates the index, the sitemap entry and the `llms.txt` entry. `/guias/` appears with 1+ guides; `/blog/` stays `noindex` with 1–2 articles and goes public (menu, footer, sitemap) from 3.
+- **Guides and blog.** Drop a file in `src/pages/guias/<slug>/` or `src/pages/blog/<slug>/` with the required front matter (`type`, `topic`, `published`, `updated`, `summary`, `service`; optional `related`, max. 2) and the build generates the index, the sitemap entry and the `llms.txt` entry. `/guias/` appears with 1+ guides; `/blog/` stays `noindex` with 1–2 articles and goes public (menu, footer, sitemap) from 3. The home links to whatever is public through the `{{home_recursos}}` placeholder, which gives those indexes the contextual inbound link the validator asks for: keep it in `src/pages/index.html`.
 
 ## What the validator checks
 
@@ -104,7 +104,7 @@ flowchart LR
 5. For a new service, copy `src/pages/servicios/servicio-generico/`, adjust its front matter, JSON-LD and content, and link it from `servicios/`, `precios/`, `header.html` and `footer.html`.
 6. `./legible/build.sh` and publish `dist/`.
 
-> The template content is in Spanish. The `geo.placename` meta tag is currently fixed to "Valdemoro" (`geo.region` = `ES-MD`).
+> The template content is in Spanish. The `geo.placename` meta tag takes the city from `entity.json`, and `geo.region` takes the ISO 3166-2 code from `geo_region` in `src/data/textos.json` (`ES-MD` by default; leave it empty to omit the tag).
 
 ## Deploy
 
@@ -127,18 +127,14 @@ Environment:       SITE_URL=https://your-domain.com
 | **Placeholders fail fast** | An unresolved `{{x}}` can never ship | Every placeholder must exist in `entity.json` or `textos.json` |
 | **One `@graph` per page, deduplicated by `@id`** | Entities exist once and reference each other | Slightly more merge logic |
 | **Collections by folder convention** | Zero configuration; indexes, sitemap and `llms.txt` follow | Opinionated structure |
-| **Custom CSS and HTML minifiers** | Keep the "no dependencies" promise | They have known limits (see below) and need tests |
+| **Custom CSS and HTML minifiers** | Keep the "no dependencies" promise | Small on purpose and covered by tests (see [Status](#status)) |
 | **System font stack, CSS-only menu** | No font downloads, no layout shift | No brand typography; the checkbox menu has accessibility edge cases |
 
-## Status and known limitations
+## Status
 
-The template builds and passes the strict validator, with and without minification. The test suite (`python3 -m unittest discover tests`) covers a full build and validation, both minifiers, guides and blog (valid and invalid front matter), and domain and placeholder handling. To check that the tests really catch regressions, the generator was deliberately broken in 11 different ways and the suite failed every time.
+The template builds and passes the strict validator, with and without minification, and it keeps passing once you add a guide or a blog. The test suite (`python3 -m unittest discover tests`) covers a full build and validation, both minifiers, guides and blog (valid and invalid front matter, and strict validation with content), geo tags, and domain and placeholder handling. To check that the tests really catch regressions, the generator was deliberately broken in different ways and the suite failed every time.
 
-Known issues, each pinned by an `expectedFailure` test:
-
-- **`minify_css` limits.** It can mangle `a:not(.b) .c`, `var()` inside `calc()`, negative numbers in `calc()`, `0.0px` and `) and (` in media queries. The template's CSS avoids all of them (the header of `site.css` says so); custom CSS must too.
-- **First guide or blog post.** The generated `/guias/` and `/blog/` indexes are short and not linked from a page body, so the strict validator reports a warning until they are expanded.
-- **Geo tags** are fixed to Valdemoro / `ES-MD`.
+The minifiers are small on purpose (no dependencies). If some CSS or HTML ever comes out wrong, build with `CSS_MINIFY=FALSE`, compare both outputs and open an issue with the snippet.
 
 ## Compared with alternatives
 
@@ -195,7 +191,7 @@ Pages included: home, services (index + one example service), pricing, about, co
 
 ## Contributing
 
-Issues and pull requests are welcome. Before opening one: `python3 -m unittest discover tests` and `./legible/build.sh` must pass. If you fix a known issue, remove its `expectedFailure` decorator (the test runner will tell you when one starts passing).
+Issues and pull requests are welcome. Before opening one: `python3 -m unittest discover tests` and `./legible/build.sh` must pass. If you fix a bug, add a test that fails without the fix.
 
 ## License
 

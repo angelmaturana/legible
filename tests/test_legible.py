@@ -9,7 +9,7 @@ Qué cubre (y nada más; el HTML de cada página ya lo valida check_site.py):
   3. minify_html.
   4. Guías y blog: front matter correcto e incorrecto.
   5. Dominio (SITE_URL) y marcadores sin resolver.
-  +  Errores conocidos (expectedFailure): minify_css y el primer índice de guías/blog en estricto.
+  6. Etiquetas geo y enlaces de la home a guías y blog.
 """
 import json
 import os
@@ -248,8 +248,57 @@ class TestMinifyCss(unittest.TestCase):
     def test_selectores_y_combinadores(self):
         self.assertEqual(self.m('a  >  b ~ c + d{x:y}'), 'a>b~c+d{x:y}')
 
-    def test_media_query_sin_and(self):
-        self.assertEqual(self.m('@media (min-width: 768px) { a { b: c } }'), '@media(min-width:768px){a{b:c}}')
+    def test_media_query(self):
+        self.assertEqual(self.m('@media (min-width: 768px) { a { b: c } }'), '@media (min-width:768px){a{b:c}}')
+
+    def test_media_query_con_and_conserva_los_espacios(self):
+        # `) and (` y `screen and (` no pueden perder el espacio: `and(` el navegador lo lee como una función.
+        self.assertEqual(self.m('@media (min-width:1px) and (max-width:2px){a{b:c}}'),
+                         '@media (min-width:1px) and (max-width:2px){a{b:c}}')
+        self.assertEqual(self.m('@media screen  and  (min-width: 600px){a{b:c}}'),
+                         '@media screen and (min-width:600px){a{b:c}}')
+
+    def test_descendiente_tras_parentesis(self):
+        # `a:not(.b) .c` (descendiente) no puede convertirse en `a:not(.b).c` (mismo elemento).
+        self.assertEqual(self.m('a:not(.b) .c{x:y}'), 'a:not(.b) .c{x:y}')
+        self.assertEqual(self.m('a:not( .b )  .c{x:y}'), 'a:not(.b) .c{x:y}')
+
+    def test_descendiente_con_pseudoclase(self):
+        # `a :hover` (descendiente) y `a:hover` (el propio a) son selectores distintos.
+        self.assertEqual(self.m('a :hover{x:y}'), 'a :hover{x:y}')
+        self.assertEqual(self.m('a:hover{x:y}'), 'a:hover{x:y}')
+
+    def test_var_dentro_de_calc(self):
+        self.assertEqual(self.m('a{width:calc(var(--x) * 2)}'), 'a{width:calc(var(--x) * 2)}')
+        self.assertEqual(self.m('a{width:calc(var(--a) + var(--b))}'), 'a{width:calc(var(--a) + var(--b))}')
+
+    def test_numero_negativo_dentro_de_calc(self):
+        self.assertEqual(self.m('a{width:calc(100% + -1px)}'), 'a{width:calc(100% + -1px)}')
+
+    def test_funciones_matematicas_anidadas(self):
+        css = 'a{width:clamp(1px,calc(var(--a) * (1 + 2)),3px)}'
+        self.assertEqual(self.m(css), css)
+
+    def test_cero_decimal_con_unidad(self):
+        self.assertEqual(self.m('a{margin:0.0px}'), 'a{margin:0}')
+        self.assertEqual(self.m('a{margin:-0.50em 0.0 1.0px}'), 'a{margin:-.5em 0 1px}')
+
+    def test_cero_con_unidades_que_no_se_pueden_quitar(self):
+        # En tiempos, ángulos y porcentajes el 0 sin unidad es inválido o cambia el significado.
+        css = 'a{transition:0s;width:0%;transform:rotate(0deg)}@keyframes k{0%{a:b}}'
+        self.assertEqual(self.m(css), css)
+
+    def test_cero_en_propiedad_personalizada_conserva_la_unidad(self):
+        # `--x:0` dentro de calc(var(--x) + 1px) sería inválido.
+        self.assertEqual(self.m('a{--gap:0px;margin:0px}'), 'a{--gap:0px;margin:0}')
+
+    def test_url_sin_comillas_y_unicode_range_no_se_tocan(self):
+        css = '@font-face{unicode-range:U+0025-00FF;src:url(fuentes/a-0.50.woff2)}'
+        self.assertEqual(self.m(css), css)
+
+    def test_comentario_dentro_de_un_string_no_se_borra(self):
+        css = 'a::after{content:"/* no soy un comentario */"}'
+        self.assertEqual(self.m(css), css)
 
     def test_pseudoclase_con_parentesis_sin_descendiente(self):
         # Lo que usa site.css hoy: el combinador hijo directo tras ")" es seguro.
@@ -570,14 +619,45 @@ class TestColeccionesEnElBuild(ProyectoTemporal):
             self.assertIn('mailto:', html)
             self.assertRegex(html, r'href="https://wa\.me/[^"]+"')
 
-    @unittest.expectedFailure
     def test_guia_real_pasa_el_validador_estricto(self):
-        # Fallo conocido: con una guía, el índice /guias/ tiene unas 120 palabras (mínimo 250) y nadie
-        # enlaza a él desde un <main>, así que `build.sh` (estricto) falla en cuanto hay una guía.
-        # Lo mismo con /blog/ (≈195 palabras y sin enlace contextual).
+        # Regresión: el índice /guias/ tenía ~120 palabras (mínimo 250) y nadie lo enlazaba desde un <main>,
+        # así que `build.sh` (estricto) fallaba en cuanto había una guía.
         add_pieza(self.project, 'guias', 'mi-primera-guia')
         self.build_ok()
         self.check_ok(strict=True)
+
+    def test_blog_visible_pasa_el_validador_estricto(self):
+        # Regresión: /blog/ tenía ~195 palabras y ningún enlace contextual entrante.
+        for slug in ('uno', 'dos', 'tres'):
+            add_pieza(self.project, 'blog', slug)
+        self.build_ok()
+        self.check_ok(strict=True)
+
+    def test_guias_y_blog_juntos_pasan_el_validador_estricto(self):
+        add_pieza(self.project, 'guias', 'mi-guia', title='Guía de prueba mi-guia | {{site_name}}',
+                  description='Guía de ejemplo para las pruebas automáticas: explica un caso concreto sin promesas.')
+        for slug in ('uno', 'dos', 'tres'):
+            add_pieza(self.project, 'blog', slug)
+        self.build_ok()
+        self.check_ok(strict=True)
+
+    def test_la_home_enlaza_a_guias_y_blog_solo_si_existen(self):
+        self.build_ok()
+        home = (self.out / 'index.html').read_text(encoding='utf-8')
+        self.assertNotIn('home-recursos', home)
+        add_pieza(self.project, 'guias', 'mi-guia')
+        add_pieza(self.project, 'blog', 'uno')   # un solo artículo: el blog no se anuncia
+        self.build_ok()
+        home = (self.out / 'index.html').read_text(encoding='utf-8')
+        main = home[home.index('<main'):home.index('</main>')]
+        self.assertIn('href=/guias/', main.replace('"', ''))
+        self.assertNotIn('href=/blog/', main.replace('"', ''))
+        add_pieza(self.project, 'blog', 'dos')
+        add_pieza(self.project, 'blog', 'tres')
+        self.build_ok()
+        home = (self.out / 'index.html').read_text(encoding='utf-8')
+        main = home[home.index('<main'):home.index('</main>')]
+        self.assertIn('href=/blog/', main.replace('"', ''))
 
     def test_front_matter_incorrecto_detiene_el_build_con_mensaje_util(self):
         add_pieza(self.project, 'guias', 'guía-mala', topic='Inventado')
@@ -684,43 +764,34 @@ class TestMarcadores(ProyectoTemporal):
             self.assertNotIn('{{', texto, ruta)
 
 
-# --------------------------------------------------------------------------- errores conocidos
+# --------------------------------------------------------------------------- 6. etiquetas geo
 
-class TestErroresConocidos(unittest.TestCase):
-    """Fallos de minify_css encontrados al escribir estas pruebas.
+class TestGeo(ProyectoTemporal):
+    def test_geo_sale_de_los_datos_del_negocio_no_de_un_valor_fijo(self):
+        self.build_ok()
+        for ruta, contenido in read_all(self.out).items():
+            self.assertNotIn('Valdemoro', contenido, ruta)
+        home = (self.out / 'index.html').read_text(encoding='utf-8')
+        self.assertIn('name="geo.placename" content="Tu Ciudad"', home.replace('\n', ' '))
+        self.assertIn('name="geo.region" content="ES-MD"', home)
 
-    Están marcados como `expectedFailure`: documentan el problema sin romper la suite. Cuando se
-    arregle uno, unittest avisará de «unexpected success» y habrá que quitar el decorador.
-    Hoy la plantilla los evita (site.css los menciona en su cabecera), pero un cliente con CSS
-    propio puede tropezar con ellos.
-    """
+    def test_geo_con_ciudad_y_region_propias(self):
+        entity = self.project / 'src' / 'data' / 'entity.json'
+        entity.write_text(entity.read_text(encoding='utf-8').replace('"{{city}}"', '"Sevilla"'), encoding='utf-8')
+        textos = self.project / 'src' / 'data' / 'textos.json'
+        textos.write_text(textos.read_text(encoding='utf-8').replace('"ES-MD"', '"ES-AN"'), encoding='utf-8')
+        self.build_ok()
+        home = (self.out / 'index.html').read_text(encoding='utf-8')
+        self.assertIn('name="geo.placename" content="Sevilla"', home)
+        self.assertIn('name="geo.region" content="ES-AN"', home)
 
-    @unittest.expectedFailure
-    def test_css_descendiente_tras_parentesis(self):
-        # `a:not(.b) .c` (descendiente) se convierte en `a:not(.b).c` (mismo elemento): cambia el significado.
-        self.assertEqual(build.minify_css('a:not(.b) .c{x:y}'), 'a:not(.b) .c{x:y}')
+    def test_sin_geo_region_no_se_inventa_ninguna(self):
+        self.assertEqual(build.render_geo(True, 'Sevilla', ''), '<meta name="geo.placename" content="Sevilla">')
+        self.assertEqual(build.render_geo(True, '', ''), '')
+        self.assertEqual(build.render_geo(False, 'Sevilla', 'ES-AN'), '')
 
-    @unittest.expectedFailure
-    def test_css_var_dentro_de_calc(self):
-        # Sale `calc(var( - - x)* 2)`: CSS inválido.
-        self.assertEqual(build.minify_css('a{width:calc(var(--x) * 2)}'), 'a{width:calc(var(--x) * 2)}')
-
-    @unittest.expectedFailure
-    def test_css_numero_negativo_dentro_de_calc(self):
-        # `calc(100% + -1px)` sale como `calc(100% + - 1px)`.
-        self.assertEqual(build.minify_css('a{width:calc(100% + -1px)}'), 'a{width:calc(100% + -1px)}')
-
-    @unittest.expectedFailure
-    def test_css_cero_decimal_con_unidad(self):
-        # `0.0px` sale como `.px`.
-        self.assertEqual(build.minify_css('a{margin:0.0px}'), 'a{margin:0}')
-
-    @unittest.expectedFailure
-    def test_css_and_en_media_query(self):
-        # `) and (` sale como `)and(`, que el navegador lee como una función `and()`.
-        self.assertEqual(build.minify_css('@media (min-width:1px) and (max-width:2px){a{b:c}}'),
-                         '@media(min-width:1px) and (max-width:2px){a{b:c}}')
-
+    def test_geo_escapa_los_valores(self):
+        self.assertIn('content="A &amp; B"', build.render_geo(True, 'A & B', 'ES-MD'))
 
 
 if __name__ == '__main__':

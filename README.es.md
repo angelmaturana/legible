@@ -43,7 +43,7 @@ Medido sobre la plantilla incluida (11 páginas), 2026-10-21:
 | Build + validación estricta | **~0,25 s** |
 | Datos estructurados | `ProfessionalService`, `WebSite`, `WebPage`, `FAQPage`, `Service`/`Offer`, `BreadcrumbList` combinados en un único `@graph` por página |
 | Archivos generados | `sitemap.xml` (con `lastmod`), `robots.txt`, `llms.txt` y, si existen, los índices de `/guias/` y `/blog/` |
-| Pruebas | 81 (`unittest`, ~5 s); 6 documentan errores conocidos, ver [Estado](#estado-y-limitaciones-conocidas) |
+| Pruebas | 94 (`unittest`, ~5 s), ver [Estado](#estado) |
 
 ## Inicio rápido
 
@@ -82,7 +82,7 @@ flowchart LR
 - **Plantillas.** Cada página es un `.html` con *front matter* (`title`, `description` y, opcionalmente, `robots`, `canonical`, `geo`, `active`). El build lo inserta en `layout.html`, marca el enlace activo del menú con `aria-current` y añade canonical y Open Graph.
 - **Marcadores `{{...}}`.** Unos se calculan desde `entity.json` (nombre, email, teléfono, ciudades, precios, dominio); el resto son textos en `src/data/textos.json`. Si un marcador no tiene valor, el build se detiene y te dice cuál es y en qué página.
 - **JSON-LD.** Los nodos de `entity.json` se combinan con el JSON-LD de cada página en un único `@graph`; nunca se emiten `@id` duplicados.
-- **Guías y blog.** Crea un archivo en `src/pages/guias/<slug>/` o `src/pages/blog/<slug>/` con el front matter requerido (`type`, `topic`, `published`, `updated`, `summary`, `service`; opcional `related`, máx. 2) y el build genera el índice, la entrada del sitemap y la de `llms.txt`. `/guias/` aparece con 1 guía o más; `/blog/` sale `noindex` con 1–2 artículos y pasa a público (menú, pie, sitemap) desde 3.
+- **Guías y blog.** Crea un archivo en `src/pages/guias/<slug>/` o `src/pages/blog/<slug>/` con el front matter requerido (`type`, `topic`, `published`, `updated`, `summary`, `service`; opcional `related`, máx. 2) y el build genera el índice, la entrada del sitemap y la de `llms.txt`. `/guias/` aparece con 1 guía o más; `/blog/` sale `noindex` con 1–2 artículos y pasa a público (menú, pie, sitemap) desde 3. La home enlaza a lo que sea público mediante el marcador `{{home_recursos}}`, que da a esos índices el enlace contextual entrante que pide el validador: mantenlo en `src/pages/index.html`.
 
 ## Qué valida el validador
 
@@ -104,7 +104,7 @@ flowchart LR
 5. Para un servicio nuevo, copia `src/pages/servicios/servicio-generico/`, ajusta su front matter, JSON-LD y contenido, y enlázalo desde `servicios/`, `precios/`, `header.html` y `footer.html`.
 6. `./legible/build.sh` y publica `dist/`.
 
-> El contenido de la plantilla está en español. La etiqueta `geo.placename` está fijada de momento a «Valdemoro» (`geo.region` = `ES-MD`).
+> El contenido de la plantilla está en español. La etiqueta `geo.placename` toma la ciudad de `entity.json` y `geo.region` toma el código ISO 3166-2 de `geo_region` en `src/data/textos.json` (`ES-MD` por defecto; déjalo vacío para omitir la etiqueta).
 
 ## Despliegue
 
@@ -127,18 +127,14 @@ Variable:          SITE_URL=https://tu-dominio.com
 | **Los marcadores fallan rápido** | Un `{{x}}` sin resolver nunca llega a producción | Cada marcador debe existir en `entity.json` o `textos.json` |
 | **Un `@graph` por página, deduplicado por `@id`** | Cada entidad existe una vez y se referencian entre sí | Algo más de lógica de combinación |
 | **Colecciones por convención de carpetas** | Sin configuración; índices, sitemap y `llms.txt` salen solos | Estructura con opiniones |
-| **Minificadores propios de CSS y HTML** | Mantienen la promesa de «sin dependencias» | Tienen límites conocidos (ver abajo) y necesitan pruebas |
+| **Minificadores propios de CSS y HTML** | Mantienen la promesa de «sin dependencias» | Pequeños a propósito y cubiertos por pruebas (ver [Estado](#estado)) |
 | **Fuentes del sistema y menú solo con CSS** | Sin descargas de fuentes ni saltos de maquetación | Sin tipografía de marca; el menú con checkbox tiene casos límite de accesibilidad |
 
-## Estado y limitaciones conocidas
+## Estado
 
-La plantilla compila y pasa el validador estricto, con y sin minificar. La batería de pruebas (`python3 -m unittest discover tests`) cubre un build completo con validación, los dos minificadores, guías y blog (front matter válido e inválido) y el tratamiento del dominio y de los marcadores. Para comprobar que las pruebas detectan regresiones de verdad, se estropeó el generador a propósito de 11 maneras distintas y la batería falló todas las veces.
+La plantilla compila y pasa el validador estricto, con y sin minificar, y sigue pasándolo cuando añades una guía o un blog. La batería de pruebas (`python3 -m unittest discover tests`) cubre un build completo con validación, los dos minificadores, guías y blog (front matter válido e inválido, y validación estricta con contenido), las etiquetas geo y el tratamiento del dominio y de los marcadores. Para comprobar que las pruebas detectan regresiones de verdad, se estropeó el generador a propósito de distintas maneras y la batería falló todas las veces.
 
-Errores conocidos, cada uno fijado con una prueba `expectedFailure`:
-
-- **Límites de `minify_css`.** Puede estropear `a:not(.b) .c`, `var()` dentro de `calc()`, números negativos en `calc()`, `0.0px` y `) and (` en media queries. El CSS de la plantilla evita todos (la cabecera de `site.css` lo avisa); el CSS propio también debe evitarlos.
-- **Primera guía o artículo.** Los índices `/guias/` y `/blog/` generados son cortos y no se enlazan desde el cuerpo de ninguna página, así que el validador estricto da un aviso hasta que se amplíen.
-- **Etiquetas geo** fijadas a Valdemoro / `ES-MD`.
+Los minificadores son pequeños a propósito (sin dependencias). Si alguna vez un CSS o un HTML sale mal, compila con `CSS_MINIFY=FALSE`, compara ambas salidas y abre un issue con el fragmento.
 
 ## Comparación con alternativas
 
@@ -195,7 +191,7 @@ Páginas incluidas: inicio, servicios (índice + un servicio de ejemplo), precio
 
 ## Contribuir
 
-Se agradecen issues y pull requests. Antes de abrir uno: `python3 -m unittest discover tests` y `./legible/build.sh` deben pasar. Si corriges un error conocido, quita el decorador `expectedFailure` de su prueba (el ejecutor te avisará cuando una empiece a pasar).
+Se agradecen issues y pull requests. Antes de abrir uno: `python3 -m unittest discover tests` y `./legible/build.sh` deben pasar. Si corriges un error, añade una prueba que falle sin la corrección (el ejecutor te avisará cuando una empiece a pasar).
 
 ## Licencia
 

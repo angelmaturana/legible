@@ -158,5 +158,6 @@
     "partner_plan_description": "Soporte prioritario y revisión IA.",
     "extra_hourly_rate": "55 €/h",
     "geo_topic": "GEO",
-    "coverage_area": "Ciudad 1, Ciudad 2, Ciudad 3, Ciudad 4 y alrededores"
+    "coverage_area": "Ciudad 1, Ciudad 2, Ciudad 3, Ciudad 4 y alrededores",
+    "geo_region": "ES-MD"
 }
