@@ -6,8 +6,8 @@
         "description": "{{site_description}}",
         "url": "{{site_url}}",
         "email": "{{contact_email}}",
-        "logo": "{{site_url}}/images/logo-schema-placeholder.jpg",
-        "image": "{{site_url}}/images/og-placeholder.jpg",
+        "logo": "{{site_url}}/images/logo.svg",
+        "image": "{{site_url}}/images/og-image.png",
         "openingHoursSpecification": [
             {
                 "@type": "OpeningHoursSpecification",
