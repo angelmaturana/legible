@@ -1,13 +1,13 @@
 [
     {
         "@type": "ProfessionalService",
-        "@id": "https://TU-DOMINIO.com/#business",
+        "@id": "{{site_url}}/#business",
         "name": "{{site_name}}",
         "description": "{{site_description}}",
-        "url": "https://TU-DOMINIO.com",
+        "url": "{{site_url}}",
         "email": "{{contact_email}}",
-        "logo": "https://TU-DOMINIO.com/images/logo-schema-placeholder.jpg",
-        "image": "https://TU-DOMINIO.com/images/og-placeholder.jpg",
+        "logo": "{{site_url}}/images/logo-schema-placeholder.jpg",
+        "image": "{{site_url}}/images/og-placeholder.jpg",
         "openingHoursSpecification": [
             {
                 "@type": "OpeningHoursSpecification",
@@ -69,7 +69,7 @@
                 {
                     "@type": "Offer",
                     "name": "Servicio 1",
-                    "url": "https://TU-DOMINIO.com/servicios/servicio-generico/",
+                    "url": "{{site_url}}/servicios/servicio-generico/",
                     "priceCurrency": "EUR",
                     "price": "99",
                     "priceSpecification": {
@@ -81,13 +81,13 @@
                         "@type": "Service",
                         "name": "Servicio 1",
                         "serviceType": "{{service_category_1}}",
-                        "url": "https://TU-DOMINIO.com/servicios/servicio-generico/"
+                        "url": "{{site_url}}/servicios/servicio-generico/"
                     }
                 },
                 {
                     "@type": "Offer",
                     "name": "Servicio 2",
-                    "url": "https://TU-DOMINIO.com/servicios/servicio-generico/",
+                    "url": "{{site_url}}/servicios/servicio-generico/",
                     "priceCurrency": "EUR",
                     "price": "149",
                     "priceSpecification": {
@@ -99,13 +99,13 @@
                         "@type": "Service",
                         "name": "Servicio 2",
                         "serviceType": "{{service_category_2}}",
-                        "url": "https://TU-DOMINIO.com/servicios/servicio-generico/"
+                        "url": "{{site_url}}/servicios/servicio-generico/"
                     }
                 },
                 {
                     "@type": "Offer",
                     "name": "Servicio 3 (Mensual)",
-                    "url": "https://TU-DOMINIO.com/servicios/servicio-generico/",
+                    "url": "{{site_url}}/servicios/servicio-generico/",
                     "priceCurrency": "EUR",
                     "price": "49",
                     "priceSpecification": {
@@ -119,13 +119,13 @@
                         "@type": "Service",
                         "name": "Servicio 3 (Mensual)",
                         "serviceType": "{{service_category_3}}",
-                        "url": "https://TU-DOMINIO.com/servicios/servicio-generico/"
+                        "url": "{{site_url}}/servicios/servicio-generico/"
                     }
                 },
                 {
                     "@type": "Offer",
                     "name": "Acción Destacada",
-                    "url": "https://TU-DOMINIO.com/accion-destacada/",
+                    "url": "{{site_url}}/accion-destacada/",
                     "priceCurrency": "EUR",
                     "price": "0",
                     "priceSpecification": {
@@ -137,7 +137,7 @@
                         "@type": "Service",
                         "name": "Acción Destacada",
                         "serviceType": "Consulta inicial",
-                        "url": "https://TU-DOMINIO.com/accion-destacada/"
+                        "url": "{{site_url}}/accion-destacada/"
                     }
                 }
             ]
@@ -145,12 +145,12 @@
     },
     {
         "@type": "WebSite",
-        "@id": "https://TU-DOMINIO.com/#website",
-        "url": "https://TU-DOMINIO.com/",
+        "@id": "{{site_url}}/#website",
+        "url": "{{site_url}}/",
         "name": "{{site_name}}",
         "inLanguage": "es-ES",
         "publisher": {
-            "@id": "https://TU-DOMINIO.com/#business"
+            "@id": "{{site_url}}/#business"
         }
     }
 ]

@@ -4,7 +4,11 @@ from pathlib import Path
 from datetime import datetime
 
 REPO = Path(__file__).resolve().parent.parent
-SITE_URL = 'https://TU-DOMINIO.com'
+# Dominio del sitio: se define aquí o con la variable de entorno SITE_URL
+# (SITE_URL=https://midominio.es ./scripts/build.sh). El resto del proyecto usa {{site_url}}.
+SITE_URL = os.environ.get('SITE_URL', 'https://TU-DOMINIO.com').strip().rstrip('/')
+if not SITE_URL.startswith('https://'):
+    sys.exit(f'✗ SITE_URL debe empezar por https:// (valor actual: {SITE_URL!r})')
 OUT_DEFAULT = REPO / 'dist'
 
 def _replace_placeholders_in_json(obj, replacements):
@@ -66,11 +70,13 @@ def compute_active(rel, front, hrefs):
 def apply_active(header_html, active_href, aria_value):
     if not active_href:
         return header_html
+    marked = []  # solo se marca el primer enlace que coincide (el menú puede repetir href)
     def repl(m):
         attrs = m.group(1)
         hm = re.search(r'\bhref="([^"]*)"', attrs)
-        if not hm or hm.group(1) != active_href:
+        if not hm or hm.group(1) != active_href or marked:
             return m.group(0)
+        marked.append(True)
         cm = re.search(r'\bclass="([^"]*)"', attrs)
         if cm:
             if 'active' not in cm.group(1).split():
@@ -122,9 +128,10 @@ def render_jsonld(page_json, entity_nodes):
     return '<script type="application/ld+json">\n' + json.dumps(out, ensure_ascii=False, indent=4) + '\n</script>'
 
 def check_unrendered(html_text, path):
-    m = re.search(r'\{\{[^}]+\}\}', html_text)
+    m = re.search(r'\{\{([^}]+)\}\}', html_text)
     if m:
-        raise ValueError(f'unrendered marker {m.group(0)} in {path}')
+        sys.exit(f'✗ BUILD FAILED: el marcador {m.group(0)} (en la página {path}) no tiene valor. '
+                 f'Añade "{m.group(1)}" a src/data/textos.json o escríbelo directamente en la página.')
 
 def compose_page(front, content, layout_text, header_text, footer_text, entity_nodes, page_rel, site_name='{{site_name}}', site_url='{{site_url}}', contact_email='{{contact_email}}', whatsapp_link='{{whatsapp_link}}', service_category_1='{{service_category_1}}', service_category_2='{{service_category_2}}', location='{{location}}', target_audience='{{target_audience}}', featured_action_name='{{featured_action_name}}', jsonld_replacements=None):
     # Reemplazar placeholders en title y description del front matter
@@ -261,6 +268,12 @@ def minify_css(css_text: str) -> str:
     css = css.strip()
     return css
 
+# Elementos en línea: el espacio entre dos de ellos forma parte del texto visible.
+INLINE_TAGS = frozenset('a abbr b bdi bdo br button cite code data del dfn em i img input ins kbd label mark q s '
+                        'samp small span strong sub sup svg time u var wbr'.split())
+
+VOID_INLINE_TAGS = frozenset(['br', 'img', 'input', 'wbr'])
+
 def minify_html(html_text: str) -> str:
     protected = []
 
@@ -297,8 +310,17 @@ def minify_html(html_text: str) -> str:
         return f'\x00A{len(attr_strings)-1}\x00'
     html_text = re.sub(r'="[^"]*"|=\'[^\']*\'', protect_attr, html_text)
 
-    # 4) Colapsar espacios entre tags (texto visible)
+    # 4) Colapsar espacios entre tags. Entre dos elementos en línea hermanos
+    #    (<strong>a</strong> <small>b</small>) el espacio se ve en pantalla: se conserva uno solo
+    #    (\x01 temporal). Entre bloques, o entre un contenedor y su contenido, se quita.
+    html_text = re.sub(
+        r'(<(/?)([a-zA-Z][\w-]*)[^<>]*>)\s+(?=<(/?)([a-zA-Z][\w-]*))',
+        lambda m: m.group(1) + ('\x01' if (m.group(3).lower() in INLINE_TAGS and m.group(5).lower() in INLINE_TAGS
+                                           and not m.group(4)
+                                           and (m.group(2) or m.group(3).lower() in VOID_INLINE_TAGS)) else ''),
+        html_text)
     html_text = re.sub(r'>\s+<', '><', html_text)
+    html_text = html_text.replace('\x01', ' ')
 
     # 5) Colapsar espacios múltiples (ahora sí: solo espacios estructurales entre atributos)
     html_text = re.sub(r'\s{2,}', ' ', html_text)
@@ -336,105 +358,6 @@ def minify_html(html_text: str) -> str:
             html_text = html_text.replace(f'\x00P{i}\x00', original)
 
     return html_text
-
-def validate_e1(pages_data):
-    errors = []
-    for rel, front, path in pages_data:
-        if 'title' not in front or 'description' not in front:
-            errors.append((path, 'missing title or description'))
-    return errors
-
-def validate_e2(page_text, path):
-    errors = []
-    for m in re.finditer(r'<script type="application/ld\+json">(.*?)</script>', page_text, re.DOTALL):
-        try:
-            json.loads(m.group(1).strip())
-        except Exception as e:
-            errors.append((path, f'JSON-LD parse error: {e}'))
-    return errors
-
-def validate_e5(page_text, path):
-    errors = []
-    if '{{' in page_text:
-        errors.append((path, 'unrendered marker'))
-    return errors
-
-def validate_e7(page_text, path):
-    errors = []
-    if 'noindex' not in page_text:
-        h1_count = len(re.findall(r'<h1\b', page_text, re.IGNORECASE))
-        if h1_count != 1:
-            errors.append((path, f'expected exactly 1 h1, found {h1_count}'))
-    return errors
-
-def validate_e8(page_text, path):
-    errors = []
-    aria_count = len(re.findall(r'aria-current=', page_text))
-    if aria_count > 1:
-        errors.append((path, f'multiple aria-current ({aria_count})'))
-    return errors
-
-def validate_e9(pages_data):
-    errors = []
-    titles = {}
-    descs = {}
-    for rel, front, p in pages_data:
-        if 'noindex' in front.get('robots', ''):
-            continue
-        title = front.get('title', '')
-        desc = front.get('description', '')
-        if title in titles:
-            errors.append((p, f'duplicate title {title}'))
-        titles[title] = p
-        if desc in descs:
-            errors.append((p, f'duplicate description {desc}'))
-        descs[desc] = p
-    return errors
-
-def validate_e10(page_text, path):
-    errors = []
-    if '404' in path:
-        if 'canonical' in page_text or 'og:url' in page_text:
-            errors.append((path, '404 page has canonical or og:url'))
-    return errors
-
-def validate_a1(page_text, path):
-    warnings = []
-    if '[CONFIRMAR' in page_text or 'TODO' in page_text:
-        warnings.append((path, 'contains TODO or [CONFIRMAR'))
-    return warnings
-
-def validate_a2(out_root):
-    warnings = []
-    sitemap = out_root / 'sitemap.xml'
-    if sitemap.exists():
-        sitemap_text = sitemap.read_text(encoding='utf-8')
-        for m in re.finditer(r'<loc>([^<]+)</loc>', sitemap_text):
-            url = m.group(1)
-            rel = url.replace(SITE_URL, '')
-            if rel.endswith('/'):
-                target = out_root / rel[1:] / 'index.html'
-            else:
-                target = out_root / rel[1:]
-            if not target.exists():
-                warnings.append((str(sitemap.relative_to(out_root)), f'sitemap url missing: {rel}'))
-    return warnings
-
-def validate_all(pages_data, out_root):
-    errors = []
-    warnings = []
-    for rel, front, path in pages_data:
-        text = read_text(path)
-        errors.extend(validate_e1([(rel, front, path)]))
-        errors.extend(validate_e2(text, path))
-        errors.extend(validate_e5(text, path))
-        errors.extend(validate_e7(text, path))
-        errors.extend(validate_e8(text, path))
-        errors.extend(validate_e10(text, path))
-        warnings.extend(validate_a1(text, path))
-    errors.extend(validate_e9(pages_data))
-    warnings.extend(validate_a2(out_root))
-    return errors, warnings
 
 # --------------------------------------------------------------------------- colecciones (Guías y Blog)
 
@@ -562,7 +485,7 @@ def _lead_strip_html():
             </div>
             <div class="lead-strip-inner">
                 <a class="button primary" href="/accion-destacada/">Solicitar consulta</a>
-                <span class="text-muted-lg mt-15">o escríbenos a <a href="mailto:{{contact_email}}" class="link-accent">{{contact_email}}</a> o por <a href="{{whatsapp_link}}" target="_blank" rel="noopener noreferrer" class="link-accent">WhatsApp</a>.</span>
+                <span class="text-muted-lg mt-15">o escríbenos a <a href="mailto:{{{{contact_email}}}}" class="link-accent">{{{{contact_email}}}}</a> o por <a href="{{{{whatsapp_link}}}}" target="_blank" rel="noopener noreferrer" class="link-accent">WhatsApp</a>.</span>
             </div>
         </section>"""
 
@@ -771,7 +694,7 @@ def print_report(success, errors, warnings, generated, total_bytes, out, minify,
     COL = 50
     LBL = 15
     W = 2 + LBL + 2 + COL  # interior width
-    BANNER = 'Legible  •  Static Site Generator'
+    BANNER = 'legible  •  Generador de webs estáticas'
 
     def hr(): print('╠' + '═' * W + '╣')
     def row(label, value): print(f'║  {label:<{LBL}}: {str(value):<{COL}}║')
@@ -924,9 +847,8 @@ def build(out_dir=None, minify=None, no_validate=False):
     entity = json.loads(read_text(REPO / 'src' / 'data' / 'entity.json'))
     # Extraer valores de entity.json para placeholders globales
     business = next((n for n in entity if n.get('@type') == 'ProfessionalService'), {})
-    website = next((n for n in entity if n.get('@type') == 'WebSite'), {})
     site_name = _unwrap_placeholder(business.get('name'), 'Tu Negocio')
-    site_url = _unwrap_placeholder(website.get('url'), 'https://TU-DOMINIO.com').rstrip('/')
+    site_url = SITE_URL
     contact_email = _unwrap_placeholder(business.get('email'), 'contacto@tu-negocio.com')
     whatsapp_link = _unwrap_placeholder(business.get('contactPoint', {}).get('telephone'), '+34600000000')
     if whatsapp_link.startswith('+'):
@@ -962,7 +884,7 @@ def build(out_dir=None, minify=None, no_validate=False):
         raise SystemExit(1)
 
     # Procesar entity nodes para reemplazar placeholders
-    replacements = {
+    derived = {
         '{{site_name}}': site_name,
         '{{site_url}}': site_url,
         '{{contact_email}}': contact_email,
@@ -975,7 +897,6 @@ def build(out_dir=None, minify=None, no_validate=False):
         '{{city_2}}': city_2,
         '{{city_3}}': city_3,
         '{{city_4}}': city_4,
-        '{{site_description}}': 'Servicios profesionales para negocios de la zona.',
         '{{service_category_1}}': service_category_1,
         '{{service_category_2}}': service_category_2,
         '{{service_category_3}}': _unwrap_placeholder(knows_about[2] if len(knows_about) > 2 else '{{service_category_3}}', 'Servicio 3'),
@@ -984,192 +905,36 @@ def build(out_dir=None, minify=None, no_validate=False):
         '{{service_category_6}}': _unwrap_placeholder(knows_about[5] if len(knows_about) > 5 else '{{service_category_6}}', 'Servicio 6'),
         '{{price_range}}': _unwrap_placeholder(business.get('priceRange'), '0 € - 999 €/mes'),
         '{{featured_action_name}}': featured_action_name,
-        '{{featured_action_meta_description}}': 'Consulta inicial gratuita para analizar tu negocio y mejorar su presencia online.',
-        '{{featured_action_price}}': '0 €',
-        '{{featured_action_delivery}}': 'En 48h hábiles',
-        '{{featured_action_limit}}': '1 por cliente, máx. 3 a la semana',
-        '{{featured_action_description}}': 'Consulta inicial gratuita para analizar tu caso.',
-        '{{featured_action_short_includes}}': 'Análisis básico y recomendaciones.',
-        '{{featured_action_faq_includes}}': 'Incluye análisis de tu situación actual y 3 recomendaciones concretas.',
-        '{{featured_action_not_includes_lead}}': 'La acción destacada es un diagnóstico inicial, no incluye la implementación.',
-        '{{featured_action_ideal_for}}': 'Negocios que no saben por dónde empezar.',
-        '{{featured_action_not_includes}}': 'No incluye implementación ni garantía de resultados.',
-        '{{value_proposition}}': 'Precio cerrado, sin permanencia, datos reales, atención directa.',
-        '{{differentiators}}': 'Sin intermediarios, precios publicados, cancelación fácil, sin promesas de posiciones.',
-        '{{geo_description}}': 'El GEO se trabaja dentro del servicio principal.',
-        '{{service_special_note}}': 'Servicios especiales: presencial o videollamada.',
-        '{{action_include_1}}': 'Análisis de tu presencia online actual',
-        '{{action_include_2}}': 'Identificación de 3 problemas principales',
-        '{{action_include_3}}': 'Recomendaciones concretas y priorizadas',
-        '{{action_include_4}}': 'Estimación de costes y plazos si quieres arreglarlo',
-        '{{action_include_5}}': 'Entrega por email o WhatsApp en 48h hábiles',
-        '{{action_not_include_1}}': 'Implementación de las soluciones',
-        '{{action_not_include_2}}': 'Garantía de resultados',
-        '{{action_not_include_3}}': 'Seguimiento posterior',
-        '{{action_not_include_4}}': 'Cambios en tu web o ficha de Google',
-        '{{after_1}}': 'Te contactamos para confirmar los datos de tu negocio.',
-        '{{after_2}}': 'Analizamos tu web, ficha de Google y presencia online.',
-        '{{after_3}}': 'Te enviamos el diagnóstico con 3 acciones prioritarias.',
         '{{service_1_name}}': _unwrap_placeholder(offers[0].get('name') if len(offers) > 0 else '{{service_1_name}}', 'Servicio 1'),
         '{{service_1_price}}': _unwrap_placeholder(str(offers[0].get('price')) if len(offers) > 0 else '{{service_1_price}}', '99 €'),
         '{{service_1_price_number}}': _unwrap_placeholder(str(offers[0].get('price')) if len(offers) > 0 else '{{service_1_price_number}}', '99'),
-        '{{service_1_meta_description}}': 'Descripción breve del servicio 1 para meta tags.',
-        '{{service_1_full_description}}': 'Descripción completa del servicio 1 con todos los detalles.',
-        '{{service_1_description}}': 'Servicio 1 profesional para tu negocio.',
-        '{{service_1_headline}}': 'Servicio 1 profesional para tu negocio',
-        '{{service_1_lead}}': 'Solución completa adaptada a tus necesidades.',
-        '{{service_1_price_note}}': 'Pago único, sin cuotas mensuales.',
-        '{{service_1_short_description}}': 'Descripción breve del servicio 1.',
-        '{{service_1_short_includes}}': 'Incluye lo esencial del servicio 1.',
-        '{{service_1_faq_includes}}': 'Incluye todo lo descrito en la página del servicio.',
-        '{{service_1_not_includes}}': 'No incluye extras ni trabajos adicionales.',
-        '{{service_1_delivery}}': 'En 5-7 días hábiles.',
-        '{{service_1_target}}': 'Negocios que necesitan este servicio.',
-        '{{service_1_delivery_format}}': 'Entrega digital.',
-        '{{service_1_includes_lead}}': 'El servicio incluye:',
-        '{{service_1_not_includes_lead}}': 'Qué no incluye:',
-        '{{service_1_ideal_for}}': 'Negocios que necesitan una solución completa.',
-        '{{include_1}}': 'Punto 1 del servicio',
-        '{{include_2}}': 'Punto 2 del servicio',
-        '{{include_3}}': 'Punto 3 del servicio',
-        '{{include_4}}': 'Punto 4 del servicio',
-        '{{include_5}}': 'Punto 5 del servicio',
-        '{{include_6}}': 'Punto 6 del servicio',
-        '{{not_include_1}}': 'Extra 1',
-        '{{not_include_2}}': 'Extra 2',
-        '{{not_include_3}}': 'Extra 3',
-        '{{not_include_4}}': 'Extra 4',
-        '{{not_include_5}}': 'Extra 5',
-        '{{not_include_6}}': 'Extra 6',
         '{{service_2_name}}': _unwrap_placeholder(offers[1].get('name') if len(offers) > 1 else '{{service_2_name}}', 'Servicio 2'),
         '{{service_2_price}}': _unwrap_placeholder(str(offers[1].get('price')) if len(offers) > 1 else '{{service_2_price}}', '149 €'),
         '{{service_2_price_number}}': _unwrap_placeholder(str(offers[1].get('price')) if len(offers) > 1 else '{{service_2_price_number}}', '149'),
-        '{{service_2_short_description}}': 'Descripción breve del servicio 2.',
-        '{{service_2_short_includes}}': 'Incluye lo esencial del servicio 2.',
-        '{{service_2_faq_includes}}': 'Incluye todo lo descrito en la página del servicio.',
-        '{{service_2_not_includes}}': 'No incluye extras ni trabajos adicionales.',
-        '{{service_2_delivery}}': 'En 5-7 días hábiles.',
-        '{{service_2_full_description}}': 'Descripción completa del servicio 2 con todos los detalles.',
-        '{{service_2_ideal_for}}': 'Negocios que necesitan este servicio específico.',
         '{{service_3_name}}': _unwrap_placeholder(offers[2].get('name') if len(offers) > 2 else '{{service_3_name}}', 'Servicio 3'),
         '{{service_3_price}}': _unwrap_placeholder(str(offers[2].get('price')) if len(offers) > 2 else '{{service_3_price}}', '49 €/mes'),
         '{{service_3_price_number}}': _unwrap_placeholder(str(offers[2].get('price')) if len(offers) > 2 else '{{service_3_price_number}}', '49'),
-        '{{service_3_short_description}}': 'Descripción breve del servicio 3.',
-        '{{service_3_short_includes}}': 'Incluye lo esencial del servicio 3.',
-        '{{service_3_faq_includes}}': 'Incluye todo lo descrito en la página del servicio.',
-        '{{service_3_not_includes}}': 'No incluye extras ni trabajos adicionales.',
-        '{{service_3_delivery}}': 'Mensual.',
-        '{{service_3_full_description}}': 'Descripción completa del servicio 3 con todos los detalles.',
-        '{{service_3_ideal_for}}': 'Negocios que necesitan mantenimiento continuo.',
         '{{service_4_name}}': _unwrap_placeholder(offers[3].get('name') if len(offers) > 3 else '{{service_4_name}}', 'Servicio 4'),
         '{{service_4_price}}': _unwrap_placeholder(str(offers[3].get('price')) if len(offers) > 3 else '{{service_4_price}}', '299 €/mes'),
         '{{service_4_price_number}}': _unwrap_placeholder(str(offers[3].get('price')) if len(offers) > 3 else '{{service_4_price_number}}', '299'),
-        '{{service_4_short_description}}': 'Descripción breve del servicio 4.',
-        '{{service_4_short_includes}}': 'Incluye lo esencial del servicio 4.',
-        '{{service_4_faq_includes}}': 'Incluye todo lo descrito en la página del servicio.',
-        '{{service_4_not_includes}}': 'No incluye extras ni trabajos adicionales.',
-        '{{service_4_delivery}}': 'Mensual.',
-        '{{service_4_full_description}}': 'Descripción completa del servicio 4 con todos los detalles.',
-        '{{service_4_requirements}}': 'Tener web y ficha de Google activas.',
-        '{{service_4_ideal_for}}': 'Negocios que quieren delegar la gestión online.',
         '{{service_5_name}}': _unwrap_placeholder(offers[4].get('name') if len(offers) > 4 else '{{service_5_name}}', 'Servicio 5'),
         '{{service_5_price}}': _unwrap_placeholder(str(offers[4].get('price')) if len(offers) > 4 else '{{service_5_price}}', '290 €'),
         '{{service_5_price_number}}': _unwrap_placeholder(str(offers[4].get('price')) if len(offers) > 4 else '{{service_5_price_number}}', '290'),
-        '{{service_5_short_description}}': 'Descripción breve del servicio 5.',
-        '{{service_5_short_includes}}': 'Incluye lo esencial del servicio 5.',
-        '{{service_5_faq_includes}}': 'Incluye todo lo descrito en la página del servicio.',
-        '{{service_5_not_includes}}': 'No incluye extras ni trabajos adicionales.',
-        '{{service_5_delivery}}': 'En 10-15 días hábiles.',
-        '{{bundle_price}}': '349 €',
-        '{{bundle_description}}': 'Pack combinado con descuento.',
-        '{{services_intro}}': 'Ofrecemos servicios adaptados a tu negocio.',
-        '{{services_page_lead}}': 'Todos nuestros servicios tienen precio cerrado y alcance por escrito.',
-        '{{about_lead}}': 'Somos un equipo especializado en ayudar a negocios locales.',
-        '{{about_who_we_are}}': 'Trabajamos con profesionales y pymes de la zona.',
-        '{{about_mission}}': 'Nuestra misión es que tu negocio se vea bien en Google y Maps.',
-        '{{how_1_description}}': 'Analizamos antes de actuar.',
-        '{{how_2_description}}': 'Precio y alcance por escrito.',
-        '{{how_3_description}}': 'Entregables concretos, no promesas.',
-        '{{how_4_description}}': 'Hablas con quien hace el trabajo.',
-        '{{principle_1}}': 'Sin permanencia en mensuales.',
-        '{{principle_2}}': 'No prometemos posiciones.',
-        '{{principle_3}}': 'Informes con datos reales.',
-        '{{principle_4}}': 'No compramos reseñas.',
-        '{{about_zone_description}}': 'Atendemos en remoto a negocios de la zona.',
-        '{{about_remote_description}}': 'Fuera de la zona, solo trabajo remoto.',
-        '{{contact_lead}}': 'Escríbenos y te respondemos el mismo día hábil.',
-        '{{contact_email_description}}': 'Para consultas generales y presupuesto.',
-        '{{contact_whatsapp_description}}': 'Respuesta rápida por WhatsApp.',
-        '{{contact_action_description}}': 'Empieza por nuestra acción destacada.',
-        '{{contact_location_description}}': 'Base en la zona, atención remota.',
-        '{{faq_1_answer}}': 'Respuesta a la pregunta 1.',
-        '{{faq_2_answer}}': 'Respuesta a la pregunta 2.',
-        '{{faq_3_answer}}': 'Ofrecemos varios servicios adaptados a tu negocio.',
-        '{{faq_4_answer}}': 'Los precios varían según el servicio.',
-        '{{faq_5_answer}}': 'Empieza por la acción destacada.',
-        '{{faq_6_answer}}': 'La acción destacada es un diagnóstico; el servicio mensual es continuado.',
-        '{{faq_7_answer}}': 'Suele ser por ficha incompleta o datos inconsistentes.',
-        '{{faq_8_answer}}': 'No hay permanencia en servicios mensuales.',
-        '{{faq_9_answer}}': 'Nadie puede garantizar posiciones en Google.',
-        '{{faq_10_answer}}': 'GEO optimiza para que IAs lean tu negocio.',
-        '{{faq_11_answer}}': 'Nunca. Ayudamos a pedir reseñas reales.',
-        '{{faq_12_answer}}': 'Depende de la competencia y tu punto de partida.',
-        '{{faq_13_answer}}': 'Para el servicio mensual conviene tener web y ficha.',
-        '{{faq_14_answer}}': 'Soporte urgente disponible por separado.',
-        '{{faq_15_answer}}': 'Sí, el dominio y la web son tuyos desde el primer día.',
-        '{{home_headline}}': 'Servicios para que tu negocio crezca',
-        '{{home_lead}}': 'Ayudamos a negocios locales a mejorar su presencia online.',
-        '{{home_description}}': 'Servicios profesionales para negocios de la zona.',
-        '{{lead_strip_headline}}': '¿No sabes por dónde empezar?',
-        '{{lead_strip_lead}}': 'Pide la acción destacada: te decimos qué tiene sentido para tu negocio.',
-        '{{featured_action_cta}}': 'Pedir acción destacada',
-        '{{featured_action_cta_whatsapp}}': 'Pedir por WhatsApp',
-        '{{featured_action_cta_view}}': 'Ver detalles',
-        '{{featured_action_limit_short}}': '1 por cliente',
-        '{{featured_action_limit_note}}': 'Una acción destacada por negocio.',
-        '{{first_paid_service}}': 'Servicio 1 (99 €)',
-        '{{value_props}}': 'Precio cerrado, sin permanencia, datos reales.',
-        '{{differentiators}}': 'Sin intermediarios, precios publicados, cancelación fácil.',
-        '{{last_update}}': '2026-10-20',
-        '{{home_description}}': 'Servicios profesionales para negocios de la zona.',
-        '{{guide_topic_1}}': 'Tema 1',
-        '{{guide_topic_2}}': 'Tema 2',
-        '{{guide_topic_3}}': 'Tema 3',
-        '{{guide_1_title}}': 'Guía 1: Cómo empezar',
-        '{{guide_1_summary}}': 'Pasos básicos para empezar.',
-        '{{guide_2_title}}': 'Guía 2: Qué evitar',
-        '{{guide_2_summary}}': 'Errores comunes y cómo evitarlos.',
-        '{{guide_3_title}}': 'Guía 3: Casos de éxito',
-        '{{guide_3_summary}}': 'Ejemplos reales de negocios.',
-        '{{zone_description}}': 'Trabajamos con negocios de la zona.',
-        '{{geo_description_lead}}': 'Optimizamos para Google y IAs.',
-        '{{guias_intro}}': 'Guías prácticas para tu negocio.',
-        '{{what_we_dont_do}}': 'No prometemos posiciones ni compramos reseñas.',
-        '{{step_1_description}}': 'Diagnóstico inicial gratuito.',
-        '{{step_2_description}}': 'Servicio puntual con precio cerrado.',
-        '{{step_3_description}}': 'Mantenimiento mensual opcional.',
-        '{{situation_1}}': 'Necesitas el servicio 1',
-        '{{situation_2}}': 'Necesitas el servicio 2',
-        '{{situation_3}}': 'Necesitas ambos servicios',
-        '{{situation_4}}': 'Quieres mantenimiento mensual',
-        '{{situation_5}}': 'No sabes qué necesitas',
-        '{{growth_plan_price}}': '299 €/mes',
-        '{{growth_plan_description}}': 'Para escalar tu negocio.',
-        '{{partner_plan_price}}': '490 €/mes',
-        '{{partner_plan_description}}': 'Soporte prioritario y revisión IA.',
-        '{{extra_hourly_rate}}': '55 €/h',
-        '{{geo_topic}}': 'GEO',
-        '{{geo_description}}': 'El GEO se trabaja dentro del servicio principal.',
-        '{{service_special_note}}': 'Servicios especiales: presencial o videollamada.',
-        '{{coverage_area}}': 'Ciudad 1, Ciudad 2, Ciudad 3, Ciudad 4 y alrededores',
-        '{{first_paid_service}}': 'Servicio 1 (99 €)',
     }
-    entity_nodes = [_replace_placeholders_in_json(node, replacements) for node in entity]
+    # Textos del negocio: src/data/textos.json (clave sin llaves -> texto). Lo calculado de entity.json gana.
+    try:
+        textos = json.loads(read_text(REPO / 'src' / 'data' / 'textos.json'))
+    except (OSError, ValueError) as e:
+        sys.exit(f'✗ BUILD FAILED: no se pudo leer src/data/textos.json: {e}')
+    replacements = {'{{' + k + '}}': v for k, v in textos.items()}
+    replacements.update(derived)
+    entity_nodes =[_replace_placeholders_in_json(node, replacements) for node in entity]
 
     # Marcadores condicionales del Blog (antes de menu_hrefs, para que el estado activo funcione)
     nav_blog = '<li><a href="/blog/">Blog</a></li>' if blog_visible(collections['blog']) else ''
-    header = header.replace('{{nav_blog}}', nav_blog)
-    footer = footer.replace('{{footer_blog}}', nav_blog)
+    nav_guias = '<li><a href="/guias/">Guías</a></li>' if collections['guias'] else ''
+    header = header.replace('{{nav_blog}}', nav_blog).replace('{{nav_guias}}', nav_guias)
+    footer = footer.replace('{{footer_blog}}', nav_blog).replace('{{nav_guias}}', nav_guias)
     footer = footer.replace('{{year}}', str(datetime.now().year))
     pages = []
     for p in sorted((REPO / 'src' / 'pages').rglob('*.html')):
@@ -1233,6 +998,12 @@ def build(out_dir=None, minify=None, no_validate=False):
         pages_data.append((page_rel, front, str(out_path)))
     try:
         sitemap_order = build_sitemap(pages_data, collections, out)
+        robots_path = out / 'robots.txt'
+        if robots_path.exists():
+            robots_text = read_text(robots_path)
+            for placeholder, value in replacements.items():
+                robots_text = robots_text.replace(placeholder, value)
+            write_text(robots_path, robots_text)
         llms_path = out / 'llms.txt'
         if llms_path.exists():
             llms_text = read_text(llms_path)
@@ -1244,7 +1015,8 @@ def build(out_dir=None, minify=None, no_validate=False):
         print(f'✗ BUILD FAILED: {e}', file=sys.stderr)
         raise SystemExit(1)
     if not no_validate:
-        val_errors, val_warnings = validate_all(pages_data, out)
+        import check_site  # import tardío: check_site importa SITE_URL y get_git_info de este módulo
+        val_errors, val_warnings = check_site.run_checks(out, SITE_URL)
         errors.extend(val_errors)
         warnings.extend(val_warnings)
     success = len(errors) == 0

@@ -165,7 +165,7 @@
 ```json
 {
   "@type": "ProfessionalService",
-  "@id": "https://TU-DOMINIO.com/#business",
+  "@id": "{{site_url}}/#business",
   "name": "{{site_name}}",
   "serviceType": ["{{service_category_1}}", "{{service_category_2}}", "{{service_category_3}}", "{{service_category_4}}", "{{service_category_5}}", "{{service_category_6}}"],
   "areaServed": ["{{city_1}}", "{{city_2}}", "{{city_3}}", "{{city_4}}"],
@@ -197,8 +197,8 @@
 - **llms.txt:** {{site_url}}/llms.txt
 - **sitemap.xml:** {{site_url}}/sitemap.xml
 - **robots.txt:** {{site_url}}/robots.txt
-- **Schema.org principal:** https://TU-DOMINIO.com/#business (ProfessionalService)
-- **WebSite:** https://TU-DOMINIO.com/#website
+- **Schema.org principal:** {{site_url}}/#business (ProfessionalService)
+- **WebSite:** {{site_url}}/#website
 
 ---
 

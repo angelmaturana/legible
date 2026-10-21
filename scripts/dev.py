@@ -69,7 +69,7 @@ def watch_src(callback, interval=0.5):
         time.sleep(interval)
 
 def main():
-    parser = argparse.ArgumentParser(description='Dev server for Legible')
+    parser = argparse.ArgumentParser(description='legible: servidor local con recompilado automático')
     parser.add_argument('--port', type=int, default=3001)
     parser.add_argument('--minify', action='store_true')
     args = parser.parse_args()

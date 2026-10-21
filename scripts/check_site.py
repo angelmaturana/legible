@@ -9,19 +9,17 @@ Uso:
 También lo ejecuta scripts/build.py al terminar cada compilación.
 Código de salida: 0 = correcto, 1 = hay errores (o avisos con --strict).
 """
-import os
 import argparse
 import json
 import re
 import sys
 import xml.etree.ElementTree as ET
-import subprocess
 from datetime import datetime
 from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from build import SITE_URL
+from build import SITE_URL, get_git_info
 
 REPO = Path(__file__).resolve().parent.parent
 OUT_DEFAULT = REPO / 'dist'
@@ -638,7 +636,7 @@ def print_check_report(success, errors, warnings, n_pages, check_time, git_branc
     COL = 50
     LBL = 15
     W = 2 + LBL + 2 + COL  # interior width
-    BANNER = 'Legible  •  Site Checker'
+    BANNER = 'legible  •  Validador del sitio'
 
     def hr(): print('╠' + '═' * W + '╣')
     def row(label, value): print(f'║  {label:<{LBL}}: {str(value):<{COL}}║')
@@ -697,28 +695,6 @@ def print_check_report(success, errors, warnings, n_pages, check_time, git_branc
         centered('Site checks failed — fix issues above')
     empty()
     print('╚' + '═' * W + '╝')
-
-
-def get_git_info():
-    git_branch = os.environ.get('RENDER_GIT_BRANCH')
-    git_commit = os.environ.get('RENDER_GIT_COMMIT')
-    if not git_branch:
-        try:
-            git_branch = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD'], cwd=REPO, text=True, stderr=subprocess.DEVNULL).strip()
-            if git_branch == 'HEAD':
-                git_branch = None
-        except Exception:
-            pass
-    if not git_branch:
-        git_branch = 'unknown'
-    if not git_commit:
-        try:
-            git_commit = subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD'], cwd=REPO, text=True, stderr=subprocess.DEVNULL).strip()
-        except Exception:
-            git_commit = 'unknown'
-    else:
-        git_commit = git_commit[:7]
-    return git_branch, git_commit
 
 
 def main(argv=None):

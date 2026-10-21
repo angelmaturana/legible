@@ -10,7 +10,16 @@
             <label for="nav-toggle" class="nav-toggle-label"><span aria-hidden="true"></span></label>
             <nav aria-label="Navegación principal">
                 <ul>
-                    <li><a href="/servicios/">Servicios</a></li>
+                    <li class="has-sub">
+                        <a href="/servicios/">Servicios</a>
+                        <ul>
+                            <li><a href="/servicios/servicio-generico/">Servicio 1</a></li>
+                            <li><a href="/servicios/servicio-generico/">Servicio 2</a></li>
+                            <li><a href="/servicios/servicio-generico/">Servicio 3</a></li>
+                            <li><a href="/servicios/servicio-generico/">Servicio 4</a></li>
+                        </ul>
+                    </li>
+                    {{nav_guias}}
                     {{nav_blog}}
                     <li><a href="/precios/">Precios</a></li>
                     <li><a href="/sobre-nosotros/">Sobre nosotros</a></li>

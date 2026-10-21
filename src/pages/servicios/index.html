@@ -1,6 +1,6 @@
 ---
 title: Servicios | {{site_name}}
-description: Todos los servicios de {{service_category_1}} y {{service_category_2}}: {{service_1_name}}, {{service_2_name}}, {{service_3_name}}, {{service_4_name}}, {{service_5_name}} y {{featured_action_name}}. Precios y alcance por escrito.
+description: Todos los servicios de {{service_category_1}} y {{service_category_2}}, con precio y alcance por escrito. Elige según la situación de tu negocio.
 robots: index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1
 geo: true
 canonical: auto
@@ -13,20 +13,20 @@ updated: 2026-10-20
     "@graph": [
         {
             "@type": "CollectionPage",
-            "@id": "https://TU-DOMINIO.com/servicios/#webpage",
-            "url": "https://TU-DOMINIO.com/servicios/",
+            "@id": "{{site_url}}/servicios/#webpage",
+            "url": "{{site_url}}/servicios/",
             "name": "Servicios | {{site_name}}",
             "description": "Todos los servicios de {{service_category_1}} y {{service_category_2}}: {{service_1_name}}, {{service_2_name}}, {{service_3_name}}, {{service_4_name}}, {{service_5_name}} y {{featured_action_name}}. Precios y alcance por escrito.",
             "inLanguage": "es-ES",
             "isPartOf": {
-                "@id": "https://TU-DOMINIO.com/#website"
+                "@id": "{{site_url}}/#website"
             },
             "about": {
-                "@id": "https://TU-DOMINIO.com/#business"
+                "@id": "{{site_url}}/#business"
             },
             "dateModified": "2026-10-20",
             "breadcrumb": {
-                "@id": "https://TU-DOMINIO.com/servicios/#breadcrumb"
+                "@id": "{{site_url}}/servicios/#breadcrumb"
             },
             "mainEntity": {
                 "@type": "ItemList",
@@ -34,37 +34,37 @@ updated: 2026-10-20
                     {
                         "@type": "ListItem",
                         "position": 1,
-                        "url": "https://TU-DOMINIO.com/servicios/servicio-generico/",
+                        "url": "{{site_url}}/servicios/servicio-generico/",
                         "name": "{{service_1_name}}"
                     },
                     {
                         "@type": "ListItem",
                         "position": 2,
-                        "url": "https://TU-DOMINIO.com/servicios/servicio-generico/",
+                        "url": "{{site_url}}/servicios/servicio-generico/",
                         "name": "{{service_2_name}}"
                     },
                     {
                         "@type": "ListItem",
                         "position": 3,
-                        "url": "https://TU-DOMINIO.com/servicios/servicio-generico/",
+                        "url": "{{site_url}}/servicios/servicio-generico/",
                         "name": "{{service_3_name}}"
                     },
                     {
                         "@type": "ListItem",
                         "position": 4,
-                        "url": "https://TU-DOMINIO.com/servicios/servicio-generico/",
+                        "url": "{{site_url}}/servicios/servicio-generico/",
                         "name": "{{service_4_name}}"
                     },
                     {
                         "@type": "ListItem",
                         "position": 5,
-                        "url": "https://TU-DOMINIO.com/servicios/servicio-generico/",
+                        "url": "{{site_url}}/servicios/servicio-generico/",
                         "name": "{{service_5_name}}"
                     },
                     {
                         "@type": "ListItem",
                         "position": 6,
-                        "url": "https://TU-DOMINIO.com/accion-destacada/",
+                        "url": "{{site_url}}/accion-destacada/",
                         "name": "{{featured_action_name}}"
                     }
                 ]
@@ -72,13 +72,13 @@ updated: 2026-10-20
         },
         {
             "@type": "BreadcrumbList",
-            "@id": "https://TU-DOMINIO.com/servicios/#breadcrumb",
+            "@id": "{{site_url}}/servicios/#breadcrumb",
             "itemListElement": [
                 {
                     "@type": "ListItem",
                     "position": 1,
                     "name": "Inicio",
-                    "item": "https://TU-DOMINIO.com/"
+                    "item": "{{site_url}}/"
                 },
                 {
                     "@type": "ListItem",

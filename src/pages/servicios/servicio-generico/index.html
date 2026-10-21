@@ -12,40 +12,40 @@ canonical: auto
     "@graph": [
         {
             "@type": "WebPage",
-            "@id": "https://TU-DOMINIO.com/servicios/servicio-generico/#webpage",
-            "url": "https://TU-DOMINIO.com/servicios/servicio-generico/",
+            "@id": "{{site_url}}/servicios/servicio-generico/#webpage",
+            "url": "{{site_url}}/servicios/servicio-generico/",
             "name": "{{service_1_name}} | {{site_name}}",
             "description": "{{service_1_meta_description}}",
             "inLanguage": "es-ES",
             "isPartOf": {
-                "@id": "https://TU-DOMINIO.com/#website"
+                "@id": "{{site_url}}/#website"
             },
             "about": {
-                "@id": "https://TU-DOMINIO.com/#business"
+                "@id": "{{site_url}}/#business"
             },
             "dateModified": "2026-10-20",
             "breadcrumb": {
-                "@id": "https://TU-DOMINIO.com/servicios/servicio-generico/#breadcrumb"
+                "@id": "{{site_url}}/servicios/servicio-generico/#breadcrumb"
             },
             "mainEntity": {
-                "@id": "https://TU-DOMINIO.com/servicios/servicio-generico/#service"
+                "@id": "{{site_url}}/servicios/servicio-generico/#service"
             }
         },
         {
             "@type": "BreadcrumbList",
-            "@id": "https://TU-DOMINIO.com/servicios/servicio-generico/#breadcrumb",
+            "@id": "{{site_url}}/servicios/servicio-generico/#breadcrumb",
             "itemListElement": [
                 {
                     "@type": "ListItem",
                     "position": 1,
                     "name": "Inicio",
-                    "item": "https://TU-DOMINIO.com/"
+                    "item": "{{site_url}}/"
                 },
                 {
                     "@type": "ListItem",
                     "position": 2,
                     "name": "Servicios",
-                    "item": "https://TU-DOMINIO.com/servicios/"
+                    "item": "{{site_url}}/servicios/"
                 },
                 {
                     "@type": "ListItem",
@@ -56,11 +56,11 @@ canonical: auto
         },
         {
             "@type": "Service",
-            "@id": "https://TU-DOMINIO.com/servicios/servicio-generico/#service",
+            "@id": "{{site_url}}/servicios/servicio-generico/#service",
             "name": "{{service_1_name}}",
             "serviceType": "{{service_category_1}}",
             "provider": {
-                "@id": "https://TU-DOMINIO.com/#business"
+                "@id": "{{site_url}}/#business"
             },
             "areaServed": [
                 {
@@ -83,7 +83,7 @@ canonical: auto
             "description": "{{service_1_full_description}}",
             "offers": {
                 "@type": "Offer",
-                "url": "https://TU-DOMINIO.com/servicios/servicio-generico/",
+                "url": "{{site_url}}/servicios/servicio-generico/",
                 "priceCurrency": "EUR",
                 "price": "{{service_1_price_number}}",
                 "priceSpecification": {
