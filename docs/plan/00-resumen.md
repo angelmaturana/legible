@@ -31,7 +31,7 @@ y del validador, y en el README.
 | # | Fichero | Qué resuelve | Depende de |
 |---|---------|--------------|------------|
 | 1 | [`01-diagnostico.md`](01-diagnostico.md) | Estado real del proyecto: qué funciona, qué está roto, con evidencia reproducible | — |
-| 2 | [`02-identidad-legible.md`](02-identidad-legible.md) | Rebautizar el proyecto: nombre, metadatos, textos de marca del propio generador | 1 |
+| 2 | [`02-identidad-legible.md`](02-identidad-legible.md) ✅ | Rebautizar el proyecto: nombre, metadatos, textos de marca del propio generador | 1 |
 | 3 | [`03-correcciones-criticas.md`](03-correcciones-criticas.md) ✅ | Arreglar los bugs que hoy impiden pasar `check_site.py --strict` | 1 |
 | 4 | [`04-contenido-y-datos.md`](04-contenido-y-datos.md) | Rellenar `entity.json` y el contenido real del negocio | 3 |
 | 5 | [`05-arquitectura-y-limpieza.md`](05-arquitectura-y-limpieza.md) | Simplificar lo que sobra (README promocional, colecciones sin usar) para que el repo sea legible por sí mismo | 3 |

@@ -638,7 +638,7 @@ def print_check_report(success, errors, warnings, n_pages, check_time, git_branc
     COL = 50
     LBL = 15
     W = 2 + LBL + 2 + COL  # interior width
-    BANNER = 'Generic Site Generator  •  Site Checker'
+    BANNER = 'Legible  •  Site Checker'
 
     def hr(): print('╠' + '═' * W + '╣')
     def row(label, value): print(f'║  {label:<{LBL}}: {str(value):<{COL}}║')

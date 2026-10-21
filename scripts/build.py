@@ -771,7 +771,7 @@ def print_report(success, errors, warnings, generated, total_bytes, out, minify,
     COL = 50
     LBL = 15
     W = 2 + LBL + 2 + COL  # interior width
-    BANNER = 'TU-DOMINIO.com  •  Static Site Generator'
+    BANNER = 'Legible  •  Static Site Generator'
 
     def hr(): print('╠' + '═' * W + '╣')
     def row(label, value): print(f'║  {label:<{LBL}}: {str(value):<{COL}}║')

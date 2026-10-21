@@ -1,4 +1,4 @@
-# Fase 2 — Identidad "Legible"
+# Fase 2 — Identidad "Legible" ✅ hecha
 
 > Depende de: Fase 1 (diagnóstico). No depende de las correcciones de la
 > Fase 3 — es puro renombrado, se puede hacer en paralelo.
@@ -37,3 +37,20 @@ sitios donde hoy dice `seo-web-generic`, `Generic Site Generator` o
   este punto).
 - El banner de `./scripts/build.sh` y el de `check_site.py --strict`
   muestran "Legible".
+
+## Estado
+
+Aplicada. Cambios realizados:
+
+- `scripts/build.py`: banner → `Legible  •  Static Site Generator`.
+- `scripts/check_site.py`: banner → `Legible  •  Site Checker`.
+- `scripts/dev.py`: descripción del `--help` → `Dev server for Legible`.
+- `README.md`: título, ejemplo del banner, URLs/`render.yaml`/clone (`legible`), fila de la tabla comparativa y nota de origen en la licencia.
+- `LICENSE`: sin cambios (autoría MIT original).
+
+Decisión: el valor por defecto de `name` en `build.py` se queda en `Tu Negocio`.
+Probado con `Legible`: los títulos de `contacto`, `precios` y `servicios` pasan a
+"muy corto" (+3 avisos en strict). Se resuelve en la Fase 4 con el nombre real.
+
+Pendiente a propósito (Fase 4): las URLs `TU-DOMINIO.com` de `entity.json`,
+páginas, `robots.txt` y `llms.txt`, y la constante `SITE_URL` de `build.py`.

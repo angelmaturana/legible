@@ -1,4 +1,4 @@
-# seo-web-generic
+# Legible
 
 > **A production-ready, zero-JS static site generator for professional service businesses** — built with Python stdlib, semantic HTML, structured data, and strict SEO validation. Deploy anywhere static files are served.
 
@@ -31,8 +31,8 @@ This is the generator I wish existed when I started building client sites. No ma
 
 ```bash
 # 1. Clone & enter
-git clone https://github.com/your-org/seo-web-generic.git
-cd seo-web-generic
+git clone https://github.com/angelmaturana/legible.git
+cd legible
 
 # 2. One-command build + validation
 ./scripts/build.sh
@@ -181,7 +181,7 @@ related: /guias/contenido-ia/, /servicios/redaccion/
 
 ```
 ╔══════════════════════════════════════════════════════════════╗
-║  Generic Site Generator  •  Site Checker                      ║
+║  Legible  •  Site Checker                            ║
 ╠══════════════════════════════════════════════════════════════╣
 ║  ✗  CHECK FAILED                                             ║
 ╠══════════════════════════════════════════════════════════════╣
@@ -212,7 +212,7 @@ related: /guias/contenido-ia/, /servicios/redaccion/
 ## Project Structure
 
 ```
-seo-web-generic/
+legible/
 ├── scripts/
 │   ├── build.py           # Core generator (stdlib only, ~1100 lines)
 │   ├── check_site.py      # Strict validator (~750 lines)
@@ -443,7 +443,7 @@ Add functions to `check_site.py` following the `E(msg)` / `W(msg)` pattern. Regi
 Zero-config **Static Site** hosting with auto-deploys, custom domains, and free TLS.
 
 **One-click deploy:**
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/your-org/seo-web-generic)
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/angelmaturana/legible)
 
 **Manual setup (2 minutes):**
 
@@ -478,7 +478,7 @@ Zero-config **Static Site** hosting with auto-deploys, custom domains, and free 
 ```yaml
 services:
   - type: static
-    name: seo-web-generic
+    name: legible
     buildCommand: ./scripts/build.sh
     staticPublishPath: ./dist
     pullRequestPreviewsEnabled: true
@@ -500,7 +500,7 @@ Use **Kilo Agent** (free, includes Nemotron 3 Ultra) to transform this template 
 
 ### Copy-Paste Prompt for Kilo Agent
 
-> **Context:** You have a generic static site generator template (`seo-web-generic`) for professional service businesses. Convert it into a complete website for **"Taller Mecánico García"**, a car repair shop in **Madrid, Spain**.
+> **Context:** You have a generic static site generator template (`legible`) for professional service businesses. Convert it into a complete website for **"Taller Mecánico García"**, a car repair shop in **Madrid, Spain**.
 >
 > **Business Data:**
 > - Name: `Taller Mecánico García`
@@ -572,6 +572,7 @@ If you find a bug in the generator/validator or have a genuinely useful improvem
 ## License
 
 **MIT** — Copyright (c) 2024 Angel Maturana Clavero / seovaldemoro.com.  
+Legible está basado en la plantilla original `seo-web-generic`; se conserva su autoría y licencia MIT.  
 Use freely for your projects or client work. No attribution required (appreciated though).
 
 See [LICENSE](LICENSE) for full text.
@@ -602,11 +603,11 @@ After 26 years architecting zero-downtime core banking systems at Santander (glo
 | [Nikola](https://github.com/getnikola/nikola) | 3.1k | 2024 | Python + **Mako/Jinja2, deps** | ◉ | Via plugins | ◌ | Auto | ◌ | Std | Blog/Docs | 3/10 |
 | [staticpipes](https://pypi.org/project/staticpipes/) | ~20 | 2023 | Python + **Jinja2 opt.** | ◉ | No native | ◑ "checks output" | Manual | ◌ | Std | General | 2/10 |
 | [stattic](https://pypi.org/project/stattic/) | ~100 | 2024 | Python + **Jinja2, Mistune** | ◉ | SEO metadata | ◌ | Auto (blog) | ◉ `--llms` | Std | Blog | 4/10 |
-| **seo-web-generic** (this) | — | 2025 | Python 3.10+, **stdlib only** | ◉ | Full `@graph` merge | ◉ fails on warnings | Auto (fs convention) | ◉ built-in | Custom (calc/clamp) | Business | **10/10** |
+| **Legible** (this) | — | 2025 | Python 3.10+, **stdlib only** | ◉ | Full `@graph` merge | ◉ fails on warnings | Auto (fs convention) | ◉ built-in | Custom (calc/clamp) | Business | **10/10** |
 
 **Scoring:** ◉ = 1, ◑ = 0.5 (rounded down). Criteria: Zero-JS, Python stdlib only, Schema.org `@graph` merge, strict build validator (fails on warnings), `lastmod` from JSON-LD `dateModified`, auto `llms.txt`, filesystem collections, single JSON source, custom minifiers preserving `calc`/`clamp`, business-site focus.
 
-**Verdict:** No project scores 8/10 or higher. The closest is **lintc (5/10)** — the only Python stdlib-only SSG with a validator — but it lacks merged `@graph`, `lastmod` from JSON-LD, `llms.txt`, custom minifiers, and business-service focus. seo-web-generic occupies a unique intersection: **Python stdlib + zero-JS + strict validator + Schema.org `@graph` merge + JSON-LD-sourced `lastmod` + auto `llms.txt` + custom minifiers + business-service templates**.
+**Verdict:** No project scores 8/10 or higher. The closest is **lintc (5/10)** — the only Python stdlib-only SSG with a validator — but it lacks merged `@graph`, `lastmod` from JSON-LD, `llms.txt`, custom minifiers, and business-service focus. Legible occupies a unique intersection: **Python stdlib + zero-JS + strict validator + Schema.org `@graph` merge + JSON-LD-sourced `lastmod` + auto `llms.txt` + custom minifiers + business-service templates**.
 
 ---
 
@@ -640,8 +641,8 @@ After 26 years architecting zero-downtime core banking systems at Santander (glo
 
 ## Questions?
 
-- **Issues**: [GitHub Issues](https://github.com/your-org/seo-web-generic/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/your-org/seo-web-generic/discussions)
+- **Issues**: [GitHub Issues](https://github.com/angelmaturana/legible/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/angelmaturana/legible/discussions)
 
 ---
 
@@ -651,10 +652,10 @@ After 26 years architecting zero-downtime core banking systems at Santander (glo
 </p>
 
 <p align="center">
-  <a href="https://github.com/your-org/seo-web-generic/stargazers">
-    <img src="https://img.shields.io/github/stars/your-org/seo-web-generic?style=social" alt="Stars">
+  <a href="https://github.com/angelmaturana/legible/stargazers">
+    <img src="https://img.shields.io/github/stars/angelmaturana/legible?style=social" alt="Stars">
   </a>
-  <a href="https://github.com/your-org/seo-web-generic/fork">
-    <img src="https://img.shields.io/github/forks/your-org/seo-web-generic?style=social" alt="Forks">
+  <a href="https://github.com/angelmaturana/legible/fork">
+    <img src="https://img.shields.io/github/forks/angelmaturana/legible?style=social" alt="Forks">
   </a>
 </p>
