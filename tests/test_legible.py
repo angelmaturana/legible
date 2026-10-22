@@ -715,7 +715,7 @@ class TestDominio(ProyectoTemporal):
     def test_ninguna_pagina_fuente_lleva_el_dominio_escrito_a_mano(self):
         """Regresión de la fase 2: en src/ solo vale {{site_url}}."""
         for f in (REPO / 'src').rglob('*'):
-            if f.is_file() and f.suffix in ('.html', '.json', '.txt', '.css'):
+            if f.is_file() and f.suffix in ('.html', '.json', '.txt', '.css') and f.name != 'site.json':
                 self.assertNotIn('TU-DOMINIO', f.read_text(encoding='utf-8'), f.relative_to(REPO).as_posix())
 
 
@@ -773,13 +773,15 @@ class TestGeo(ProyectoTemporal):
             self.assertNotIn('Valdemoro', contenido, ruta)
         home = (self.out / 'index.html').read_text(encoding='utf-8')
         self.assertIn('name="geo.placename" content="Tu Ciudad"', home.replace('\n', ' '))
-        self.assertIn('name="geo.region" content="ES-MD"', home)
+        self.assertNotIn('name="geo.region"', home, 'no debe inventarse una región en el proyecto genérico')
 
     def test_geo_con_ciudad_y_region_propias(self):
         entity = self.project / 'src' / 'data' / 'entity.json'
         entity.write_text(entity.read_text(encoding='utf-8').replace('"{{city}}"', '"Sevilla"'), encoding='utf-8')
         textos = self.project / 'src' / 'data' / 'textos.json'
-        textos.write_text(textos.read_text(encoding='utf-8').replace('"ES-MD"', '"ES-AN"'), encoding='utf-8')
+        datos_textos = json.loads(textos.read_text(encoding='utf-8'))
+        datos_textos['geo_region'] = 'ES-AN'
+        textos.write_text(json.dumps(datos_textos, ensure_ascii=False), encoding='utf-8')
         self.build_ok()
         home = (self.out / 'index.html').read_text(encoding='utf-8')
         self.assertIn('name="geo.placename" content="Sevilla"', home)

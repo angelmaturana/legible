@@ -353,3 +353,6 @@ Publicado bajo la [licencia MIT](LICENSE).
     <img src="https://img.shields.io/github/forks/angelmaturana/legible?style=social" alt="Forks">
   </a>
 </p>
+## Configuración del sitio
+
+El motor reutilizable vive en `legible/`. Los valores específicos del proyecto (dominio, nombre, contacto, ubicación y textos de configuración) se definen en `src/data/site.json` y `src/data/entity.json`; los textos editoriales permanecen en `src/`. `SITE_URL` puede sobrescribir `site_url` en compilaciones de prueba.

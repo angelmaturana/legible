@@ -2,13 +2,28 @@
 import os, re, json, html, shutil, sys, subprocess
 from pathlib import Path
 from datetime import datetime
+from urllib.parse import quote
 
 REPO = Path(__file__).resolve().parent.parent
-# Dominio del sitio: se define aquí o con la variable de entorno SITE_URL
-# (SITE_URL=https://midominio.es ./legible/build.sh). El resto del proyecto usa {{site_url}}.
-SITE_URL = os.environ.get('SITE_URL', 'https://TU-DOMINIO.com').strip().rstrip('/')
-if not SITE_URL.startswith('https://'):
-    sys.exit(f'✗ SITE_URL debe empezar por https:// (valor actual: {SITE_URL!r})')
+CONFIG_PATH = REPO / 'src' / 'data' / 'site.json'
+
+
+def load_site_config():
+    """Carga la configuración del proyecto; los datos del sitio no viven en el motor."""
+    try:
+        config = json.loads(CONFIG_PATH.read_text(encoding='utf-8')) if CONFIG_PATH.exists() else {}
+    except (OSError, ValueError) as exc:
+        raise SystemExit(f'✗ BUILD FAILED: no se pudo leer src/data/site.json: {exc}')
+    if not isinstance(config, dict):
+        raise SystemExit('✗ BUILD FAILED: src/data/site.json debe contener un objeto JSON')
+    return config
+
+
+SITE_CONFIG = load_site_config()
+# SITE_URL permite sobrescribir el dominio en CI/previews sin modificar archivos fuente.
+SITE_URL = os.environ.get('SITE_URL', SITE_CONFIG.get('site_url', '')).strip().rstrip('/')
+if not re.fullmatch(r'https://[^\s/]+(?::\d+)?(?:/[^\s]*)?', SITE_URL):
+    sys.exit(f'✗ SITE_URL debe empezar por https:// (valor actual: {SITE_URL!r}); revisa src/data/site.json')
 OUT_DEFAULT = REPO / 'dist'
 
 def _replace_placeholders_in_json(obj, replacements):
@@ -151,7 +166,7 @@ def compose_page(front, content, layout_text, header_text, footer_text, entity_n
     title = html.escape(title_raw, quote=True)
     description = html.escape(description_raw, quote=True)
     robots = html.escape(front.get('robots', 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1'), quote=True)
-    geo_flag = front.get('geo', 'true')
+    geo_flag = front.get('geo', str(SITE_CONFIG.get('geo_enabled', True)).lower())
     canonical_mode = front.get('canonical', 'auto')
     active_href, aria_value = compute_active(page_rel, front, menu_hrefs(header_text))
     header_text = apply_active(header_text, active_href, aria_value)
@@ -379,7 +394,7 @@ def minify_html(html_text: str) -> str:
 # --------------------------------------------------------------------------- colecciones (Guías y Blog)
 
 COLLECTION_DIRS = {'guias': 'guia', 'blog': 'articulo'}
-COLLECTION_TOPICS = ['Tema 1', 'Tema 2', 'Tema 3', 'Tema 4', 'Tema 5']
+COLLECTION_TOPICS = list(SITE_CONFIG.get('collection_topics', ['Tema 1', 'Tema 2', 'Tema 3', 'Tema 4', 'Tema 5']))
 BLOG_MIN_VISIBLE = 3
 MESES_ES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto',
             'septiembre', 'octubre', 'noviembre', 'diciembre']
@@ -494,17 +509,27 @@ def _breadcrumb_html(label):
             f'<li><span>{html.escape(label)}</span></li></ol></nav>')
 
 def _lead_strip_html():
-    return f"""<section class="lead-strip page-width">
+    """CTA del índice de colecciones, configurable por sitio y sin datos de negocio en el motor."""
+    cfg = SITE_CONFIG.get('generated_content', {}).get('lead_strip', {})
+    action_url = str(cfg.get('action_url', '/accion-destacada/'))
+    action_label = str(cfg.get('action_label', 'consulta inicial'))
+    eyebrow = str(cfg.get('eyebrow', 'Siguiente paso'))
+    headline = str(cfg.get('headline', '¿No sabes por dónde empezar?'))
+    lead_html = cfg.get('lead_html')
+    if lead_html is None:
+        lead_html = f'Pide tu <a href="{html.escape(action_url, quote=True)}">{html.escape(action_label)}</a>: te decimos qué tiene sentido para tu negocio.'
+    button = str(cfg.get('button', 'Solicitar consulta'))
+    return f'''<section class="lead-strip page-width">
             <div>
-                <p class="eyebrow">Siguiente paso</p>
-                <h2>¿No sabes por dónde empezar?</h2>
-                <p class="lead mt-18">Pide tu <a href="/accion-destacada/">consulta inicial</a>: te decimos qué tiene sentido para tu negocio.</p>
+                <p class="eyebrow">{html.escape(eyebrow)}</p>
+                <h2>{html.escape(headline)}</h2>
+                <p class="lead mt-18">{lead_html}</p>
             </div>
             <div class="lead-strip-inner">
-                <a class="button primary" href="/accion-destacada/">Solicitar consulta</a>
+                <a class="button primary" href="{html.escape(action_url, quote=True)}">{html.escape(button)}</a>
                 <span class="text-muted-lg mt-15">o escríbenos a <a href="mailto:{{{{contact_email}}}}" class="link-accent">{{{{contact_email}}}}</a> o por <a href="{{{{whatsapp_link}}}}" target="_blank" rel="noopener noreferrer" class="link-accent">WhatsApp</a>.</span>
             </div>
-        </section>"""
+        </section>'''
 
 def _index_jsonld(rel, title, description, label, last_mod, items):
     url = SITE_URL + rel
@@ -570,9 +595,15 @@ def render_home_recursos(collections):
         </section>"""
 
 def render_guias_index(guias):
-    """(front, content) del índice /guias/: tarjetas agrupadas por tema (orden de COLLECTION_TOPICS)."""
-    title = 'Guías para tu negocio'
-    description = ('Guías paso a paso para resolver dudas concretas de tu negocio. Sin trucos ni promesas.')
+    """Genera el índice de guías usando copy editorial configurado por cada sitio."""
+    cfg = SITE_CONFIG.get('generated_content', {}).get('guides_index', {})
+    title = str(cfg.get('title', 'Guías para tu negocio'))
+    description = str(cfg.get('description', 'Guías paso a paso para resolver dudas concretas de tu negocio. Sin trucos ni promesas.'))
+    heading = str(cfg.get('heading', 'Guías para resolver dudas de tu negocio'))
+    lead = str(cfg.get('lead', 'Explicaciones paso a paso para resolver una duda concreta. Puedes aplicarlas tú mismo; si prefieres que lo hagamos nosotros, cada guía te lleva al servicio que lo resuelve.'))
+    intro = str(cfg.get('intro', 'Cada guía cuenta qué hacer, en qué orden y qué no funciona. Ninguna promete resultados garantizados: eso depende de muchos factores. Llevan la fecha de su última revisión para que sepas si siguen vigentes.'))
+    extra_heading = str(cfg.get('extra_heading', 'Cómo sacarles partido'))
+    extra_paragraphs = cfg.get('extra_paragraphs', [])
     last_mod = max(p['updated'] for p in guias)
     sections = []
     n = 0
@@ -589,63 +620,74 @@ def render_guias_index(guias):
             </div>
         </section>""")
     ordered = [p for topic in COLLECTION_TOPICS for p in sorted((q for q in guias if q['topic'] == topic), key=lambda q: (q['published'], q['slug']))]
+    extra_section = ''
+    if extra_paragraphs:
+        paragraphs = '\n            '.join(f'<p>{html.escape(str(paragraph))}</p>' for paragraph in extra_paragraphs)
+        extra_section = f"""<section class="section page-width" aria-labelledby="guias-como">
+            <h2 id="guias-como">{html.escape(extra_heading)}</h2>
+            {paragraphs}
+        </section>"""
     content = f"""{_index_jsonld('/guias/', title, description, 'Guías', last_mod, ordered)}
 
 <main id="main">
         <section class="inner-hero page-width">
             {_breadcrumb_html('Guías')}
             <p class="eyebrow">Guías</p>
-            <h1>Guías para resolver dudas de tu negocio</h1>
-            <p class="lead">Explicaciones paso a paso para resolver una duda concreta. Puedes aplicarlas tú mismo; si prefieres que lo hagamos nosotros, cada guía te lleva al servicio que lo resuelve.</p>
-            <p class="mt-18">Cada guía cuenta qué hacer, en qué orden y qué no funciona. Ninguna promete resultados garantizados: eso depende de muchos factores. Llevan la fecha de su última revisión para que sepas si siguen vigentes.</p>
+            <h1>{html.escape(heading)}</h1>
+            <p class="lead">{lead}</p>
+            <p class="mt-18">{intro}</p>
+            {cfg.get('intro_extra_html', '')}
         </section>
 
 {chr(10).join(sections)}
 
-        <section class="section page-width" aria-labelledby="guias-como">
-            <h2 id="guias-como">Cómo sacarles partido</h2>
-            <p>Empieza por la guía que más se parezca a tu duda y sigue los pasos en el orden en que aparecen: están pensados para que cada uno apoye al siguiente. Si una guía menciona una herramienta o un ajuste que no tienes, no te preocupes: casi siempre hay una alternativa equivalente y la propia guía la indica.</p>
-            <p>Antes de aplicar nada, mira la fecha de la última revisión. Las plataformas cambian sus opciones con frecuencia y un consejo que sirvió hace dos años puede haber dejado de ser útil. Si tu negocio es distinto al del ejemplo, adapta los pasos en lugar de copiarlos al pie de la letra.</p>
-            <p>Y si prefieres no hacerlo tú, cada guía termina enlazando con el servicio que resuelve ese problema. También puedes <a href="/contacto/">escribirnos</a> con tu caso y te contamos con sinceridad si compensa que lo hagamos nosotros.</p>
-        </section>
-
+        {extra_section}
         {_lead_strip_html()}
     </main>"""
     front = {'title': title, 'description': description, 'canonical': 'auto', 'geo': 'true'}
     return front, content
 
 def render_blog_index(articulos, guias_exist):
-    """(front, content) del índice /blog/: cronológico inverso. Con 1-2 artículos sale noindex, follow."""
-    title = 'Artículos y novedades'
-    description = ('Artículos con fecha sobre temas relevantes para tu negocio: análisis y opinión, sin promesas.')
+    """Genera el índice del blog usando copy editorial configurado por cada sitio."""
+    cfg = SITE_CONFIG.get('generated_content', {}).get('blog_index', {})
+    title = str(cfg.get('title', 'Artículos y novedades'))
+    description = str(cfg.get('description', 'Artículos con fecha sobre temas relevantes para tu negocio: análisis y opinión, sin promesas.'))
+    heading = str(cfg.get('heading', 'Artículos y novedades'))
+    lead_template = str(cfg.get('lead', 'Artículos con fecha en los que analizamos cuestiones concretas para tu negocio. Son análisis y opinión con criterio; si lo que buscas son los pasos para hacer algo, {guias_txt}.'))
+    intro = str(cfg.get('intro', 'Los artículos llevan su fecha porque lo que cuentan puede quedarse viejo. Fíate de la de publicación, y ten en cuenta que las herramientas y plataformas cambian a menudo. Aquí no vas a encontrar notas de prensa ni promesas. Si algo de lo que leas no encaja con tu caso, escríbenos y lo miramos.'))
+    criteria_heading = str(cfg.get('criteria_heading', 'Qué vas a encontrar aquí'))
+    criteria_paragraphs = cfg.get('criteria_paragraphs', [])
     ordered = sorted(articulos, key=lambda p: (p['published'], p['updated'], p['slug']), reverse=True)
     last_mod = max(p['updated'] for p in articulos)
     cards = '\n                '.join(_card_html(p, 'Leer el artículo', True) for p in ordered)
     guias_txt = ('mira las <a href="/guias/">guías</a>' if guias_exist else 'mira las guías')
+    lead = lead_template.replace('{guias_txt}', guias_txt)
+    criteria_section = ''
+    if criteria_paragraphs:
+        paragraphs = '\n            '.join(f'<p>{html.escape(str(paragraph))}</p>' for paragraph in criteria_paragraphs)
+        criteria_section = f"""<section class="section page-width" aria-labelledby="blog-criterio">
+            <h2 id="blog-criterio">{html.escape(criteria_heading)}</h2>
+            {paragraphs}
+        </section>"""
     content = f"""{_index_jsonld('/blog/', title, description, 'Blog', last_mod, ordered)}
 
 <main id="main">
         <section class="inner-hero page-width">
             {_breadcrumb_html('Blog')}
             <p class="eyebrow">Blog</p>
-            <h1>Artículos y novedades</h1>
-            <p class="lead">Artículos con fecha en los que analizamos cuestiones concretas para tu negocio. Son análisis y opinión con criterio; si lo que buscas son los pasos para hacer algo, {guias_txt}.</p>
-            <p class="mt-18">Los artículos llevan su fecha porque lo que cuentan puede quedarse viejo. Fíate de la de publicación, y ten en cuenta que las herramientas y plataformas cambian a menudo. Aquí no vas a encontrar notas de prensa ni promesas. Si algo de lo que leas no encaja con tu caso, escríbenos y lo miramos.</p>
+            <h1>{html.escape(heading)}</h1>
+            <p class="lead">{lead}</p>
+            <p class="mt-18">{intro}</p>
         </section>
 
         <section class="section page-width" aria-labelledby="blog-lista">
-            <h2 id="blog-lista">Últimos artículos</h2>
+            <h2 id="blog-lista">{html.escape(str(cfg.get('list_heading', 'Últimos artículos')))}</h2>
             <div class="service-grid">
                 {cards}
             </div>
         </section>
 
-        <section class="section page-width" aria-labelledby="blog-criterio">
-            <h2 id="blog-criterio">Qué vas a encontrar aquí</h2>
-            <p>Cada artículo parte de una pregunta que nos hacen, o que nos hacemos, al trabajar con negocios como el tuyo, y la responde con ejemplos concretos y sin tecnicismos innecesarios. No publicamos con una periodicidad fija: preferimos escribir cuando hay algo útil que contar.</p>
-            <p>Si echas en falta algún tema, <a href="/contacto/">propónnoslo</a>: muchas de las piezas nacen de las dudas de quien nos escribe. Y si lo que necesitas es una solución y no una lectura, también puedes ver cómo trabajamos en la página de <a href="/servicios/">servicios</a>.</p>
-        </section>
-
+        {criteria_section}
         {_lead_strip_html()}
     </main>"""
     front = {'title': title, 'description': description, 'canonical': 'auto', 'geo': 'true'}
@@ -657,10 +699,7 @@ def render_blog_index(articulos, guias_exist):
 # --------------------------------------------------------------------------- sitemap y llms.txt generados
 
 # Orden histórico del sitemap (F3). Las páginas nuevas se añaden después: /guias/ + guías, /blog/ + artículos.
-SITEMAP_BASE_ORDER = [
-    '/', '/servicios/', '/servicios/servicio-generico/', '/precios/', '/sobre-nosotros/',
-    '/contacto/', '/accion-destacada/',
-]
+SITEMAP_BASE_ORDER = list(SITE_CONFIG.get('sitemap_base_order', ['/', '/servicios/', '/servicios/servicio-generico/', '/precios/', '/sobre-nosotros/', '/contacto/', '/accion-destacada/']))
 
 def page_date_modified(out_path, front):
     """lastmod de una página: dateModified del JSON-LD compilado (el más reciente de sus nodos) o `updated`."""
@@ -748,7 +787,7 @@ def print_report(success, errors, warnings, generated, total_bytes, out, minify,
     COL = 50
     LBL = 15
     W = 2 + LBL + 2 + COL  # interior width
-    BANNER = 'legible  •  Generador de webs estáticas'
+    BANNER = str(SITE_CONFIG.get('build_banner', SITE_CONFIG.get('site_name', 'Legible') + ' • Generador de webs estáticas'))
 
     def hr(): print('╠' + '═' * W + '╣')
     def row(label, value): print(f'║  {label:<{LBL}}: {str(value):<{COL}}║')
@@ -901,18 +940,22 @@ def build(out_dir=None, minify=None, no_validate=False):
     entity = json.loads(read_text(REPO / 'src' / 'data' / 'entity.json'))
     # Extraer valores de entity.json para placeholders globales
     business = next((n for n in entity if n.get('@type') == 'ProfessionalService'), {})
-    site_name = _unwrap_placeholder(business.get('name'), 'Tu Negocio')
+    site_name = _unwrap_placeholder(business.get('name'), str(SITE_CONFIG.get('site_name', '')))
     site_url = SITE_URL
-    contact_email = _unwrap_placeholder(business.get('email'), 'contacto@tu-negocio.com')
-    whatsapp_link = _unwrap_placeholder(business.get('contactPoint', {}).get('telephone'), '+34600000000')
-    if whatsapp_link.startswith('+'):
-        whatsapp_link = 'https://wa.me/' + whatsapp_link[1:] + '?text=Hola%2C%20me%20interesa%20sus%20servicios.%20Mi%20negocio%20es%3A'
-    elif not whatsapp_link.startswith('http'):
-        whatsapp_link = 'https://wa.me/' + whatsapp_link + '?text=Hola%2C%20me%20interesa%20sus%20servicios.%20Mi%20negocio%20es%3A'
+    contact_email = _unwrap_placeholder(business.get('email'), str(SITE_CONFIG.get('contact_email', '')))
+    phone_value = _unwrap_placeholder(business.get('contactPoint', {}).get('telephone'), str(SITE_CONFIG.get('phone_e164', '')))
+    whatsapp_message = str(SITE_CONFIG.get('whatsapp_message', ''))
+    whatsapp_link = phone_value if phone_value.startswith('https://') else ''
+    if phone_value and not phone_value.startswith('https://'):
+        phone_digits = re.sub(r'\D', '', phone_value)
+        if phone_digits:
+            whatsapp_link = 'https://wa.me/' + phone_digits
+            if whatsapp_message:
+                whatsapp_link += '?text=' + quote(whatsapp_message, safe='')
     # Valores adicionales para footer
     address = business.get('address', {})
-    city = _unwrap_placeholder(address.get('addressLocality'), 'Tu Ciudad')
-    region = _unwrap_placeholder(address.get('addressRegion'), 'Tu Provincia')
+    city = _unwrap_placeholder(address.get('addressLocality'), str(SITE_CONFIG.get('city', '')))
+    region = _unwrap_placeholder(address.get('addressRegion'), str(SITE_CONFIG.get('region', '')))
     location = f"{city}, {region}"
     knows_about = business.get('knowsAbout', [])
     service_category_1 = _unwrap_placeholder(knows_about[0] if len(knows_about) > 0 else '{{service_category_1}}', 'Servicio 1')
@@ -943,7 +986,8 @@ def build(out_dir=None, minify=None, no_validate=False):
         '{{site_url}}': site_url,
         '{{contact_email}}': contact_email,
         '{{whatsapp_link}}': whatsapp_link,
-        '{{phone_e164}}': _unwrap_placeholder(business.get('contactPoint', {}).get('telephone'), '+34600000000'),
+        '{{phone_e164}}': phone_value,
+        '{{phone_digits}}': re.sub(r'\D', '', phone_value) if phone_value and not phone_value.startswith('https://') else '',
         '{{city}}': city,
         '{{region}}': region,
         '{{location}}': location,
@@ -957,7 +1001,7 @@ def build(out_dir=None, minify=None, no_validate=False):
         '{{service_category_4}}': _unwrap_placeholder(knows_about[3] if len(knows_about) > 3 else '{{service_category_4}}', 'Servicio 4'),
         '{{service_category_5}}': _unwrap_placeholder(knows_about[4] if len(knows_about) > 4 else '{{service_category_5}}', 'Servicio 5'),
         '{{service_category_6}}': _unwrap_placeholder(knows_about[5] if len(knows_about) > 5 else '{{service_category_6}}', 'Servicio 6'),
-        '{{price_range}}': _unwrap_placeholder(business.get('priceRange'), '0 € - 999 €/mes'),
+        '{{price_range}}': _unwrap_placeholder(business.get('priceRange'), str(SITE_CONFIG.get('price_range', ''))),
         '{{featured_action_name}}': featured_action_name,
         '{{home_recursos}}': render_home_recursos(collections),
         '{{service_1_name}}': _unwrap_placeholder(offers[0].get('name') if len(offers) > 0 else '{{service_1_name}}', 'Servicio 1'),
@@ -977,13 +1021,25 @@ def build(out_dir=None, minify=None, no_validate=False):
         '{{service_5_price_number}}': _unwrap_placeholder(str(offers[4].get('price')) if len(offers) > 4 else '{{service_5_price_number}}', '290'),
     }
     # Textos del negocio: src/data/textos.json (clave sin llaves -> texto). Lo calculado de entity.json gana.
+    textos_path = REPO / 'src' / 'data' / 'textos.json'
     try:
-        textos = json.loads(read_text(REPO / 'src' / 'data' / 'textos.json'))
+        textos = json.loads(read_text(textos_path)) if textos_path.exists() else {}
     except (OSError, ValueError) as e:
         sys.exit(f'✗ BUILD FAILED: no se pudo leer src/data/textos.json: {e}')
-    replacements = {'{{' + k + '}}': v for k, v in textos.items()}
+    if not isinstance(textos, dict):
+        sys.exit('✗ BUILD FAILED: src/data/textos.json debe contener un objeto JSON')
+    config_text = SITE_CONFIG.get('text', {})
+    if isinstance(config_text, dict):
+        textos = {**config_text, **textos}
+    replacements = {'{{' + k + '}}': str(v) for k, v in textos.items()}
+    if SITE_CONFIG.get('geo_region_code'):
+        derived['{{geo_region}}'] = str(SITE_CONFIG['geo_region_code'])
     replacements.update(derived)
-    entity_nodes =[_replace_placeholders_in_json(node, replacements) for node in entity]
+    # Resolve all configured values in shared layout/partials as well as page bodies.
+    layout = _replace_placeholders_in_json(layout, replacements)
+    header = _replace_placeholders_in_json(header, replacements)
+    footer = _replace_placeholders_in_json(footer, replacements)
+    entity_nodes = [_replace_placeholders_in_json(node, replacements) for node in entity]
 
     # Marcadores condicionales del Blog (antes de menu_hrefs, para que el estado activo funcione)
     nav_blog = '<li><a href="/blog/">Blog</a></li>' if blog_visible(collections['blog']) else ''

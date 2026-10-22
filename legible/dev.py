@@ -6,16 +6,23 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from urllib.parse import unquote, urlsplit
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 
 REPO = Path(__file__).resolve().parent.parent
 DEV_DIST = REPO / '.dev-dist'
 
 class DevHandler(SimpleHTTPRequestHandler):
+    """Sirve exclusivamente desde .dev-dist, independientemente del cwd."""
     def translate_path(self, path):
-        path = super().translate_path(path)
-        rel = os.path.relpath(path, REPO)
-        return str(DEV_DIST / rel)
+        raw_path = unquote(urlsplit(path).path)
+        parts = [part for part in raw_path.split('/') if part not in ('', '.', '..')]
+        candidate = (DEV_DIST / Path(*parts)).resolve()
+        try:
+            candidate.relative_to(DEV_DIST.resolve())
+        except ValueError:
+            return str(DEV_DIST / '__blocked_path__')
+        return str(candidate)
 
     def do_GET(self):
         path = self.translate_path(self.path)
@@ -69,12 +76,14 @@ def watch_src(callback, interval=0.5):
         time.sleep(interval)
 
 def main():
-    parser = argparse.ArgumentParser(description='legible: servidor local con recompilado automático')
+    parser = argparse.ArgumentParser(description='Development server for the configured static site')
     parser.add_argument('--port', type=int, default=3001)
     parser.add_argument('--minify', action='store_true')
     args = parser.parse_args()
 
-    server = HTTPServer(('localhost', args.port), DevHandler)
+    class ReusableHTTPServer(HTTPServer):
+        allow_reuse_address = True
+    server = ReusableHTTPServer(('localhost', args.port), DevHandler)
     print(f'Serving .dev-dist on http://localhost:{args.port}')
 
     last_error = None

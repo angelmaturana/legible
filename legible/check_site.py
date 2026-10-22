@@ -19,7 +19,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from build import SITE_URL, get_git_info
+from build import SITE_URL, SITE_CONFIG, get_git_info
 
 REPO = Path(__file__).resolve().parent.parent
 OUT_DEFAULT = REPO / 'dist'
@@ -636,7 +636,7 @@ def print_check_report(success, errors, warnings, n_pages, check_time, git_branc
     COL = 50
     LBL = 15
     W = 2 + LBL + 2 + COL  # interior width
-    BANNER = 'legible  •  Validador del sitio'
+    BANNER = str(SITE_CONFIG.get('check_banner', SITE_CONFIG.get('site_name', 'Legible') + ' • Validador del sitio'))
 
     def hr(): print('╠' + '═' * W + '╣')
     def row(label, value): print(f'║  {label:<{LBL}}: {str(value):<{COL}}║')
