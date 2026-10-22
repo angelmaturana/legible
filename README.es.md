@@ -337,3 +337,19 @@ Publicado bajo la [licencia MIT](LICENSE).
 - GitHub: [angelmaturana](https://github.com/angelmaturana)
 - LinkedIn: [angelmaturana](https://linkedin.com/in/angelmaturana)
 - Web: [seovaldemoro.com](https://seovaldemoro.com)
+
+
+
+<p align="center">
+  <strong>Built for developers who respect the platform.</strong><br>
+  <em>No frameworks. No bloat. Just HTML that ranks.</em>
+</p>
+
+<p align="center">
+  <a href="https://github.com/your-org/seo-web-generic/stargazers">
+    <img src="https://img.shields.io/github/stars/your-org/seo-web-generic?style=social" alt="Stars">
+  </a>
+  <a href="https://github.com/your-org/seo-web-generic/fork">
+    <img src="https://img.shields.io/github/forks/your-org/seo-web-generic?style=social" alt="Forks">
+  </a>
+</p>
