@@ -208,7 +208,6 @@ flowchart LR
 | `legible/dev.py` | Local development server and rebuild workflow |
 | `legible/run_all.py` | Orchestrates tests, build/validation and optional local server |
 | `tests/test_legible.py` | Regression tests for the build, minifiers, collections, URL handling, placeholders, output-folder safety and the `build.py` command line |
-| `tests/test_dev_server.py` | Tests for the development server (`legible/dev.py`) |
 | `src/layout.html` | Shared document layout and metadata |
 | `src/pages/` | Page templates and content |
 | `src/data/site.json` | Main project configuration: domain, name, contact, location, generated index texts, collection topics and sitemap order |
@@ -242,7 +241,7 @@ Run the tests from the repository root:
 python3 -m unittest discover tests
 ```
 
-The suite lives in two files. `tests/test_legible.py` covers a build/validation smoke test, CSS and HTML minification, guide/blog front matter, URL handling, placeholder handling, geo metadata, contextual links, output-folder safety and the `build.py` command line. `tests/test_dev_server.py` covers the development server. It is written to work in any project built on `legible`: it reads the domain, city and topics from `src/data/site.json`, and the few tests that need an empty project (no guides or blog) are skipped automatically once a project has its own content. Add regression tests when changing generator or validator behavior.
+The whole suite lives in a single file, `tests/test_legible.py`. It covers a build/validation smoke test, CSS and HTML minification, guide/blog front matter, URL handling, placeholder handling, geo metadata, contextual links, output-folder safety and the `build.py` command line. The local development server (`legible/dev.py`) has no automated tests; check it by hand with `python3 legible/dev.py`. The suite is written to work in any project built on `legible`: it reads the domain, city and topics from `src/data/site.json`, and the few tests that need an empty project (no guides or blog) are skipped automatically once a project has its own content. Add regression tests when changing generator or validator behavior.
 
 The scripts in `legible/` do not leave `__pycache__/` behind. Running `python3 -m unittest discover tests` by hand does create `tests/__pycache__/`; avoid it with `python3 -B -m unittest discover tests`, `PYTHONDONTWRITEBYTECODE=1` or `python3 legible/run_all.py` (`.gitignore` excludes it anyway).
 

@@ -208,7 +208,6 @@ flowchart LR
 | `legible/dev.py` | Servidor local y flujo de recompilación |
 | `legible/run_all.py` | Orquesta pruebas, build/validación y servidor local opcional |
 | `tests/test_legible.py` | Pruebas de regresión del build, minificadores, colecciones, URLs, marcadores, seguridad de la carpeta de salida y línea de comandos de `build.py` |
-| `tests/test_dev_server.py` | Pruebas del servidor de desarrollo (`legible/dev.py`) |
 | `src/layout.html` | Estructura común del documento y metadatos |
 | `src/pages/` | Plantillas y contenido de páginas |
 | `src/data/site.json` | Configuración principal del proyecto: dominio, nombre, contacto, ubicación, textos de los índices generados, temas de colecciones y orden del sitemap |
@@ -242,7 +241,7 @@ Ejecuta las pruebas desde la raíz del repositorio:
 python3 -m unittest discover tests
 ```
 
-La batería está en dos archivos. `tests/test_legible.py` cubre una compilación y validación de humo, minificación CSS/HTML, *front matter* de guías y blog, gestión de URLs y marcadores, metadatos geográficos, enlaces contextuales, seguridad de la carpeta de salida y la línea de comandos de `build.py`. `tests/test_dev_server.py` cubre el servidor de desarrollo. Está escrita para valer en cualquier proyecto basado en `legible`: lee el dominio, la ciudad y los temas de `src/data/site.json`, y las pocas pruebas que exigen un proyecto vacío (sin guías ni blog) se saltan solas cuando el proyecto ya tiene contenido propio. Añade pruebas de regresión cuando cambies el comportamiento del generador o del validador.
+Toda la batería está en un único archivo, `tests/test_legible.py`. Cubre una compilación y validación de humo, minificación CSS/HTML, *front matter* de guías y blog, gestión de URLs y marcadores, metadatos geográficos, enlaces contextuales, seguridad de la carpeta de salida y la línea de comandos de `build.py`. El servidor de desarrollo local (`legible/dev.py`) no tiene pruebas automáticas; compruébalo a mano con `python3 legible/dev.py`. La batería está escrita para valer en cualquier proyecto basado en `legible`: lee el dominio, la ciudad y los temas de `src/data/site.json`, y las pocas pruebas que exigen un proyecto vacío (sin guías ni blog) se saltan solas cuando el proyecto ya tiene contenido propio. Añade pruebas de regresión cuando cambies el comportamiento del generador o del validador.
 
 Los scripts de `legible/` no dejan `__pycache__/`. Ejecutar a mano `python3 -m unittest discover tests` sí crea `tests/__pycache__/`; evítalo con `python3 -B -m unittest discover tests`, con `PYTHONDONTWRITEBYTECODE=1` o con `python3 legible/run_all.py` (`.gitignore` ya lo excluye).
 
