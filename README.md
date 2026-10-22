@@ -345,10 +345,10 @@ Released under the [MIT License](LICENSE).
 </p>
 
 <p align="center">
-  <a href="https://github.com/your-org/seo-web-generic/stargazers">
-    <img src="https://img.shields.io/github/stars/your-org/seo-web-generic?style=social" alt="Stars">
+  <a href="https://github.com/angelmaturana/legible/stargazers">
+    <img src="https://img.shields.io/github/stars/angelmaturana/legible?style=social" alt="Stars">
   </a>
-  <a href="https://github.com/your-org/seo-web-generic/fork">
-    <img src="https://img.shields.io/github/forks/your-org/seo-web-generic?style=social" alt="Forks">
+  <a href="https://github.com/angelmaturana/legible/fork">
+    <img src="https://img.shields.io/github/forks/angelmaturana/legible?style=social" alt="Forks">
   </a>
 </p>
