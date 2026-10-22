@@ -244,6 +244,8 @@ python3 -m unittest discover tests
 
 The suite lives in two files. `tests/test_legible.py` covers a build/validation smoke test, CSS and HTML minification, guide/blog front matter, URL handling, placeholder handling, geo metadata, contextual links, output-folder safety and the `build.py` command line. `tests/test_dev_server.py` covers the development server. It is written to work in any project built on `legible`: it reads the domain, city and topics from `src/data/site.json`, and the few tests that need an empty project (no guides or blog) are skipped automatically once a project has its own content. Add regression tests when changing generator or validator behavior.
 
+The scripts in `legible/` do not leave `__pycache__/` behind. Running `python3 -m unittest discover tests` by hand does create `tests/__pycache__/`; avoid it with `python3 -B -m unittest discover tests`, `PYTHONDONTWRITEBYTECODE=1` or `python3 legible/run_all.py` (`.gitignore` excludes it anyway).
+
 Before opening a pull request, run:
 
 ```bash

@@ -19,6 +19,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import urlsplit
 
+sys.dont_write_bytecode = True  # importar build no debe dejar legible/__pycache__/
 from build import SITE_URL, SITE_CONFIG, get_git_info
 
 REPO = Path(__file__).resolve().parent.parent

@@ -34,7 +34,7 @@ def main():
     args = ap.parse_args()
 
     if not args.skip_tests:
-        paso('1/3 Pruebas', [sys.executable, '-m', 'unittest', 'discover', 'tests'])
+        paso('1/3 Pruebas', [sys.executable, '-B', '-m', 'unittest', 'discover', 'tests'])
 
     bash = shutil.which('bash')
     if not bash:

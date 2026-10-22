@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os, re, json, html, shutil, sys, subprocess
+sys.dont_write_bytecode = True  # el import tardío de check_site no debe dejar legible/__pycache__/
 from pathlib import Path
 from datetime import datetime
 from urllib.parse import quote

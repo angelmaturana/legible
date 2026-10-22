@@ -25,6 +25,7 @@ LEGIBLE = REPO / 'legible'
 
 # build.py lee SITE_URL al importarse: que el entorno de quien ejecuta no influya en las pruebas.
 os.environ.pop('SITE_URL', None)
+sys.dont_write_bytecode = True  # las pruebas no deben dejar legible/__pycache__/
 sys.path.insert(0, str(LEGIBLE))
 import build  # noqa: E402
 

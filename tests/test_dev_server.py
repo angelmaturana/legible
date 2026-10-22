@@ -7,6 +7,7 @@ import unittest
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
+sys.dont_write_bytecode = True  # las pruebas no deben dejar legible/__pycache__/
 sys.path.insert(0, str(REPO / 'legible'))
 import dev  # noqa: E402
 
