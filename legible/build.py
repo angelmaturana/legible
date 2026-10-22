@@ -398,7 +398,6 @@ COLLECTION_TOPICS = list(SITE_CONFIG.get('collection_topics', ['Tema 1', 'Tema 2
 BLOG_MIN_VISIBLE = 3
 MESES_ES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto',
             'septiembre', 'octubre', 'noviembre', 'diciembre']
-WHATSAPP_LINK = 'https://wa.me/TU-TELEFONO-E164?text=Hola%2C%20me%20interesa%20sus%20servicios.%20Mi%20negocio%20es%3A'
 
 class CollectionError(Exception):
     """Front matter de colección incompleto o inválido (el build se detiene con el detalle completo)."""
@@ -1152,19 +1151,25 @@ def build(out_dir=None, minify=None, no_validate=False):
         raise SystemExit(1)
 
 if __name__ == '__main__':
-    out = None
-    minify = None
-    no_validate = False
+    USO = 'uso: build.py [--out CARPETA] [--minify true|false] [--no-validate]'
+    out, minify, no_validate = None, False, False
     args = sys.argv[1:]
     i = 0
     while i < len(args):
-        if args[i] == '--out':
-            i += 1
-            out = args[i]
-        elif args[i] == '--minify':
-            i += 1
-            minify = args[i].lower() != 'false'
-        elif args[i] == '--no-validate':
+        arg = args[i]
+        if arg == '--no-validate':
             no_validate = True
+        elif arg in ('--out', '--minify'):
+            i += 1
+            if i >= len(args):
+                sys.exit(f'✗ falta el valor de {arg}\n{USO}')
+            if arg == '--out':
+                out = args[i]
+            elif args[i].lower() in ('true', 'false'):
+                minify = args[i].lower() == 'true'
+            else:
+                sys.exit(f'✗ --minify admite true o false (recibido: {args[i]!r})\n{USO}')
+        else:
+            sys.exit(f'✗ argumento desconocido: {arg}\n{USO}')
         i += 1
     build(out_dir=out, minify=minify, no_validate=no_validate)

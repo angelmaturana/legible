@@ -28,6 +28,17 @@ os.environ.pop('SITE_URL', None)
 sys.path.insert(0, str(LEGIBLE))
 import build  # noqa: E402
 
+SITE = json.loads((REPO / 'src' / 'data' / 'site.json').read_text(encoding='utf-8'))
+TEMA_1 = build.COLLECTION_TOPICS[0]
+_SERVICIOS = sorted(p.parent.name for p in (REPO / 'src' / 'pages' / 'servicios').glob('*/index.html'))
+SERVICIO_SLUG = _SERVICIOS[0]                  # un servicio que existe en este proyecto
+SERVICIO = f'/servicios/{SERVICIO_SLUG}/'
+SIN_COLECCIONES = not any((REPO / 'src' / 'pages' / c).exists() for c in ('guias', 'blog'))
+ES_PLANTILLA = SITE.get('site_url', '').startswith('https://TU-DOMINIO')
+SOLO_SIN_COLECCIONES = unittest.skipUnless(
+    SIN_COLECCIONES, 'parte de un proyecto sin guias/ ni blog/ (la plantilla); este ya tiene contenido propio')
+SOLO_PLANTILLA = unittest.skipUnless(ES_PLANTILLA, 'comprueba los datos de ejemplo de la plantilla')
+
 
 # --------------------------------------------------------------------------- utilidades
 
@@ -87,11 +98,11 @@ def pieza_html(coll, slug, **over):
         'robots': 'index, follow',
         'canonical': 'auto',
         'type': 'guia' if coll == 'guias' else 'articulo',
-        'topic': 'Tema 1',
+        'topic': TEMA_1,
         'published': '2026-01-10',
         'updated': '2026-02-15',
         'summary': 'Resumen breve de la pieza de prueba.',
-        'service': '/servicios/servicio-generico/',
+        'service': SERVICIO,
     }
     front.update(over)
     fm = '\n'.join(f'{k}: {v}' for k, v in front.items() if v is not None)
@@ -115,7 +126,7 @@ def pieza_html(coll, slug, **over):
         <h2>Primeros pasos</h2>
         <p>{lorem(130)}</p>
         <p>{lorem(80)} Si quieres que lo hagamos nosotros, mira el
-        <a href="/servicios/servicio-generico/">servicio relacionado</a>.</p>
+        <a href="{SERVICIO}">servicio relacionado</a>.</p>
     </section>
 </main>
 """
@@ -392,11 +403,8 @@ class TestMinifyHtml(unittest.TestCase):
         self.assertEqual(self.m('<p>a</p> <span>b</span>'), '<p>a</p><span>b</span>')
 
     def test_precios_conserva_el_espacio_del_precio(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            out = Path(tmp) / 'salida'
-            self.assertEqual(run_build(REPO, out, minify=True).returncode, 0)
-            html = (out / 'precios' / 'index.html').read_text(encoding='utf-8')
-            self.assertIn('</strong> <small>', html)
+        html = self.m('<p><strong>99 €</strong> <small>/mes</small></p>')
+        self.assertIn('</strong> <small>', html)
 
     def test_espacio_entre_bloques_se_elimina(self):
         self.assertEqual(self.m('<div>\n  <p>a</p>\n  <p>b</p>\n</div>'), '<div><p>a</p><p>b</p></div>')
@@ -457,7 +465,7 @@ class TestColeccionesDirectas(unittest.TestCase):
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
         self.pages = Path(self._tmp.name)
-        servicio = self.pages / 'servicios' / 'servicio-generico'
+        servicio = self.pages / 'servicios' / SERVICIO_SLUG
         servicio.mkdir(parents=True)
         (servicio / 'index.html').write_text('---\ntitle: S\ndescription: S\n---\n<main></main>', encoding='utf-8')
 
@@ -480,7 +488,7 @@ class TestColeccionesDirectas(unittest.TestCase):
         piezas = build.load_collections(self.pages)
         self.assertEqual([p['rel'] for p in piezas['guias']], ['/guias/mi-guia/'])
         self.assertEqual([p['rel'] for p in piezas['blog']], ['/blog/mi-articulo/'])
-        self.assertEqual(piezas['guias'][0]['topic'], 'Tema 1')
+        self.assertEqual(piezas['guias'][0]['topic'], TEMA_1)
 
     def test_slug_con_tildes_o_mayusculas(self):
         self.add('guias', 'guía-útil')
@@ -494,7 +502,7 @@ class TestColeccionesDirectas(unittest.TestCase):
         self.add('guias', 'a', topic='Inventado')
         p = self.problemas()
         self.assertIn('topic "Inventado" no está en la taxonomía', p)
-        self.assertIn('Tema 1', p, 'el mensaje debe listar los temas válidos')
+        self.assertIn(TEMA_1, p, 'el mensaje debe listar los temas válidos')
 
     def test_related_con_mas_de_dos(self):
         for s in ('a', 'b', 'c', 'd'):
@@ -564,6 +572,7 @@ class TestColeccionesDirectas(unittest.TestCase):
         self.assertTrue(build.blog_visible(arts(3)))
 
 
+@SOLO_SIN_COLECCIONES
 class TestColeccionesEnElBuild(ProyectoTemporal):
     """Compilación completa con piezas: aparición de índices, menú, sitemap y errores del build."""
 
@@ -675,8 +684,8 @@ class TestDominio(ProyectoTemporal):
     def test_por_defecto_usa_el_dominio_de_ejemplo(self):
         self.build_ok()
         todo = read_all(self.out)
-        self.assertIn('https://TU-DOMINIO.com/', todo['index.html'])
-        self.assertIn('https://TU-DOMINIO.com/sitemap.xml', todo['robots.txt'])
+        self.assertIn(SITE['site_url'].rstrip('/') + '/', todo['index.html'])
+        self.assertIn(SITE['site_url'].rstrip('/') + '/sitemap.xml', todo['robots.txt'])
 
     def test_site_url_cambia_el_dominio_en_toda_la_salida(self):
         self.build_ok(site_url='https://ejemplo.es')
@@ -769,12 +778,17 @@ class TestMarcadores(ProyectoTemporal):
 class TestGeo(ProyectoTemporal):
     def test_geo_sale_de_los_datos_del_negocio_no_de_un_valor_fijo(self):
         self.build_ok()
-        for ruta, contenido in read_all(self.out).items():
-            self.assertNotIn('Valdemoro', contenido, ruta)
         home = (self.out / 'index.html').read_text(encoding='utf-8')
-        self.assertIn('name="geo.placename" content="Tu Ciudad"', home.replace('\n', ' '))
-        self.assertNotIn('name="geo.region"', home, 'no debe inventarse una región en el proyecto genérico')
+        self.assertIn(f'name="geo.placename" content="{SITE["city"]}"', home.replace('\n', ' '))
+        if SITE.get('geo_region_code'):
+            self.assertIn(f'name="geo.region" content="{SITE["geo_region_code"]}"', home)
+        else:
+            self.assertNotIn('name="geo.region"', home, 'no debe inventarse una región si no hay dato')
+        if ES_PLANTILLA:
+            for ruta, contenido in read_all(self.out).items():
+                self.assertNotIn('Valdemoro', contenido, ruta)
 
+    @SOLO_PLANTILLA
     def test_geo_con_ciudad_y_region_propias(self):
         entity = self.project / 'src' / 'data' / 'entity.json'
         entity.write_text(entity.read_text(encoding='utf-8').replace('"{{city}}"', '"Sevilla"'), encoding='utf-8')
@@ -794,6 +808,53 @@ class TestGeo(ProyectoTemporal):
 
     def test_geo_escapa_los_valores(self):
         self.assertIn('content="A &amp; B"', build.render_geo(True, 'A & B', 'ES-MD'))
+
+# --------------------------------------------------------------------------- seguridad de la carpeta de salida y CLI
+
+class TestSalidaSegura(unittest.TestCase):
+    def test_rechaza_la_raiz_y_las_carpetas_protegidas(self):
+        for path in (REPO, REPO / 'src', REPO / 'legible', REPO / 'src' / 'nested-output'):
+            with self.subTest(path=path), self.assertRaises(SystemExit):
+                build.check_out_dir(path)
+
+    def test_rechaza_una_carpeta_que_contiene_el_proyecto(self):
+        with self.assertRaises(SystemExit):
+            build.check_out_dir(REPO.parent)
+
+    def test_acepta_una_carpeta_temporal(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            build.check_out_dir(Path(tmp) / 'salida')
+
+    def test_un_intento_rechazado_no_borra_archivos_del_repositorio(self):
+        marcador = REPO / 'src' / 'layout.html'
+        antes = marcador.read_bytes()
+        with self.assertRaises(SystemExit):
+            build.check_out_dir(REPO)
+        self.assertEqual(marcador.read_bytes(), antes)
+
+
+class TestLineaDeComandos(unittest.TestCase):
+    def build_py(self, *args):
+        return subprocess.run([sys.executable, str(LEGIBLE / 'build.py'), *args],
+                              capture_output=True, text=True, cwd=REPO)
+
+    def test_argumento_desconocido_falla_sin_traceback(self):
+        r = self.build_py('--bogus')
+        self.assertNotEqual(r.returncode, 0)
+        self.assertNotIn('Traceback', r.stderr)
+
+    def test_flags_sin_valor_o_con_valor_invalido_fallan_sin_traceback(self):
+        for args in (('--minify',), ('--out',), ('--minify', 'quizas')):
+            with self.subTest(args=args):
+                r = self.build_py(*args)
+                self.assertNotEqual(r.returncode, 0)
+                self.assertNotIn('Traceback', r.stderr)
+
+    def test_uso_correcto_compila(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            r = self.build_py('--minify', 'true', '--out', str(Path(tmp) / 'o'), '--no-validate')
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertTrue((Path(tmp) / 'o' / 'index.html').is_file())
 
 
 if __name__ == '__main__':

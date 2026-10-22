@@ -1,5 +1,13 @@
+# Salidas generadas por el build
 dist/
 .dev-dist/
+
+# Python
 __pycache__/
-server.py
-*.zip
+*.pyc
+
+# Sistema / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

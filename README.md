@@ -110,9 +110,11 @@ The development server is available at `http://localhost:3001` by default and re
 
 ## Configure a site
 
+The reusable engine lives in `legible/`. Project-specific values (domain, name, contact details, location and the texts of the generated index pages) are defined in `src/data/site.json`, the main configuration file, together with `src/data/entity.json`; editorial copy stays under `src/`.
+
 ### 1. Set the canonical site URL
 
-Pass the production URL through `SITE_URL`:
+Set `site_url` in `src/data/site.json` to the production HTTPS origin. The `SITE_URL` environment variable overrides it for a single build (CI, previews, test builds) without touching any source file:
 
 ```bash
 SITE_URL=https://example.com ./legible/build.sh
@@ -122,12 +124,15 @@ Use the final HTTPS origin for the site. The value is used by the generator and 
 
 ### 2. Edit business data and copy
 
+- `src/data/site.json` — main project configuration: `site_url`, `site_name`, contact details (`contact_email`, `phone_e164`, `whatsapp_message`), location (`city`, `region`, `geo_enabled`, `geo_region_code`), `generated_content` (texts of the guide/blog index pages and the lead strip), `collection_topics` (valid topics for guides and blog entries) and `sitemap_base_order`.
 - `src/data/entity.json` — shared business identity and service information.
 - `src/data/textos.json` — default reusable text and configuration values.
 - `src/pages/` — page content and front matter.
 - `src/partials/` — shared header and footer.
 - `src/css/site.css` — site styling.
 - `src/static/` — static assets and supporting files.
+
+CSS hooks: `band-cta` and `footer-brand` are semantic class names used in the HTML that intentionally have no CSS rules of their own; `toc` is defined in `site.css` but is not used by any page in the template.
 
 Replace all sample details, placeholder images, and generic copy before launch. Ensure prices, service areas, contact information, claims, and offers reflect the real business.
 
@@ -149,7 +154,7 @@ The default strict mode treats warnings as build failures. This is deliberate: w
 
 | Variable | Default | Effect |
 | --- | --- | --- |
-| `SITE_URL` | `https://TU-DOMINIO.com` | Base HTTPS URL used for canonical URLs and generated site references |
+| `SITE_URL` | `site_url` from `src/data/site.json` (`https://TU-DOMINIO.com` in the template) | Overrides `site_url`: base HTTPS URL used for canonical URLs and generated site references |
 | `CSS_MINIFY` | `TRUE` | Set to `FALSE` to leave generated HTML/CSS unminified where supported, for debugging |
 | `CHECK_STRICT` | `TRUE` | Set to `FALSE` so warnings do not fail validation; errors still fail |
 
@@ -188,7 +193,7 @@ These checks are project-specific guardrails, not a substitute for testing in br
 
 ```mermaid
 flowchart LR
-    A["src/<br/>HTML · entity.json · textos.json"] --> B["legible/build.py<br/>templates · metadata · JSON-LD"]
+    A["src/<br/>HTML · site.json · entity.json · textos.json"] --> B["legible/build.py<br/>templates · metadata · JSON-LD"]
     B --> C["dist/<br/>static site output"]
     C --> D{"legible/check_site.py<br/>--strict"}
     D -- valid --> E["Deploy dist/ to a static host"]
@@ -202,10 +207,12 @@ flowchart LR
 | `legible/build.sh` | Build followed by validation |
 | `legible/dev.py` | Local development server and rebuild workflow |
 | `legible/run_all.py` | Orchestrates tests, build/validation and optional local server |
-| `tests/test_legible.py` | Regression tests for the build, minifiers, collections, URL handling and placeholders |
+| `tests/test_legible.py` | Regression tests for the build, minifiers, collections, URL handling, placeholders, output-folder safety and the `build.py` command line |
+| `tests/test_dev_server.py` | Tests for the development server (`legible/dev.py`) |
 | `src/layout.html` | Shared document layout and metadata |
 | `src/pages/` | Page templates and content |
-| `src/data/` | Shared business data and default text |
+| `src/data/site.json` | Main project configuration: domain, name, contact, location, generated index texts, collection topics and sitemap order |
+| `src/data/` | Shared business data (`entity.json`) and default text (`textos.json`) |
 | `src/partials/` | Shared page fragments |
 | `src/css/site.css` | Stylesheet |
 | `src/static/` | Static assets and supporting files |
@@ -235,7 +242,7 @@ Run the tests from the repository root:
 python3 -m unittest discover tests
 ```
 
-The current suite covers a build/validation smoke test, CSS and HTML minification, guide/blog front matter, URL handling, placeholder handling, geo metadata and contextual links. Add regression tests when changing generator or validator behavior.
+The suite lives in two files. `tests/test_legible.py` covers a build/validation smoke test, CSS and HTML minification, guide/blog front matter, URL handling, placeholder handling, geo metadata, contextual links, output-folder safety and the `build.py` command line. `tests/test_dev_server.py` covers the development server. It is written to work in any project built on `legible`: it reads the domain, city and topics from `src/data/site.json`, and the few tests that need an empty project (no guides or blog) are skipped automatically once a project has its own content. Add regression tests when changing generator or validator behavior.
 
 Before opening a pull request, run:
 
@@ -352,6 +359,3 @@ Released under the [MIT License](LICENSE).
     <img src="https://img.shields.io/github/forks/angelmaturana/legible?style=social" alt="Forks">
   </a>
 </p>
-## Configuración del sitio
-
-El motor reutilizable vive en `legible/`. Los valores específicos del proyecto (dominio, nombre, contacto, ubicación y textos de configuración) se definen en `src/data/site.json` y `src/data/entity.json`; los textos editoriales permanecen en `src/`. `SITE_URL` puede sobrescribir `site_url` en compilaciones de prueba.

@@ -24,27 +24,42 @@ class DevHandler(SimpleHTTPRequestHandler):
             return str(DEV_DIST / '__blocked_path__')
         return str(candidate)
 
-    def do_GET(self):
+    def _prepare(self):
+        """Resuelve redirecciones, índices y 404. Devuelve True si ya ha respondido por su cuenta."""
+        parts = urlsplit(self.path)
         path = self.translate_path(self.path)
         if os.path.isdir(path):
-            if not self.path.endswith('/'):
+            if not parts.path.endswith('/'):
+                location = parts.path + '/' + (f'?{parts.query}' if parts.query else '')
                 self.send_response(301)
-                self.send_header('Location', self.path + '/')
+                self.send_header('Location', location)
+                self.send_header('Content-Length', '0')
                 self.end_headers()
-                return
-            index = os.path.join(path, 'index.html')
-            if os.path.exists(index):
-                self.path = self.path + '/index.html'
-                return super().do_GET()
-        if not os.path.exists(path):
+                return True
+            if os.path.exists(os.path.join(path, 'index.html')):
+                # Se reescribe solo la ruta (parts.path ya termina en "/"); concatenar otra "/" daria
+                # "//index.html", que urlsplit interpreta como un host y provocaba un 301 a http://index.html/.
+                self.path = parts.path + 'index.html'
+        elif not os.path.exists(path):
             notfound = DEV_DIST / '404.html'
             if notfound.exists():
+                body = notfound.read_bytes()
                 self.send_response(404)
                 self.send_header('Content-Type', 'text/html; charset=utf-8')
+                self.send_header('Content-Length', str(len(body)))
                 self.end_headers()
-                self.wfile.write(notfound.read_bytes())
-                return
-        return super().do_GET()
+                if self.command != 'HEAD':
+                    self.wfile.write(body)
+                return True
+        return False
+
+    def do_GET(self):
+        if not self._prepare():
+            super().do_GET()
+
+    def do_HEAD(self):
+        if not self._prepare():
+            super().do_HEAD()
 
 def build_dev(minify):
     args = [sys.executable, str(REPO / 'legible' / 'build.py'), '--out', str(DEV_DIST), '--minify', 'true' if minify else 'false']

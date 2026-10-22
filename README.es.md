@@ -19,14 +19,14 @@ HTML plano. Sin JavaScript en el cliente. Datos estructurados y comprobaciones S
 ## Índice
 
 - [Resumen](#resumen)
-- [Por qué este enfoque](#por-que-este-enfoque)
-- [Qué genera](#que-genera)
-- [Inicio rápido](#inicio-rapido)
+- [Por qué este enfoque](#por-qué-este-enfoque)
+- [Qué genera](#qué-genera)
+- [Inicio rápido](#inicio-rápido)
 - [Configurar un sitio](#configurar-un-sitio)
-- [Configuración del build](#configuracion-del-build)
-- [Validación](#validacion)
+- [Configuración del build](#configuración-del-build)
+- [Validación](#validación)
 - [Arquitectura](#arquitectura)
-- [Principios de diseño](#principios-de-diseno)
+- [Principios de diseño](#principios-de-diseño)
 - [Rendimiento](#rendimiento)
 - [Pruebas](#pruebas)
 - [Despliegue](#despliegue)
@@ -110,9 +110,11 @@ Por defecto, el servidor de desarrollo está disponible en `http://localhost:300
 
 ## Configurar un sitio
 
+El motor reutilizable vive en `legible/`. Los valores específicos del proyecto (dominio, nombre, contacto, ubicación y textos de las páginas de índice generadas) se definen en `src/data/site.json`, el archivo principal de configuración, junto con `src/data/entity.json`; los textos editoriales permanecen en `src/`.
+
 ### 1. Definir la URL canónica
 
-Pasa la URL definitiva del sitio mediante `SITE_URL`:
+Define `site_url` en `src/data/site.json` con el origen HTTPS definitivo. La variable de entorno `SITE_URL` lo sobrescribe en una compilación concreta (CI, previsualizaciones, pruebas) sin tocar ningún archivo fuente:
 
 ```bash
 SITE_URL=https://ejemplo.es ./legible/build.sh
@@ -122,12 +124,15 @@ Usa el origen HTTPS final. El generador y el validador utilizan este valor para 
 
 ### 2. Editar los datos y los textos
 
+- `src/data/site.json` — configuración principal del proyecto: `site_url`, `site_name`, datos de contacto (`contact_email`, `phone_e164`, `whatsapp_message`), ubicación (`city`, `region`, `geo_enabled`, `geo_region_code`), `generated_content` (textos de los índices de guías y blog y de la franja de contacto), `collection_topics` (temas válidos de guías y artículos) y `sitemap_base_order`.
 - `src/data/entity.json` — identidad del negocio e información compartida de servicios.
 - `src/data/textos.json` — textos reutilizables y valores predeterminados.
 - `src/pages/` — contenido de las páginas y *front matter*.
 - `src/partials/` — cabecera y pie compartidos.
 - `src/css/site.css` — estilos del sitio.
 - `src/static/` — recursos estáticos y archivos auxiliares.
+
+Ganchos CSS: `band-cta` y `footer-brand` son nombres de clase semánticos usados en el HTML que no tienen reglas CSS propias a propósito; `toc` está definida en `site.css`, pero ninguna página de la plantilla la usa.
 
 Antes del lanzamiento, sustituye los datos de ejemplo, las imágenes provisionales y los textos genéricos. Comprueba que los precios, las zonas de servicio, los datos de contacto, las afirmaciones comerciales y las ofertas sean reales.
 
@@ -149,7 +154,7 @@ Por defecto, el modo estricto trata los avisos como fallos del build. La intenci
 
 | Variable | Valor predeterminado | Efecto |
 | --- | --- | --- |
-| `SITE_URL` | `https://TU-DOMINIO.com` | URL base HTTPS para canonicals y referencias generadas |
+| `SITE_URL` | `site_url` de `src/data/site.json` (`https://TU-DOMINIO.com` en la plantilla) | Sobrescribe `site_url`: URL base HTTPS para canonicals y referencias generadas |
 | `CSS_MINIFY` | `TRUE` | Con `FALSE`, desactiva la minificación donde está soportado; útil para depurar |
 | `CHECK_STRICT` | `TRUE` | Con `FALSE`, los avisos no hacen fallar la validación; los errores siguen fallando |
 
@@ -188,7 +193,7 @@ Estas reglas son controles técnicos específicos del proyecto. No sustituyen la
 
 ```mermaid
 flowchart LR
-    A["src/<br/>HTML · entity.json · textos.json"] --> B["legible/build.py<br/>plantillas · metadatos · JSON-LD"]
+    A["src/<br/>HTML · site.json · entity.json · textos.json"] --> B["legible/build.py<br/>plantillas · metadatos · JSON-LD"]
     B --> C["dist/<br/>salida estática"]
     C --> D{"legible/check_site.py<br/>--strict"}
     D -- válido --> E["Publicar dist/ en un hosting estático"]
@@ -202,10 +207,12 @@ flowchart LR
 | `legible/build.sh` | Build seguido de validación |
 | `legible/dev.py` | Servidor local y flujo de recompilación |
 | `legible/run_all.py` | Orquesta pruebas, build/validación y servidor local opcional |
-| `tests/test_legible.py` | Pruebas de regresión del build, minificadores, colecciones, URLs y marcadores |
+| `tests/test_legible.py` | Pruebas de regresión del build, minificadores, colecciones, URLs, marcadores, seguridad de la carpeta de salida y línea de comandos de `build.py` |
+| `tests/test_dev_server.py` | Pruebas del servidor de desarrollo (`legible/dev.py`) |
 | `src/layout.html` | Estructura común del documento y metadatos |
 | `src/pages/` | Plantillas y contenido de páginas |
-| `src/data/` | Datos compartidos del negocio y textos por defecto |
+| `src/data/site.json` | Configuración principal del proyecto: dominio, nombre, contacto, ubicación, textos de los índices generados, temas de colecciones y orden del sitemap |
+| `src/data/` | Datos compartidos del negocio (`entity.json`) y textos por defecto (`textos.json`) |
 | `src/partials/` | Fragmentos comunes de página |
 | `src/css/site.css` | Hoja de estilos |
 | `src/static/` | Recursos estáticos y archivos auxiliares |
@@ -235,7 +242,7 @@ Ejecuta las pruebas desde la raíz del repositorio:
 python3 -m unittest discover tests
 ```
 
-La batería actual cubre una compilación y validación de humo, minificación CSS/HTML, *front matter* de guías y blog, gestión de URLs y marcadores, metadatos geográficos y enlaces contextuales. Añade pruebas de regresión cuando cambies el comportamiento del generador o del validador.
+La batería está en dos archivos. `tests/test_legible.py` cubre una compilación y validación de humo, minificación CSS/HTML, *front matter* de guías y blog, gestión de URLs y marcadores, metadatos geográficos, enlaces contextuales, seguridad de la carpeta de salida y la línea de comandos de `build.py`. `tests/test_dev_server.py` cubre el servidor de desarrollo. Está escrita para valer en cualquier proyecto basado en `legible`: lee el dominio, la ciudad y los temas de `src/data/site.json`, y las pocas pruebas que exigen un proyecto vacío (sin guías ni blog) se saltan solas cuando el proyecto ya tiene contenido propio. Añade pruebas de regresión cuando cambies el comportamiento del generador o del validador.
 
 Antes de abrir un pull request, ejecuta:
 
@@ -353,6 +360,3 @@ Publicado bajo la [licencia MIT](LICENSE).
     <img src="https://img.shields.io/github/forks/angelmaturana/legible?style=social" alt="Forks">
   </a>
 </p>
-## Configuración del sitio
-
-El motor reutilizable vive en `legible/`. Los valores específicos del proyecto (dominio, nombre, contacto, ubicación y textos de configuración) se definen en `src/data/site.json` y `src/data/entity.json`; los textos editoriales permanecen en `src/`. `SITE_URL` puede sobrescribir `site_url` en compilaciones de prueba.
