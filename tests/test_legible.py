@@ -11,6 +11,8 @@ Qué cubre (y nada más; el HTML de cada página ya lo valida check_site.py):
   5. Dominio (SITE_URL) y marcadores sin resolver.
   6. Etiquetas geo y enlaces de la home a guías y blog.
 """
+import contextlib
+import io
 import json
 import os
 import shutil
@@ -813,14 +815,20 @@ class TestGeo(ProyectoTemporal):
 # --------------------------------------------------------------------------- seguridad de la carpeta de salida y CLI
 
 class TestSalidaSegura(unittest.TestCase):
+    def rechazada(self, path):
+        """Ejecuta check_out_dir esperando el aborto; captura el mensaje de stderr para que no ensucie la consola."""
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err), self.assertRaises(SystemExit):
+            build.check_out_dir(path)
+        self.assertIn('BUILD ABORTADO', err.getvalue())
+
     def test_rechaza_la_raiz_y_las_carpetas_protegidas(self):
         for path in (REPO, REPO / 'src', REPO / 'legible', REPO / 'src' / 'nested-output'):
-            with self.subTest(path=path), self.assertRaises(SystemExit):
-                build.check_out_dir(path)
+            with self.subTest(path=path):
+                self.rechazada(path)
 
     def test_rechaza_una_carpeta_que_contiene_el_proyecto(self):
-        with self.assertRaises(SystemExit):
-            build.check_out_dir(REPO.parent)
+        self.rechazada(REPO.parent)
 
     def test_acepta_una_carpeta_temporal(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -829,8 +837,7 @@ class TestSalidaSegura(unittest.TestCase):
     def test_un_intento_rechazado_no_borra_archivos_del_repositorio(self):
         marcador = REPO / 'src' / 'layout.html'
         antes = marcador.read_bytes()
-        with self.assertRaises(SystemExit):
-            build.check_out_dir(REPO)
+        self.rechazada(REPO)
         self.assertEqual(marcador.read_bytes(), antes)
 
 

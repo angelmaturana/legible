@@ -12,6 +12,12 @@ sys.path.insert(0, str(REPO / 'legible'))
 import dev  # noqa: E402
 
 
+class _HandlerSilencioso(dev.DevHandler):
+    """Mismo manejador, sin escribir cada petición de las pruebas en stderr."""
+    def log_message(self, format, *args):
+        pass
+
+
 class TestServidorDev(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -24,7 +30,7 @@ class TestServidorDev(unittest.TestCase):
         (root / 'robots.txt').write_text('User-agent: *', encoding='utf-8')
         cls._old = dev.DEV_DIST
         dev.DEV_DIST = root
-        cls.server = dev.HTTPServer(('127.0.0.1', 0), dev.DevHandler)
+        cls.server = dev.HTTPServer(('127.0.0.1', 0), _HandlerSilencioso)
         cls.port = cls.server.server_address[1]
         cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
         cls.thread.start()
