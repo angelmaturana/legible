@@ -610,8 +610,9 @@ p { margin: 0; }
 /* En móvil el texto no pasa por debajo del botón flotante de WhatsApp */
 @media (max-width: 767px) { .footer-bottom { padding-right: 72px; } }
 
-/* Botón flotante de WhatsApp: verde oficial (#25D366) con icono blanco, sombra
-   suave y un pulso discreto. El pulso se desactiva con prefers-reduced-motion. */
+/* Botón flotante de WhatsApp: verde oficial (#25D366) con icono blanco y un halo
+   estático que da el mismo aire que un pulso, sin animación, sin transición y sin
+   pseudo-elementos: no genera repintados continuos y no cuesta nada al renderizar. */
 .whatsapp-float {
   position: fixed;
   right: 16px;
@@ -625,34 +626,14 @@ p { margin: 0; }
   color: #fff;
   background: #25D366;
   border-radius: 50%;
-  box-shadow: 0 4px 14px rgba(37, 211, 102, .35), 0 0 0 1px rgba(255, 255, 255, .08);
-  transition: background-color .2s ease, transform .2s ease;
+  box-shadow: 0 0 0 6px rgba(37, 211, 102, .22), 0 4px 14px rgba(37, 211, 102, .35);
 }
 .whatsapp-float svg { width: 30px; height: 30px; display: block; }
-.whatsapp-float::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  box-shadow: 0 0 0 0 rgba(37, 211, 102, .55);
-  animation: whatsapp-pulse 3.5s ease-out 2s infinite;
-  pointer-events: none;
-}
-.whatsapp-float:hover { background: #1EBE5A; transform: scale(1.06); }
+.whatsapp-float:hover { background: #1EBE5A; box-shadow: 0 0 0 8px rgba(37, 211, 102, .3), 0 4px 14px rgba(37, 211, 102, .45); }
 .whatsapp-float:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
-@keyframes whatsapp-pulse {
-  0%   { box-shadow: 0 0 0 0 rgba(37, 211, 102, .55); }
-  35%  { box-shadow: 0 0 0 16px rgba(37, 211, 102, 0); }
-  100% { box-shadow: 0 0 0 16px rgba(37, 211, 102, 0); }
-}
 @media (min-width: 768px) {
   .whatsapp-float { right: 24px; bottom: 24px; width: 60px; height: 60px; }
   .whatsapp-float svg { width: 34px; height: 34px; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .whatsapp-float::after { animation: none; }
-  .whatsapp-float { transition: none; }
-  .whatsapp-float:hover { transform: none; }
 }
 
 /* ---- 11. Rendimiento: omitir el render de lo que queda bajo el pliegue --- */
