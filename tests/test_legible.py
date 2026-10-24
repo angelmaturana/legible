@@ -194,6 +194,19 @@ class TestHumo(unittest.TestCase):
                              encoding='utf-8')
             self.assertNotEqual(run_check(REPO, out).returncode, 0)
 
+    def test_enlaces_whatsapp_bien_formados(self):
+        """Regresión: «?text=» duplicado y espacios sin codificar en los enlaces wa.me."""
+        import re
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / 'salida'
+            run_build(REPO, out)
+            enlaces = [h for f in out.rglob('*.html')
+                       for h in re.findall(r'href="(https://wa\.me/[^"]*)"', f.read_text(encoding='utf-8'))]
+            self.assertTrue(enlaces, 'la plantilla debería tener enlaces de WhatsApp')
+            for h in enlaces:
+                self.assertEqual(h.count('?'), 1, f'«?» repetido en {h}')
+                self.assertNotIn(' ', h, f'espacios sin codificar en {h}')
+
     def test_modo_sin_validar_no_toca_la_salida_del_proyecto(self):
         """Compilar con --out no puede escribir en dist/ del proyecto."""
         existia = (REPO / 'dist').exists()

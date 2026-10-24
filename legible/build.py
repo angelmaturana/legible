@@ -946,10 +946,12 @@ def build(out_dir=None, minify=None, no_validate=False):
     phone_value = _unwrap_placeholder(business.get('contactPoint', {}).get('telephone'), str(SITE_CONFIG.get('phone_e164', '')))
     whatsapp_message = str(SITE_CONFIG.get('whatsapp_message', ''))
     whatsapp_link = phone_value if phone_value.startswith('https://') else ''
+    whatsapp_base = whatsapp_link  # enlace sin texto: las páginas con mensaje propio le añaden «?text=…»
     if phone_value and not phone_value.startswith('https://'):
         phone_digits = re.sub(r'\D', '', phone_value)
         if phone_digits:
-            whatsapp_link = 'https://wa.me/' + phone_digits
+            whatsapp_base = 'https://wa.me/' + phone_digits
+            whatsapp_link = whatsapp_base
             if whatsapp_message:
                 whatsapp_link += '?text=' + quote(whatsapp_message, safe='')
     # Valores adicionales para footer
@@ -986,6 +988,7 @@ def build(out_dir=None, minify=None, no_validate=False):
         '{{site_url}}': site_url,
         '{{contact_email}}': contact_email,
         '{{whatsapp_link}}': whatsapp_link,
+        '{{whatsapp_base}}': whatsapp_base,
         '{{phone_e164}}': phone_value,
         '{{phone_digits}}': re.sub(r'\D', '', phone_value) if phone_value and not phone_value.startswith('https://') else '',
         '{{city}}': city,
@@ -1020,6 +1023,9 @@ def build(out_dir=None, minify=None, no_validate=False):
         '{{service_5_price}}': _unwrap_placeholder(str(offers[4].get('price')) if len(offers) > 4 else '{{service_5_price}}', '290 €'),
         '{{service_5_price_number}}': _unwrap_placeholder(str(offers[4].get('price')) if len(offers) > 4 else '{{service_5_price_number}}', '290'),
     }
+    # Variantes codificadas para URL (para usarlas dentro de «?text=»): «Servicio 1» -> «Servicio%201»
+    for _k in ('featured_action_name', 'service_1_name'):
+        derived['{{' + _k + '_url}}'] = quote(derived['{{' + _k + '}}'], safe='')
     # Textos del negocio: src/data/textos.json (clave sin llaves -> texto). Lo calculado de entity.json gana.
     textos_path = REPO / 'src' / 'data' / 'textos.json'
     try:
