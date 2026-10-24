@@ -41,6 +41,44 @@ def _replace_placeholders_in_json(obj, replacements):
     else:
         return obj
 
+def _json_str(value):
+    """Valor listo para ir DENTRO de una cadena JSON (comillas, barras y saltos de línea escapados)."""
+    return json.dumps(str(value), ensure_ascii=False)[1:-1]
+
+def _prune_empty(obj):
+    """Quita las claves cuyo valor es una cadena vacía (p. ej. priceRange sin configurar): mejor omitirlas que publicar datos vacíos."""
+    if isinstance(obj, dict):
+        return {k: _prune_empty(v) for k, v in obj.items() if not (isinstance(v, str) and not v.strip())}
+    if isinstance(obj, list):
+        return [_prune_empty(v) for v in obj]
+    return obj
+
+_LDJSON_BLOCK = re.compile(r'(<script type="application/ld\+json">)(.*?)(</script>)', re.DOTALL)
+
+def replace_placeholders_in_content(content, html_replacements, json_replacements):
+    """Sustituye marcadores en el HTML con valores escapados para HTML y, dentro de los bloques
+    JSON-LD, con valores escapados para JSON: un `"` o un `&` en el nombre del negocio no rompe ni el JSON ni los atributos."""
+    def apply(text, table):
+        for placeholder, value in table.items():
+            text = text.replace(placeholder, value)
+        return text
+    parts, pos = [], 0
+    for m in _LDJSON_BLOCK.finditer(content):
+        parts.append(apply(content[pos:m.start()], html_replacements))
+        parts.append(m.group(1) + apply(m.group(2), json_replacements) + m.group(3))
+        pos = m.end()
+    parts.append(apply(content[pos:], html_replacements))
+    return ''.join(parts)
+
+def report_lines(items, width):
+    """Líneas de un informe en caja: cada mensaje se ajusta a `width` columnas (sin recortar) para que el error completo se lea."""
+    import textwrap
+    out = []
+    for where, msg in items:
+        out.extend(textwrap.wrap(f'• {where} → {msg}', width=width, subsequent_indent='  ',
+                                 break_long_words=True, break_on_hyphens=False) or [''])
+    return out
+
 def menu_hrefs(header_html):
     """Enlaces internos del <nav> principal (cualquier nivel), leídos del partial."""
     nav = re.search(r'<nav\b.*?</nav>', header_html, flags=re.DOTALL)
@@ -134,6 +172,8 @@ def render_jsonld(page_json, entity_nodes):
         return ''
     graph = []
     seen = set()
+    page_json = _prune_empty(page_json)
+    entity_nodes = [_prune_empty(n) for n in entity_nodes]
     for node in entity_nodes:
         nid = node.get('@id')
         if nid:
@@ -182,7 +222,7 @@ def compose_page(front, content, layout_text, header_text, footer_text, entity_n
         # Reemplazar placeholders en el JSON-LD de la página antes de parsear
         if jsonld_replacements:
             for placeholder, value in jsonld_replacements.items():
-                jsonld_str = jsonld_str.replace(placeholder, value)
+                jsonld_str = jsonld_str.replace(placeholder, _json_str(value))
         try:
             page_json = json.loads(jsonld_str)
         except Exception as e:
@@ -843,18 +883,16 @@ def print_report(success, errors, warnings, generated, total_bytes, out, minify,
 
     hr()
 
+    if errors:
+        centered('✗  Errors')
+        for line in report_lines(errors, W - 2):
+            print(f'║  {line:<{W-2}}║')
     if warnings:
         centered('⚠  Warnings')
-        for p, msg in warnings:
-            line = f'• {p} → {msg}'[:60]
+        for line in report_lines(warnings, W - 2):
             print(f'║  {line:<{W-2}}║')
     elif success:
         centered('✓  No warnings')
-    else:
-        centered('✗  Errors')
-        for p, msg in errors:
-            line = f'• {p} → {msg}'[:60]
-            print(f'║  {line:<{W-2}}║')
 
     empty()
     if success:
@@ -1041,10 +1079,16 @@ def build(out_dir=None, minify=None, no_validate=False):
     if SITE_CONFIG.get('geo_region_code'):
         derived['{{geo_region}}'] = str(SITE_CONFIG['geo_region_code'])
     replacements.update(derived)
+    # Valores para HTML: lo calculado desde entity.json/site.json es texto plano y se escapa (`&`, `"`, `<`);
+    # los textos de textos.json pueden llevar HTML a propósito y {{home_recursos}} es HTML ya generado.
+    html_replacements = dict(replacements)
+    for _k, _v in derived.items():
+        if _k != '{{home_recursos}}':
+            html_replacements[_k] = html.escape(str(_v), quote=True)
     # Resolve all configured values in shared layout/partials as well as page bodies.
-    layout = _replace_placeholders_in_json(layout, replacements)
-    header = _replace_placeholders_in_json(header, replacements)
-    footer = _replace_placeholders_in_json(footer, replacements)
+    layout = replace_placeholders_in_content(layout, html_replacements, replacements)
+    header = replace_placeholders_in_content(header, html_replacements, replacements)
+    footer = replace_placeholders_in_content(footer, html_replacements, replacements)
     entity_nodes = [_replace_placeholders_in_json(node, replacements) for node in entity]
 
     # Marcadores condicionales del Blog (antes de menu_hrefs, para que el estado activo funcione)
@@ -1069,9 +1113,8 @@ def build(out_dir=None, minify=None, no_validate=False):
         if 'title' not in front or 'description' not in front:
             errors.append((str(page_path.relative_to(REPO)), 'missing title or description'))
             continue
-        # Reemplazar placeholders globales en el contenido de la página (HTML body)
-        for placeholder, value in replacements.items():
-            content = content.replace(placeholder, value)
+        # Reemplazar placeholders globales en el contenido de la página (HTML body; JSON-LD con escapado JSON)
+        content = replace_placeholders_in_content(content, html_replacements, {k: _json_str(v) for k, v in replacements.items()})
         page_rel = '/' + str(page_path.relative_to(REPO / 'src' / 'pages')).replace('index.html', '').replace('\\', '/').strip('/')
         if page_rel != '/':
             page_rel += '/'
@@ -1098,8 +1141,7 @@ def build(out_dir=None, minify=None, no_validate=False):
         generated_indexes.append(('/blog/',) + render_blog_index(collections['blog'], bool(collections['guias'])))
     for page_rel, front, content in generated_indexes:
         # Reemplazar placeholders globales en el contenido generado
-        for placeholder, value in replacements.items():
-            content = content.replace(placeholder, value)
+        content = replace_placeholders_in_content(content, html_replacements, {k: _json_str(v) for k, v in replacements.items()})
         composed = compose_page(front, content, layout, header, footer, entity_nodes, page_rel, site_name, site_url, contact_email, whatsapp_link, service_category_1, service_category_2, location, target_audience, featured_action_name, jsonld_replacements=replacements)
         html_before = len(composed.encode('utf-8'))
         if minify:

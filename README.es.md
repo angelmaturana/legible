@@ -64,7 +64,7 @@ Cifras medidas sobre la plantilla incluida (11 páginas) con `./legible/build.sh
 | **7,6–22 KB** por página HTML | 176 KB las 11 páginas tras minificar (un 29 % menos que sin minificar) |
 | **20 KB** de CSS | Minificado desde 28 KB; una sola hoja de estilos y fuentes del sistema |
 | **80+** comprobaciones del validador | Unas 50 son errores y 35 avisos; el modo estricto trata ambos como fallos |
-| **102** pruebas automáticas | `unittest` de la librería estándar, unos 6 segundos |
+| **108** pruebas automáticas | `unittest` de la librería estándar, unos 6 segundos |
 
 ## Por qué este enfoque
 
@@ -115,7 +115,7 @@ La plantilla incluye 11 páginas: inicio, servicios, una página de servicio de 
 ├── tests/test_legible.py    Batería de regresión
 ├── dist/                    Salida del build (ignorada por git)
 ├── .dev-dist/               Salida del servidor local (ignorada por git)
-└── readme-logo.svg · LICENSE
+└── readme-logo.svg · README.es.md · LICENSE
 ```
 
 ## Inicio rápido
@@ -170,7 +170,7 @@ El valor debe empezar por `https://` o el build se aborta. El generador y el val
 
 ### 2. Editar los datos y los textos
 
-- `src/data/site.json` — configuración principal del proyecto: `site_url`, `site_name`, datos de contacto (`contact_email`, `phone_e164`, `whatsapp_message`), ubicación (`city`, `region`, `geo_enabled`, `geo_region_code`), `price_range`, los rótulos de consola (`build_banner`, `check_banner`), `generated_content` (textos de los índices de guías y blog y de la franja de contacto), `collection_topics` (temas válidos de guías y artículos) y `sitemap_base_order`. Las etiquetas `geo.*` solo se emiten cuando tienen valor, así que un `geo_region_code` vacío simplemente se omite.
+- `src/data/site.json` — configuración principal del proyecto: `site_url`, `site_name`, datos de contacto (`contact_email`, `phone_e164`, `whatsapp_message`), ubicación (`city`, `region`, `geo_enabled`, `geo_region_code`), `price_range`, los rótulos de consola (`build_banner`, `check_banner`), `generated_content` (textos de los índices de guías y blog y de la franja de contacto), `collection_topics` (temas válidos de guías y artículos) y `sitemap_base_order`. Las etiquetas `geo.*` solo se emiten cuando tienen valor, así que un `geo_region_code` vacío simplemente se omite. Lo mismo vale para los valores vacíos del JSON-LD, como un `price_range` sin rellenar: se omiten en lugar de publicarse vacíos. Las comillas, el `&` y las barras invertidas de estos valores se escapan según el contexto en que acaban (HTML o JSON-LD), así que un nombre como `Ana & Hijos` o con comillas no rompe nada.
 - `src/data/entity.json` — identidad del negocio e información de servicios en formato Schema.org: un nodo `ProfessionalService` y un nodo `WebSite`. Conserva el tipo `ProfessionalService`: el build lee de él los datos del negocio y el validador lo exige en cada página indexable.
 - `src/data/textos.json` — textos y valores reutilizables. Cada clave se convierte en un marcador `{{clave}}` disponible en páginas, fragmentos, layout, JSON-LD, `robots.txt` y `llms.txt`.
 - `src/pages/` — contenido de las páginas y *front matter*.

@@ -854,6 +854,82 @@ class TestSalidaSegura(unittest.TestCase):
         self.assertEqual(marcador.read_bytes(), antes)
 
 
+class TestCaracteresEspecialesYAvisos(ProyectoTemporal):
+    """Regresiones: valores con comillas/&, JSON-LD vacío, informe que ocultaba errores y mensajes recortados."""
+
+    NOMBRE = 'Peluquería "Ana" & Hijos \\ S.L.'
+
+    def _con_nombre(self):
+        ruta = self.project / 'src' / 'data' / 'site.json'
+        cfg = json.loads(ruta.read_text(encoding='utf-8'))
+        cfg['site_name'] = self.NOMBRE
+        ruta.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding='utf-8')
+
+    def test_comillas_y_ampersand_en_el_nombre_no_rompen_el_build(self):
+        import re
+        self._con_nombre()
+        r = self.build_ok()
+        self.assertNotIn('Traceback', r.stderr)
+        for f in self.out.rglob('*.html'):
+            texto = f.read_text(encoding='utf-8')
+            self.assertIn('<meta name="author" content="Peluquería &quot;Ana&quot; &amp; Hijos', texto, f.name)
+            for bloque in re.findall(r'<script type="application/ld\+json">(.*?)</script>', texto, re.S):
+                nombres = {n.get('name') for n in json.loads(bloque)['@graph']}
+                self.assertIn(self.NOMBRE, nombres, f'{f.name}: el nombre debe llegar íntegro al JSON-LD')
+
+    def test_el_nombre_con_caracteres_especiales_pasa_el_validador(self):
+        self._con_nombre()
+        self.build_ok()
+        r = run_check(self.project, self.out, strict=False)
+        self.assertEqual(r.returncode, 0, r.stdout)
+
+    def test_price_range_vacio_no_se_publica_en_el_json_ld(self):
+        self.build_ok()
+        self.assertNotIn('"priceRange"', (self.out / 'index.html').read_text(encoding='utf-8'))
+        ruta = self.project / 'src' / 'data' / 'site.json'
+        cfg = json.loads(ruta.read_text(encoding='utf-8'))
+        cfg['price_range'] = '€€'
+        ruta.write_text(json.dumps(cfg, ensure_ascii=False), encoding='utf-8')
+        self.build_ok()
+        self.assertIn('"priceRange":"€€"', (self.out / 'index.html').read_text(encoding='utf-8'))
+
+    def _romper(self):
+        """Un error (enlace roto) y un aviso (description corta) a la vez."""
+        srv = self.project / 'src' / 'pages' / 'servicios' / 'index.html'
+        srv.write_text(srv.read_text(encoding='utf-8').replace(
+            '<a href="/precios/">', '<a href="/ruta-que-no-existe-con-un-nombre-bastante-largo/">', 1), encoding='utf-8')
+        pr = self.project / 'src' / 'pages' / 'precios' / 'index.html'
+        import re
+        pr.write_text(re.sub(r'^description:.*$', 'description: Corta.', pr.read_text(encoding='utf-8'), count=1, flags=re.M),
+                      encoding='utf-8')
+
+    def test_el_informe_del_build_muestra_los_errores_aunque_haya_avisos(self):
+        self._romper()
+        r = subprocess.run([sys.executable, str(self.project / 'legible' / 'build.py'), '--out', str(self.out)],
+                           capture_output=True, text=True, cwd=self.project)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn('Errors', r.stdout)
+        self.assertIn('enlace interno roto', r.stdout)
+        self.assertIn('description muy corta', r.stdout)
+
+    def test_los_mensajes_del_informe_no_se_recortan(self):
+        self._romper()
+        self.build_ok()
+        r = run_check(self.project, self.out)
+        self.assertNotEqual(r.returncode, 0)
+        plano = ''.join(l.strip('║ ').strip() for l in r.stdout.splitlines())
+        self.assertIn('/ruta-que-no-existe-con-un-nombre-bastante-largo/', plano.replace('•', '').replace(' ', ''))
+
+    def test_enlace_interno_http_es_un_error(self):
+        self.build_ok()
+        f = self.out / 'precios' / 'index.html'
+        f.write_text(f.read_text(encoding='utf-8').replace(
+            '</main>', '<p><a href="http://TU-DOMINIO.com/contacto/">c</a></p></main>', 1), encoding='utf-8')
+        r = run_check(self.project, self.out, strict=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn('http en lugar de https', r.stdout)
+
+
 class TestLineaDeComandos(unittest.TestCase):
     def build_py(self, *args):
         return subprocess.run([sys.executable, str(LEGIBLE / 'build.py'), *args],

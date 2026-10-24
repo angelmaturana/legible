@@ -64,7 +64,7 @@ Measured on the included template (11 pages) with `./legible/build.sh`; reproduc
 | **7.6–22 KB** per HTML page | 176 KB for all 11 pages after minification (29 % smaller than the unminified output) |
 | **20 KB** of CSS | Minified from 28 KB; one stylesheet, system fonts only |
 | **80+** validator checks | About 50 are errors and 35 warnings; strict mode treats both as failures |
-| **102** automated tests | Standard-library `unittest`, about 6 seconds |
+| **108** automated tests | Standard-library `unittest`, about 6 seconds |
 
 ## Why this approach?
 
@@ -115,7 +115,7 @@ The template includes 11 pages: home, services, one example service page, pricin
 ├── tests/test_legible.py    Regression suite
 ├── dist/                    Build output (git-ignored)
 ├── .dev-dist/               Dev-server output (git-ignored)
-└── readme-logo.svg · LICENSE
+└── readme-logo.svg · README.es.md · LICENSE
 ```
 
 ## Quick start
@@ -170,7 +170,7 @@ The value must start with `https://` or the build aborts. It is used by the gene
 
 ### 2. Edit business data and copy
 
-- `src/data/site.json` — main project configuration: `site_url`, `site_name`, contact details (`contact_email`, `phone_e164`, `whatsapp_message`), location (`city`, `region`, `geo_enabled`, `geo_region_code`), `price_range`, the console banners (`build_banner`, `check_banner`), `generated_content` (texts of the guide/blog index pages and the lead strip), `collection_topics` (valid topics for guides and blog entries) and `sitemap_base_order`. `geo.*` tags are emitted only when their value is set, so an empty `geo_region_code` is simply omitted.
+- `src/data/site.json` — main project configuration: `site_url`, `site_name`, contact details (`contact_email`, `phone_e164`, `whatsapp_message`), location (`city`, `region`, `geo_enabled`, `geo_region_code`), `price_range`, the console banners (`build_banner`, `check_banner`), `generated_content` (texts of the guide/blog index pages and the lead strip), `collection_topics` (valid topics for guides and blog entries) and `sitemap_base_order`. `geo.*` tags are emitted only when their value is set, so an empty `geo_region_code` is simply omitted. The same goes for empty JSON-LD values such as an unset `price_range`: they are left out instead of being published empty. Quotes, `&` and backslashes in these values are escaped for the context they land in (HTML or JSON-LD), so a name like `Ana & Hijos` or one with quotes is safe.
 - `src/data/entity.json` — the business identity and service information in Schema.org form: a `ProfessionalService` node and a `WebSite` node. Keep the `ProfessionalService` type: the build reads the business facts from it and the validator requires it on every indexable page.
 - `src/data/textos.json` — reusable copy and values. Each key becomes a `{{key}}` placeholder available in pages, partials, the layout, JSON-LD, `robots.txt` and `llms.txt`.
 - `src/pages/` — page content and front matter.

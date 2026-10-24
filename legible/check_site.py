@@ -20,7 +20,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 sys.dont_write_bytecode = True  # importar build no debe dejar legible/__pycache__/
-from build import SITE_URL, SITE_CONFIG, get_git_info
+from build import SITE_URL, SITE_CONFIG, get_git_info, report_lines
 
 REPO = Path(__file__).resolve().parent.parent
 OUT_DEFAULT = REPO / 'dist'
@@ -471,12 +471,13 @@ def check_links(pages, out: Path, site_url: str, errors, warnings):
                 if not re.fullmatch(r'tel:\+?[\d\s().-]{6,}', href):
                     E(f'tel mal formado: {href}')
                 continue
+            own_http = 'http://' + site_url.split('://', 1)[1]
+            if href.startswith(own_http) and href[len(own_http):len(own_http) + 1] in ('', '/', '?', '#'):
+                E(f'enlace interno con http en lugar de https: {href}')
+                continue
             if href.startswith(('http://', 'https://')) and not href.startswith(site_url):
                 if href.startswith('http://'):
                     W(f'enlace externo sin HTTPS: {href[:60]}')
-                continue
-            if href.startswith('http://' + site_url.split('://', 1)[1]):
-                E(f'enlace interno con http en lugar de https: {href}')
                 continue
             if href.startswith('//'):
                 continue
@@ -675,18 +676,11 @@ def print_check_report(success, errors, warnings, n_pages, check_time, git_branc
         hr()
         if errors:
             centered('✗  Errors')
-            for f, msg in errors:
-                line = f'• {f} → {msg}'[:60]
+            for line in report_lines(errors, W - 2):
                 print(f'║  {line:<{W-2}}║')
-        if warnings and strict:
-            centered('⚠  Warnings (treated as errors)')
-            for f, msg in warnings:
-                line = f'• {f} → {msg}'[:60]
-                print(f'║  {line:<{W-2}}║')
-        elif warnings and not strict:
-            centered('⚠  Warnings')
-            for f, msg in warnings:
-                line = f'• {f} → {msg}'[:60]
+        if warnings:
+            centered('⚠  Warnings (treated as errors)' if strict else '⚠  Warnings')
+            for line in report_lines(warnings, W - 2):
                 print(f'║  {line:<{W-2}}║')
 
     empty()
