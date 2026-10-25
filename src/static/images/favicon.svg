@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Legible">
-<rect width="128" height="128" rx="26" fill="#151b23"/>
-<g transform="translate(0 -51)">
-<path transform="translate(-221.13 0)" d="M234.73 76.65h21.33v8h-10.16v60.72h10.16v7.98h-21.33z" fill="#ff9e22"/>
-<path transform="translate(-229.63 0)" d="M285.03 122.39V86.11h-12.47v-9.46h24.78v45.74q0 5.54 1.72 7.85t5.84 2.31h9.83V142h-13.28q-8.78 0-12.61-4.53-3.83-4.54-3.81-15.08z" fill="#00e5ff"/>
-<path transform="translate(-550.84 0)" d="M665.27 76.65v76.69h-21.33v-7.98h10.16V84.64h-10.16v-7.99z" fill="#007bff"/>
-</g></svg>
