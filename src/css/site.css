@@ -190,7 +190,7 @@ p { margin: 0; }
 .site-header .page-width { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 110px; padding-block: 10px; }
 
 .brand { display: inline-flex; align-items: center; gap: 12px; }
-.brand-logo { width: 190px; height: auto; }
+.brand-logo { width: 210px; height: auto; }
 
 .nav-toggle {
   position: absolute;
@@ -276,11 +276,11 @@ p { margin: 0; }
 .site-header nav a.nav-action:hover, .site-header nav a.nav-action:focus-visible, .site-header nav a.nav-action.active { color: var(--accent-ink); background: var(--accent); }
 .site-header nav a.nav-action.active:hover, .site-header nav a.nav-action.active:focus-visible { background: var(--accent-hi); border-color: var(--accent-hi); }
 
-/* Desktop: horizontal menu with a :hover / :focus-within submenu. From 960 px the logo (230 px)
+/* Desktop: horizontal menu with a :hover / :focus-within submenu. From 960 px the logo (250 px)
    and the menu fit on one row; below that the mobile menu is used. */
 @media (min-width: 960px) {
   .site-header .page-width { gap: 16px; }
-  .brand-logo { width: 230px; }
+  .brand-logo { width: 250px; }
   .nav-toggle-label { display: none; }
   .site-header nav {
     position: static;
@@ -640,7 +640,7 @@ p { margin: 0; }
 
 .footer-entity { margin: 0 0 20px; line-height: 1.5; }
 .footer-brand-row { display: flex; align-items: center; gap: 14px; }
-.footer-logo { flex: none; display: inline-flex; width: 120px; }
+.footer-logo { flex: none; display: inline-flex; width: 150px; }
 .footer-logo img { display: block; width: 100%; height: auto; aspect-ratio: 900 / 260; }
 .footer-contact { display: flex; flex-direction: column; gap: 6px; margin: 0; font-style: normal; }
 .footer-contact-item { display: inline-flex; align-items: center; gap: 8px; color: var(--accent); line-height: 1.5; }
