@@ -190,7 +190,7 @@ p { margin: 0; }
 .site-header .page-width { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 110px; padding-block: 10px; }
 
 .brand { display: inline-flex; align-items: center; gap: 12px; }
-.brand-logo { width: 210px; height: auto; }
+.brand-logo { width: 310px; height: auto; }
 
 .nav-toggle {
   position: absolute;
@@ -280,7 +280,7 @@ p { margin: 0; }
    and the menu fit on one row; below that the mobile menu is used. */
 @media (min-width: 960px) {
   .site-header .page-width { gap: 16px; }
-  .brand-logo { width: 250px; }
+  .brand-logo { width: 360px; }
   .nav-toggle-label { display: none; }
   .site-header nav {
     position: static;
