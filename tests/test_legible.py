@@ -839,7 +839,7 @@ class TestDomain(TempProject):
             self.assertNotIn('Traceback', r.stderr)
 
     def test_no_source_page_has_the_domain_hardcoded(self):
-        """Phase 2 regression: in src/ only {{site_url}} is allowed."""
+        """Regression: in src/ only {{site_url}} is allowed."""
         for f in (REPO / 'src').rglob('*'):
             if f.is_file() and f.suffix in ('.html', '.json', '.txt', '.css') and f.name != 'site.json':
                 self.assertNotIn('YOUR-DOMAIN', f.read_text(encoding='utf-8'), f.relative_to(REPO).as_posix())

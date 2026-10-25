@@ -18,7 +18,7 @@
 
 The aim is predictable, inspectable output—not guaranteed rankings, indexing, rich results, traffic or AI citations. The included site is generic sample content; replace it with verified business information before publishing.
 
-The full technical reference, marker catalogue, content rules and AI-agent guide live in [`DOCUMENTATION.md`](DOCUMENTATION.md). The generated files and their roles are summarized in [Generated outputs](DOCUMENTATION.md#36-generated-outputs).
+The full technical reference, marker catalogue, content rules and AI-agent guide live in [`DOCUMENTATION.md`](DOCUMENTATION.md). AI agents should start at [`AGENTS.md`](AGENTS.md). The generated files and their roles are summarized in [Generated outputs](DOCUMENTATION.md#36-generated-outputs).
 
 ## Features at a glance
 
@@ -39,7 +39,7 @@ Figures below are from the included template and the checks run for this release
 - `bash` to run `legible/build.sh` (use Git Bash or WSL on Windows).
 - No third-party Python packages are required for building, validation or testing.
 
-The project owner has confirmed that the project works on Python 3.8.20, 3.9.25, 3.10.22, 3.11.17, 3.12.3, 3.13.17 and 3.14.9. The P39 automated test classes and strict builds were run in the release-check environment; the full 119-test suite is not claimed to have been run separately under every version listed here.
+Tested on Python 3.8.20, 3.9.25, 3.10.22, 3.11.17, 3.12.3, 3.13.17 and 3.14.9 with the full test suite, strict build and validator.
 
 ## Quick start
 
@@ -70,7 +70,7 @@ Start with these three files:
 
 Then edit `src/pages/`, `src/partials/`, `src/layout.html` and `src/css/site.css` as needed. Use `{{site_url}}` for the canonical site origin instead of hard-coding a domain. The build fails on unresolved placeholders and the validator checks the rendered site.
 
-For a new page, create `src/pages/<slug>/index.html` with front matter (`title`, `description`, `updated`, `robots`, `geo` and `canonical`). Keep titles and descriptions unique, provide exactly one `h1`, include valid JSON-LD and add a contextual internal link from another page. For a new service, use `src/pages/services/sample-service/` as the starting point. The full front-matter contract and derived markers are in [`DOCUMENTATION.md`](DOCUMENTATION.md#3-content-model). Guides and blog posts are optional folder-based collections; see [`DOCUMENTATION.md` §3.5](DOCUMENTATION.md#35-optional-collections-guides-and-blog) for their front matter and indexing rules.
+For a new page, create `src/pages/<slug>/index.html` with front matter (`title`, `description`, `updated`, `robots`, `geo` and `canonical`). Keep titles and descriptions unique, provide exactly one `h1`, include valid JSON-LD and add a contextual internal link from another page. For a new service, use `src/pages/services/sample-service/` as the starting point. The full front-matter contract and derived markers are in [`DOCUMENTATION.md`](DOCUMENTATION.md#3-content-model). Guides and blog posts are optional folder-based collections; see [`DOCUMENTATION.md` section 3.5](DOCUMENTATION.md#35-optional-collections-guides-and-blog) for their front matter and indexing rules.
 
 ### Before launch
 
@@ -80,11 +80,11 @@ The template contains valid sample values which the validator cannot identify as
 grep -rIniE 'Your Business|Your City|Your Region|YOUR-DOMAIN|Service [1-6]\b|City [1-4]\b|Topic [1-5]\b|Free Consultation|Your legal name|Your registered address|Your registration number|Your jurisdiction|example\.com|555|\$(99|149|290)|CONFIRM' dist src
 ```
 
-This search is a review aid, not a pass/fail test. Replace or justify every hit, especially sample contact details, offers, prices, legal placeholders, logo and social image. The reusable sweep pattern and its allowed exceptions are in [`DOCUMENTATION.md`](DOCUMENTATION.md#94-allowed-exceptions-to-the-sweeps).
+This search is a review aid, not a pass/fail test. Replace or justify every hit, especially sample contact details, offers, prices, legal placeholders, logo and social image. How to read the result is explained in [`DOCUMENTATION.md`](DOCUMENTATION.md#74-pre-launch-sweep).
 
 ## Language support
 
-Set `"language": "en"` or `"language": "es"` in `src/data/site.json`. This configures the engine-generated labels and metadata; it does not translate your page content. Translate the pages, data, legal copy and static text yourself, and update URL slugs and internal links as appropriate. See [`DOCUMENTATION.md` §4.2](DOCUMENTATION.md#42-how-a-site-becomes-spanish-target-behaviour-after-track-c) for the full Spanish-site procedure and additional-language rules.
+Set `"language": "en"` or `"language": "es"` in `src/data/site.json`. This configures the engine-generated labels and metadata; it does not translate your page content. Translate the pages, data, legal copy and static text yourself, and update URL slugs and internal links as appropriate. See [`DOCUMENTATION.md` section 4.2](DOCUMENTATION.md#42-how-to-build-a-site-in-another-language) for the full Spanish-site procedure and additional-language rules.
 
 ## Project layout
 
@@ -106,8 +106,8 @@ Set `"language": "en"` or `"language": "es"` in `src/data/site.json`. This confi
 │   └── locales/           engine-generated English and Spanish strings
 ├── tests/test_legible.py  regression suite
 ├── README.md
-├── DOCUMENTATION.md      full reference and cleanup plan
-├── STATUS.md             phase tracker and changelog
+├── DOCUMENTATION.md      full reference and AI-agent guide
+├── AGENTS.md             entry point for AI agents
 ├── LICENSE
 └── readme-logo.svg
 ```
@@ -131,7 +131,7 @@ The build checks configuration, renders all pages, generates optional guide/blog
 
 ## Validation
 
-`legible/check_site.py` validates the compiled output: metadata, headings, links and assets, placeholders, JSON-LD references, sitemap and `robots.txt`. Strict mode is enabled by default, so warnings also cause a non-zero exit. For the full list of checks and thresholds, see [`DOCUMENTATION.md` §9.2](DOCUMENTATION.md#92-validator-rules-summary).
+`legible/check_site.py` validates the compiled output: metadata, headings, links and assets, placeholders, JSON-LD references, sitemap and `robots.txt`. Strict mode is enabled by default, so warnings also cause a non-zero exit. For the full list of checks and thresholds, see [`DOCUMENTATION.md` section 7.2](DOCUMENTATION.md#72-validator-rules).
 
 ## Deployment
 
@@ -145,7 +145,7 @@ Environment:        SITE_URL=https://your-domain.com
 
 Use the real production HTTPS URL for `SITE_URL`. The deployment environment needs Python 3.8+ and `bash`. The build exits unsuccessfully if validation fails, so a host configured to respect the exit code will not publish a failed build.
 
-Optional build settings are `CSS_MINIFY=FALSE` for readable, unminified output and `CHECK_STRICT=FALSE` to make warnings non-fatal while keeping errors fatal. Use the latter only when you have reviewed the warnings. See [`DOCUMENTATION.md` §9.5](DOCUMENTATION.md#95-commands) for the command reference.
+Optional build settings are `CSS_MINIFY=FALSE` for readable, unminified output and `CHECK_STRICT=FALSE` to make warnings non-fatal while keeping errors fatal. Use the latter only when you have reviewed the warnings. See [`DOCUMENTATION.md` section 7.5](DOCUMENTATION.md#75-commands) for the command reference.
 
 ## Scope and limitations
 
