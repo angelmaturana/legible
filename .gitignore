@@ -1,0 +1,13 @@
+# Salidas generadas por el build
+dist/
+.dev-dist/
+
+# Python
+__pycache__/
+*.pyc
+
+# Sistema / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

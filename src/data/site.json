@@ -1,0 +1,49 @@
+{
+  "site_url": "https://YOUR-DOMAIN.com",
+  "site_name": "Your Business",
+  "language": "en",
+  "contact_email": "hello@example.com",
+  "phone_e164": "+15550100",
+  "whatsapp_message": "Hello, I am interested in your services. My business is:",
+  "geo_enabled": true,
+  "geo_region_code": "",
+  "build_banner": "Legible • Static site generator",
+  "city": "Your City",
+  "region": "Your Region",
+  "price_range": "",
+  "generated_content": {
+    "lead_strip": {
+      "action_url": "/featured-action/"
+    },
+    "guides_index": {
+      "extra_paragraphs": [
+        "Start with the guide that is closest to your question and follow the steps in the order they appear: each one is meant to support the next. If a guide mentions a tool or a setting you do not have, do not worry: there is almost always an equivalent alternative, and the guide points to it.",
+        "Before applying anything, check the date of the last review. Platforms change their options often, and advice that worked two years ago may no longer be useful. If your business differs from the example, adapt the steps instead of copying them word for word.",
+        "And if you would rather not do it yourself, each guide ends with a link to the service that solves that problem. You can also write to us with your case and we will tell you honestly whether it is worth having us do it."
+      ]
+    },
+    "blog_index": {
+      "criteria_paragraphs": [
+        "Each article starts from a question we are asked, or ask ourselves, when working with businesses like yours, and answers it with concrete examples and no unnecessary jargon. We do not publish on a fixed schedule: we prefer to write when there is something useful to say.",
+        "If you miss a topic, suggest it: many of the pieces come from the questions of the people who write to us. And if what you need is a solution rather than something to read, you can also see how we work on the services page."
+      ]
+    }
+  },
+  "check_banner": "Legible • Site validator",
+  "collection_topics": [
+    "Topic 1",
+    "Topic 2",
+    "Topic 3",
+    "Topic 4",
+    "Topic 5"
+  ],
+  "sitemap_base_order": [
+    "/",
+    "/services/",
+    "/services/sample-service/",
+    "/pricing/",
+    "/about/",
+    "/contact/",
+    "/featured-action/"
+  ]
+}

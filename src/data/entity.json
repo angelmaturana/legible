@@ -1,0 +1,194 @@
+[
+    {
+        "@type": "ProfessionalService",
+        "@id": "{{site_url}}/#business",
+        "name": "{{site_name}}",
+        "description": "{{site_description}}",
+        "url": "{{site_url}}",
+        "email": "{{contact_email}}",
+        "logo": "{{site_url}}/images/logo.svg",
+        "image": "{{site_url}}/images/og-image.png",
+        "openingHoursSpecification": [
+            {
+                "@type": "OpeningHoursSpecification",
+                "dayOfWeek": [
+                    "Monday",
+                    "Tuesday",
+                    "Wednesday",
+                    "Thursday",
+                    "Friday"
+                ],
+                "opens": "09:00",
+                "closes": "19:00"
+            }
+        ],
+        "contactPoint": {
+            "@type": "ContactPoint",
+            "contactType": "customer service",
+            "email": "{{contact_email}}",
+            "availableLanguage": "{{lang}}",
+            "telephone": "{{phone_e164}}"
+        },
+        "areaServed": [
+            {
+                "@type": "City",
+                "name": "City 1"
+            },
+            {
+                "@type": "City",
+                "name": "City 2"
+            },
+            {
+                "@type": "City",
+                "name": "City 3"
+            },
+            {
+                "@type": "City",
+                "name": "City 4"
+            }
+        ],
+        "knowsAbout": [
+            "{{service_category_1}}",
+            "{{service_category_2}}",
+            "{{service_category_3}}",
+            "{{service_category_4}}",
+            "{{service_category_5}}",
+            "{{service_category_6}}"
+        ],
+        "priceRange": "{{price_range}}",
+        "address": {
+            "@type": "PostalAddress",
+            "addressLocality": "{{city}}",
+            "addressRegion": "{{region}}",
+            "addressCountry": "US"
+        },
+        "hasOfferCatalog": {
+            "@type": "OfferCatalog",
+            "name": "{{site_name}} services",
+            "itemListElement": [
+                {
+                    "@type": "Offer",
+                    "name": "Service 1",
+                    "url": "{{site_url}}/services/sample-service/",
+                    "priceCurrency": "USD",
+                    "price": "99",
+                    "priceSpecification": {
+                        "@type": "UnitPriceSpecification",
+                        "price": "99",
+                        "priceCurrency": "USD"
+                    },
+                    "itemOffered": {
+                        "@type": "Service",
+                        "name": "Service 1",
+                        "serviceType": "{{service_category_1}}",
+                        "url": "{{site_url}}/services/sample-service/"
+                    }
+                },
+                {
+                    "@type": "Offer",
+                    "name": "Service 2",
+                    "url": "{{site_url}}/services/sample-service/",
+                    "priceCurrency": "USD",
+                    "price": "149",
+                    "priceSpecification": {
+                        "@type": "UnitPriceSpecification",
+                        "price": "149",
+                        "priceCurrency": "USD"
+                    },
+                    "itemOffered": {
+                        "@type": "Service",
+                        "name": "Service 2",
+                        "serviceType": "{{service_category_2}}",
+                        "url": "{{site_url}}/services/sample-service/"
+                    }
+                },
+                {
+                    "@type": "Offer",
+                    "name": "Service 3 (Monthly)",
+                    "url": "{{site_url}}/services/sample-service/",
+                    "priceCurrency": "USD",
+                    "price": "49",
+                    "priceSpecification": {
+                        "@type": "UnitPriceSpecification",
+                        "price": "49",
+                        "priceCurrency": "USD",
+                        "billingDuration": "P1M",
+                        "unitCode": "MON"
+                    },
+                    "itemOffered": {
+                        "@type": "Service",
+                        "name": "Service 3 (Monthly)",
+                        "serviceType": "{{service_category_3}}",
+                        "url": "{{site_url}}/services/sample-service/"
+                    }
+                },
+                {
+                    "@type": "Offer",
+                    "name": "Service 4 (Monthly)",
+                    "url": "{{site_url}}/services/sample-service/",
+                    "priceCurrency": "USD",
+                    "price": "299",
+                    "priceSpecification": {
+                        "@type": "UnitPriceSpecification",
+                        "price": "299",
+                        "priceCurrency": "USD",
+                        "billingDuration": "P1M",
+                        "unitCode": "MON"
+                    },
+                    "itemOffered": {
+                        "@type": "Service",
+                        "name": "Service 4 (Monthly)",
+                        "serviceType": "{{service_category_4}}",
+                        "url": "{{site_url}}/services/sample-service/"
+                    }
+                },
+                {
+                    "@type": "Offer",
+                    "name": "Service 5",
+                    "url": "{{site_url}}/services/sample-service/",
+                    "priceCurrency": "USD",
+                    "price": "290",
+                    "priceSpecification": {
+                        "@type": "UnitPriceSpecification",
+                        "price": "290",
+                        "priceCurrency": "USD"
+                    },
+                    "itemOffered": {
+                        "@type": "Service",
+                        "name": "Service 5",
+                        "serviceType": "{{service_category_5}}",
+                        "url": "{{site_url}}/services/sample-service/"
+                    }
+                },
+                {
+                    "@type": "Offer",
+                    "name": "Free Consultation",
+                    "url": "{{site_url}}/featured-action/",
+                    "priceCurrency": "USD",
+                    "price": "0",
+                    "priceSpecification": {
+                        "@type": "UnitPriceSpecification",
+                        "price": "0",
+                        "priceCurrency": "USD"
+                    },
+                    "itemOffered": {
+                        "@type": "Service",
+                        "name": "Free Consultation",
+                        "serviceType": "Initial consultation",
+                        "url": "{{site_url}}/featured-action/"
+                    }
+                }
+            ]
+        }
+    },
+    {
+        "@type": "WebSite",
+        "@id": "{{site_url}}/#website",
+        "url": "{{site_url}}/",
+        "name": "{{site_name}}",
+        "inLanguage": "{{in_language}}",
+        "publisher": {
+            "@id": "{{site_url}}/#business"
+        }
+    }
+]

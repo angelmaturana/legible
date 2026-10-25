@@ -1,0 +1,26 @@
+# Search engines and AI crawlers are welcome by design: this site wants to be read and cited.
+# To block a crawler, replace its "Allow: /" line with "Disallow: /".
+
+User-agent: *
+Allow: /
+Allow: /llms.txt
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Applebot
+Allow: /
+
+User-agent: Meta-ExternalAgent
+Allow: /
+
+Sitemap: {{site_url}}/sitemap.xml
