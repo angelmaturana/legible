@@ -831,6 +831,13 @@ class TestDomain(TempProject):
         everything = read_all(self.out)
         self.assertNotIn('https://example.org//', ''.join(everything.values()))
 
+    def test_empty_site_url_falls_back_to_site_json(self):
+        """An empty SITE_URL (common in CI panels) must behave as if it were not set."""
+        self.build_ok(site_url='')
+        everything = read_all(self.out)
+        self.assertIn(SITE['site_url'].rstrip('/') + '/', everything['index.html'])
+        self.assertIn(SITE['site_url'].rstrip('/') + '/sitemap.xml', everything['robots.txt'])
+
     def test_invalid_domain_aborts_with_a_clear_message(self):
         for value in ('http://example.org', 'example.org'):
             r = run_build(self.project, self.out, site_url=value)
@@ -888,6 +895,98 @@ class TestMarkers(TempProject):
         self.build_ok()
         for route, text in read_all(self.out).items():
             self.assertNotIn('{{', text, route)
+
+    def _write_texts(self, **extra):
+        texts = self.project / 'src' / 'data' / 'texts.json'
+        data = json.loads(texts.read_text(encoding='utf-8'))
+        data.update(extra)
+        texts.write_text(json.dumps(data, ensure_ascii=False), encoding='utf-8')
+
+    def _use_marker_in_about(self, marker):
+        page = self.project / 'src' / 'pages' / 'about' / 'index.html'
+        page.write_text(page.read_text(encoding='utf-8').replace('<h1', f'<p>{marker}</p>\n<h1', 1), encoding='utf-8')
+
+    def _edit_entity(self, edit):
+        path = self.project / 'src' / 'data' / 'entity.json'
+        data = json.loads(path.read_text(encoding='utf-8'))
+        edit(data)
+        path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8')
+
+    @staticmethod
+    def _business(data):
+        nodes = data if isinstance(data, list) else data.get('@graph', [data])
+        return next(n for n in nodes if 'areaServed' in n)
+
+    def test_a_text_can_reference_an_earlier_text(self):
+        """Regression: a text that uses another text defined BEFORE it used to fail with a misleading 'has no value'."""
+        self._write_texts(nest_a='Alpha', nest_b='Beta {{nest_a}}')
+        self._use_marker_in_about('{{nest_b}}')
+        r = self.build_ok()
+        self.assertNotIn('Traceback', r.stderr)
+        text = (self.out / 'about' / 'index.html').read_text(encoding='utf-8')
+        self.assertIn('Beta Alpha', text)
+        self.assertNotIn('{{', text)
+
+    def test_circular_text_references_still_fail_cleanly(self):
+        self._write_texts(circ_a='{{circ_b}}', circ_b='{{circ_a}}')
+        self._use_marker_in_about('{{circ_a}}')
+        r = run_build(self.project, self.out)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn('has no value', r.stderr + r.stdout)
+        self.assertNotIn('Traceback', r.stderr)
+
+    def test_area_served_as_plain_strings_fails_with_a_clear_message(self):
+        self._edit_entity(lambda d: self._business(d).__setitem__('areaServed', ['Madrid', 'Getafe']))
+        r = run_build(self.project, self.out)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn('areaServed', r.stderr + r.stdout)
+        self.assertNotIn('Traceback', r.stderr)
+
+    def test_missing_free_offer_points_to_entity_json(self):
+        """Without an offer priced 0, {{featured_action_name}} has no value: the message must point at entity.json."""
+        def drop_free(d):
+            for node in (d if isinstance(d, list) else d.get('@graph', [d])):
+                for offer in node.get('hasOfferCatalog', {}).get('itemListElement', []):
+                    if offer.get('price') in ('0', 0):
+                        offer['price'] = '5'
+        self._edit_entity(drop_free)
+        r = run_build(self.project, self.out)
+        self.assertNotEqual(r.returncode, 0)
+        out = r.stderr + r.stdout
+        self.assertIn('has no value', out)
+        self.assertIn('derived marker', out)
+        self.assertIn('entity.json', out)
+        self.assertIn('first found on page', out)
+        self.assertNotIn('Traceback', r.stderr)
+
+
+class TestSitemapDates(TempProject):
+    def test_updated_and_json_ld_date_mismatch_fails_the_build(self):
+        """Regression: changing only `updated` used to leave a stale sitemap lastmod and still pass."""
+        page = self.project / 'src' / 'pages' / 'about' / 'index.html'
+        text = page.read_text(encoding='utf-8')
+        front, _ = build.parse_front_matter(text)
+        old = front['updated']
+        self.assertNotEqual(old, '2027-03-01')
+        page.write_text(text.replace(f'updated: {old}', 'updated: 2027-03-01', 1), encoding='utf-8')
+        r = run_build(self.project, self.out)
+        self.assertNotEqual(r.returncode, 0)
+        out = r.stderr + r.stdout
+        self.assertIn('/about/', out)
+        self.assertIn('2027-03-01', out)
+        self.assertIn(old, out)
+        self.assertNotIn('Traceback', r.stderr)
+
+    def test_matching_dates_pass(self):
+        self.build_ok()
+        sitemap = (self.out / 'sitemap.xml').read_text(encoding='utf-8')
+        self.assertIn('<lastmod>', sitemap)
+
+    @ONLY_TEMPLATE
+    def test_sample_service_has_updated(self):
+        page = REPO / 'src' / 'pages' / 'services' / SERVICE_SLUG / 'index.html'
+        front, _ = build.parse_front_matter(page.read_text(encoding='utf-8'))
+        self.assertIn('updated', front)
 
 
 # --------------------------------------------------------------------------- 6. geo tags
@@ -981,6 +1080,27 @@ class TestSpecialCharactersAndWarnings(TempProject):
     def test_name_with_special_characters_passes_the_validator(self):
         self._with_name()
         self.build_ok()
+        r = run_check(self.project, self.out, strict=False)
+        self.assertEqual(r.returncode, 0, r.stdout)
+
+    def test_area_served_with_special_characters_is_escaped(self):
+        """Regression: {{target_audience}} was the only derived marker not escaped, so the footer got raw `&` and `<`."""
+        import re
+        zone = 'Rock & Roll <City>'
+        path = self.project / 'src' / 'data' / 'entity.json'
+        data = json.loads(path.read_text(encoding='utf-8'))
+        nodes = data if isinstance(data, list) else data.get('@graph', [data])
+        next(n for n in nodes if 'areaServed' in n)['areaServed'][0]['name'] = zone
+        path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8')
+        self.build_ok()
+        home = (self.out / 'index.html').read_text(encoding='utf-8')
+        self.assertIn('We help businesses in Rock &amp; Roll &lt;City&gt;', home)
+        outside_json_ld = re.sub(r'<script type="application/ld\+json">.*?</script>', '', home, flags=re.S)
+        self.assertNotIn('<City>', outside_json_ld)
+        blocks = re.findall(r'<script type="application/ld\+json">(.*?)</script>', home, re.S)
+        self.assertTrue(blocks)
+        self.assertTrue(any(zone in json.dumps(json.loads(b), ensure_ascii=False) for b in blocks),
+                        'the zone name must reach the JSON-LD intact')
         r = run_check(self.project, self.out, strict=False)
         self.assertEqual(r.returncode, 0, r.stdout)
 
@@ -1083,6 +1203,30 @@ class TestCommandLine(unittest.TestCase):
             r = self.build_py('--minify', 'true', '--out', str(Path(tmp) / 'o'), '--no-validate')
             self.assertEqual(r.returncode, 0, r.stderr)
             self.assertTrue((Path(tmp) / 'o' / 'index.html').is_file())
+
+    def _run_build_script(self, site_url=None):
+        """Run build.sh of a temporary copy of the project (it writes to that copy's dist/)."""
+        with tempfile.TemporaryDirectory() as tmp:
+            project = copy_project(Path(tmp) / 'project')
+            env = {k: v for k, v in os.environ.items() if k != 'SITE_URL'}
+            if site_url is not None:
+                env['SITE_URL'] = site_url
+            return subprocess.run(['bash', str(project / 'legible' / 'build.sh')],
+                                  capture_output=True, text=True, cwd=project, env=env)
+
+    @ONLY_TEMPLATE
+    def test_build_script_warns_when_the_sample_domain_is_used(self):
+        """Forgetting SITE_URL must not pass silently, but it must not stop the build either."""
+        r = self._run_build_script()
+        self.assertEqual(r.returncode, 0, f'{r.stdout}\n{r.stderr}')
+        self.assertIn('WARNING', r.stderr)
+        self.assertIn('YOUR-DOMAIN', r.stderr)
+        self.assertIn('Build finished in dist/', r.stdout)
+
+    def test_build_script_does_not_warn_with_a_real_domain(self):
+        r = self._run_build_script(site_url='https://example.com')
+        self.assertEqual(r.returncode, 0, f'{r.stdout}\n{r.stderr}')
+        self.assertNotIn('WARNING', r.stderr)
 
     def test_build_script_rejects_python_older_than_3_8(self):
         """The build script should explain the minimum version and stop before building."""

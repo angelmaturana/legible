@@ -29,7 +29,7 @@ def load_site_config():
 
 SITE_CONFIG = load_site_config()
 # SITE_URL overrides the domain in CI/previews without editing source files.
-SITE_URL = os.environ.get('SITE_URL', SITE_CONFIG.get('site_url', '')).strip().rstrip('/')
+SITE_URL = (os.environ.get('SITE_URL') or SITE_CONFIG.get('site_url', '')).strip().rstrip('/')
 if not re.fullmatch(r'https://[^\s/]+(?::\d+)?(?:/[^\s]*)?', SITE_URL):
     sys.exit(f'✗ SITE_URL must start with https:// (current value: {SITE_URL!r}); check src/data/site.json')
 OUT_DEFAULT = REPO / 'dist'
@@ -69,6 +69,16 @@ def t(key, locale=None):
         raise SystemExit(f'✗ BUILD FAILED: key "{key}" is missing in legible/locales/{LANGUAGE}.json')
     return data[key]
 
+def _apply_markers(text, table, passes=5):
+    """Replace markers until stable, so a text may reference another text defined earlier or later."""
+    for _ in range(passes):
+        before = text
+        for placeholder, value in table.items():
+            text = text.replace(placeholder, value)
+        if text == before:
+            break
+    return text
+
 def _replace_placeholders_in_json(obj, replacements):
     """Recursively replace {{placeholder}} in string values of a JSON object."""
     if isinstance(obj, dict):
@@ -76,10 +86,7 @@ def _replace_placeholders_in_json(obj, replacements):
     elif isinstance(obj, list):
         return [_replace_placeholders_in_json(item, replacements) for item in obj]
     elif isinstance(obj, str):
-        result = obj
-        for placeholder, value in replacements.items():
-            result = result.replace(placeholder, value)
-        return result
+        return _apply_markers(obj, replacements)
     else:
         return obj
 
@@ -100,10 +107,7 @@ _LDJSON_BLOCK = re.compile(r'(<script type="application/ld\+json">)(.*?)(</scrip
 def replace_placeholders_in_content(content, html_replacements, json_replacements):
     """Replace markers in the HTML with HTML-escaped values and, inside JSON-LD blocks,
     with JSON-escaped values: a `"` or `&` in the business name breaks neither the JSON nor the attributes."""
-    def apply(text, table):
-        for placeholder, value in table.items():
-            text = text.replace(placeholder, value)
-        return text
+    apply = _apply_markers
     parts, pos = [], 0
     for m in _LDJSON_BLOCK.finditer(content):
         parts.append(apply(content[pos:m.start()], html_replacements))
@@ -235,17 +239,18 @@ def render_jsonld(page_json, entity_nodes):
 def check_unrendered(html_text, path):
     m = re.search(r'\{\{([^}]+)\}\}', html_text)
     if m:
-        sys.exit(f'✗ BUILD FAILED: marker {m.group(0)} (on page {path}) has no value. '
-                 f'Add "{m.group(1)}" to src/data/texts.json or write it directly in the page.')
+        sys.exit(f'✗ BUILD FAILED: marker {m.group(0)} (first found on page {path}) has no value. '
+                 f'Add "{m.group(1)}" to src/data/texts.json or write it directly in the page. '
+                 f'If it is a derived marker (DOCUMENTATION.md section 7.1), fix its source in '
+                 f'src/data/entity.json or src/data/site.json instead.')
 
-def compose_page(front, content, layout_text, header_text, footer_text, entity_nodes, page_rel, site_name='{{site_name}}', site_url='{{site_url}}', contact_email='{{contact_email}}', whatsapp_link='{{whatsapp_link}}', service_category_1='{{service_category_1}}', service_category_2='{{service_category_2}}', location='{{location}}', target_audience='{{target_audience}}', featured_action_name='{{featured_action_name}}', jsonld_replacements=None):
+def compose_page(front, content, layout_text, header_text, footer_text, entity_nodes, page_rel, site_name='{{site_name}}', site_url='{{site_url}}', contact_email='{{contact_email}}', whatsapp_link='{{whatsapp_link}}', service_category_1='{{service_category_1}}', service_category_2='{{service_category_2}}', location='{{location}}', featured_action_name='{{featured_action_name}}', jsonld_replacements=None):
     # Replace placeholders in the front matter title and description
     title_raw = front.get('title', '')
     description_raw = front.get('description', '')
     if jsonld_replacements:
-        for placeholder, value in jsonld_replacements.items():
-            title_raw = title_raw.replace(placeholder, value)
-            description_raw = description_raw.replace(placeholder, value)
+        title_raw = _apply_markers(title_raw, jsonld_replacements)
+        description_raw = _apply_markers(description_raw, jsonld_replacements)
     title = html.escape(title_raw, quote=True)
     description = html.escape(description_raw, quote=True)
     robots = html.escape(front.get('robots', 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1'), quote=True)
@@ -263,8 +268,7 @@ def compose_page(front, content, layout_text, header_text, footer_text, entity_n
         jsonld_str = m.group(1).strip()
         # Replace placeholders in the page JSON-LD before parsing
         if jsonld_replacements:
-            for placeholder, value in jsonld_replacements.items():
-                jsonld_str = jsonld_str.replace(placeholder, _json_str(value))
+            jsonld_str = _apply_markers(jsonld_str, {k: _json_str(v) for k, v in jsonld_replacements.items()})
         try:
             page_json = json.loads(jsonld_str)
         except ValueError as e:
@@ -293,7 +297,6 @@ def compose_page(front, content, layout_text, header_text, footer_text, entity_n
     page = page.replace('{{service_category_1}}', service_category_1)
     page = page.replace('{{service_category_2}}', service_category_2)
     page = page.replace('{{location}}', location)
-    page = page.replace('{{target_audience}}', target_audience)
     page = page.replace('{{featured_action_name}}', featured_action_name)
     check_unrendered(page, page_rel)
     return page
@@ -839,6 +842,10 @@ def build_sitemap(pages_data, collections, out):
         lm = page_date_modified(out_path, front)
         if lm is None:
             raise ValueError(f'{rel}: no dateModified in the JSON-LD and no "updated" in the front matter; add "updated: YYYY-MM-DD".')
+        upd = front.get('updated')
+        if upd and upd != lm:
+            raise ValueError(f'{rel}: front matter "updated: {upd}" differs from the JSON-LD dateModified ({lm}); '
+                             f'use the same date in both.')
         entries[rel] = lm
     order = [r for r in SITEMAP_BASE_ORDER if r in entries]
     for coll in ('guides', 'blog'):
@@ -1073,6 +1080,9 @@ def build(out_dir=None, minify=None, no_validate=False):
     service_category_1 = _unwrap_placeholder(knows_about[0] if len(knows_about) > 0 else '{{service_category_1}}', 'Service 1')
     service_category_2 = _unwrap_placeholder(knows_about[1] if len(knows_about) > 1 else '{{service_category_2}}', 'Service 2')
     area_served = business.get('areaServed', [])
+    if not all(isinstance(c, dict) for c in area_served):
+        sys.exit('✗ BUILD FAILED: src/data/entity.json: every areaServed entry must be an object such as '
+                 '{"@type": "City", "name": "Your City"}')
     target_audience = 'businesses in ' + ', '.join([c.get('name', '') for c in area_served[:3]]) if area_served else '{{target_audience}}'
     # Extract city names from areaServed for placeholders city_1, city_2, etc.
     city_1 = _unwrap_placeholder(area_served[0].get('name') if len(area_served) > 0 else '{{city_1}}', 'City 1')
@@ -1094,6 +1104,7 @@ def build(out_dir=None, minify=None, no_validate=False):
 
     # Process entity nodes to replace placeholders
     derived = {
+        '{{target_audience}}': target_audience,
         '{{site_name}}': site_name,
         '{{site_url}}': site_url,
         '{{lang}}': LANG,
@@ -1199,7 +1210,7 @@ def build(out_dir=None, minify=None, no_validate=False):
             page_rel = '/' + '/'.join(rel_parts)
             if page_rel != '/':
                 page_rel += '/'
-        composed = compose_page(front, content, layout, header, footer, entity_nodes, page_rel, site_name, site_url, contact_email, whatsapp_link, service_category_1, service_category_2, location, target_audience, featured_action_name, jsonld_replacements=replacements)
+        composed = compose_page(front, content, layout, header, footer, entity_nodes, page_rel, site_name, site_url, contact_email, whatsapp_link, service_category_1, service_category_2, location, featured_action_name, jsonld_replacements=replacements)
         html_before = len(composed.encode('utf-8'))
         if minify:
             composed = minify_html(composed)
@@ -1221,7 +1232,7 @@ def build(out_dir=None, minify=None, no_validate=False):
     for page_rel, front, content in generated_indexes:
         # Replace global placeholders in the generated content
         content = replace_placeholders_in_content(content, html_replacements, {k: _json_str(v) for k, v in replacements.items()})
-        composed = compose_page(front, content, layout, header, footer, entity_nodes, page_rel, site_name, site_url, contact_email, whatsapp_link, service_category_1, service_category_2, location, target_audience, featured_action_name, jsonld_replacements=replacements)
+        composed = compose_page(front, content, layout, header, footer, entity_nodes, page_rel, site_name, site_url, contact_email, whatsapp_link, service_category_1, service_category_2, location, featured_action_name, jsonld_replacements=replacements)
         html_before = len(composed.encode('utf-8'))
         if minify:
             composed = minify_html(composed)
@@ -1239,15 +1250,13 @@ def build(out_dir=None, minify=None, no_validate=False):
         robots_path = out / 'robots.txt'
         if robots_path.exists():
             robots_text = read_text(robots_path)
-            for placeholder, value in replacements.items():
-                robots_text = robots_text.replace(placeholder, value)
+            robots_text = _apply_markers(robots_text, replacements)
             write_text(robots_path, robots_text)
         llms_path = out / 'llms.txt'
         if llms_path.exists():
             llms_text = read_text(llms_path)
             # Replace global placeholders in llms.txt
-            for placeholder, value in replacements.items():
-                llms_text = llms_text.replace(placeholder, value)
+            llms_text = _apply_markers(llms_text, replacements)
             llms_path.write_text(render_llms(llms_text, collections, sitemap_order), encoding='utf-8')
     except ValueError as e:
         print(f'✗ BUILD FAILED: {e}', file=sys.stderr)

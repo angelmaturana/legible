@@ -27,4 +27,9 @@ else
   python3 legible/check_site.py
 fi
 
+# 3) Warn (without failing) if the sample domain is still in the output
+if grep -q 'YOUR-DOMAIN' dist/robots.txt 2>/dev/null; then
+  echo "WARNING: dist/ still uses the sample domain YOUR-DOMAIN.com. Set SITE_URL or site_url in src/data/site.json before publishing." >&2
+fi
+
 echo "Build finished in dist/"

@@ -71,23 +71,29 @@ def build_dev(minify):
 def watch_src(callback, interval=0.5):
     mtimes = {}
     for p in (REPO / 'src').rglob('*'):
-        if p.is_file():
-            mtimes[p] = p.stat().st_mtime
+        try:
+            if p.is_file():
+                mtimes[p] = p.stat().st_mtime
+        except OSError:
+            pass  # a file vanished mid-scan (editor temp files); it will be picked up on the next poll
     while True:
         changed = False
-        for p in list(mtimes.keys()):
-            if not p.exists():
-                del mtimes[p]
-                changed = True
-            else:
-                mtime = p.stat().st_mtime
-                if mtime != mtimes.get(p):
-                    mtimes[p] = mtime
+        try:
+            for p in list(mtimes.keys()):
+                if not p.exists():
+                    del mtimes[p]
                     changed = True
-        for p in (REPO / 'src').rglob('*'):
-            if p.is_file() and p not in mtimes:
-                mtimes[p] = p.stat().st_mtime
-                changed = True
+                else:
+                    mtime = p.stat().st_mtime
+                    if mtime != mtimes.get(p):
+                        mtimes[p] = mtime
+                        changed = True
+            for p in (REPO / 'src').rglob('*'):
+                if p.is_file() and p not in mtimes:
+                    mtimes[p] = p.stat().st_mtime
+                    changed = True
+        except OSError:
+            pass  # a file vanished mid-scan (editor temp files); retry on the next poll
         if changed:
             callback()
         time.sleep(interval)

@@ -515,11 +515,11 @@ def check_links(pages, out: Path, site_url: str, errors, warnings):
                 E(f'broken internal link: {href}')
                 continue
             if frag:
-                key = str(target.relative_to(out))
+                key = target.relative_to(out).as_posix()
                 tp = pages.get(key)
                 if tp is not None and frag not in tp.ids:
                     E(f'anchor not found: {href}')
-            key = str(target.relative_to(out)) if target.exists() else None
+            key = target.relative_to(out).as_posix() if target.exists() else None
             if key in inlinks and key != rel_file and in_main:
                 inlinks[key].add(rel_file)
         for url, kind in p.resources:

@@ -27,7 +27,7 @@ Figures below are from the included template and the checks run for this release
 | Feature | Verified result |
 | --- | --- |
 | Generated HTML pages | 11, including the 404 page |
-| Automated tests | 119 `unittest` tests in `tests/test_legible.py` |
+| Automated tests | 130 `unittest` tests in `tests/test_legible.py` |
 | Python runtime dependencies | None; the engine uses the standard library |
 | Client-side JavaScript | None; script elements carry JSON-LD data only |
 | Build validation | Strict by default; errors and warnings fail the build |
@@ -58,7 +58,7 @@ python3 legible/dev.py --port 3001
 
 Open `http://localhost:3001` while the development server is running. Stop it with `Ctrl+C`. The server rebuilds when files under `src/` change; changes to files under `legible/` require a restart.
 
-`SITE_URL` is a placeholder in the commands above. Set it to the site's real canonical HTTPS origin before deploying.
+`SITE_URL` is a placeholder in the commands above. Set it to the site's real canonical HTTPS origin before deploying. If `SITE_URL` is missing or empty, `site_url` from `src/data/site.json` is used; if that is still the sample domain, `build.sh` prints a warning.
 
 ## Configure a site
 
@@ -77,7 +77,7 @@ For a new page, create `src/pages/<slug>/index.html` with front matter (`title`,
 The template contains valid sample values which the validator cannot identify as false business facts. Run this search and review every result before publishing:
 
 ```bash
-grep -rIniE 'Your Business|Your City|Your Region|YOUR-DOMAIN|Service [1-6]\b|City [1-4]\b|Topic [1-5]\b|Free Consultation|Your legal name|Your registered address|Your registration number|Your jurisdiction|example\.com|555|\$(99|149|290)|CONFIRM' dist src
+grep -rIniE 'Your Business|Your City|Your Region|YOUR-DOMAIN|Service [1-6]\b|City [1-4]\b|Topic [1-5]\b|Free Consultation|Your legal name|Your registered address|Your registration number|Your jurisdiction|example\.com|555|\$(49|55|99|149|229|290|299|490)\b|09:00|19:00|9am|7pm|business day|business hours|addressCountry|priceCurrency|CONFIRM' dist src
 ```
 
 This search is a review aid, not a pass/fail test. Replace or justify every hit, especially sample contact details, offers, prices, legal placeholders, logo and social image. How to read the result is explained in [`DOCUMENTATION.md`](DOCUMENTATION.md#74-pre-launch-sweep).

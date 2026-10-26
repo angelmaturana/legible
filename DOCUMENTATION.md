@@ -140,11 +140,11 @@ Mental rule: **`src/` changes per site; `legible/` is the engine and does not.**
 
 ### 2.4 Exact flow of `build.py`
 
-1. Load `site.json`; apply `SITE_URL` (env wins); **abort unless it starts with `https://`**. Check that `language` is supported and load its locale file.
+1. Load `site.json`; apply `SITE_URL` (env wins; an empty `SITE_URL` counts as not set); **abort unless it starts with `https://`**. Check that `language` is supported and load its locale file.
 2. Refuse an output folder that is, or contains, the project, `src/` or `legible/`; then empty it.
 3. Copy `src/static/`; write the (optionally minified) CSS.
 4. Read `entity.json` and compute the derived values (section 3.2). Load and validate the guide/blog front matter and report **every** problem at once.
-5. Build the marker table: `texts.json` first (on top of an optional `site.json › text` object), then the derived values (**derived values win**).
+5. Build the marker table: `texts.json` first (on top of an optional `site.json › text` object), then the derived values (**derived values win**). Markers are replaced repeatedly (up to 5 passes), so a text may reference another text defined earlier or later; a circular reference (a → b → a) stays unresolved and the build fails with a marker that has no value.
 6. Resolve markers in layout, partials and `entity.json` nodes; fill the navigation, footer-blog and year markers.
 7. For each page in `src/pages/`: front matter → active menu entry → `geo.*` tags → canonical → merged JSON-LD `@graph` → **fail on any leftover `{{…}}`**.
 8. Generate `/guides/` and `/blog/` indexes (at their configured paths) when their rules are met (section 3.5).
@@ -155,7 +155,7 @@ Mental rule: **`src/` changes per site; `legible/` is the engine and does not.**
 
 | Destination | Rule |
 |---|---|
-| HTML | **Derived** values (name, city…) are HTML-escaped; values from `texts.json` are **not** (they may contain HTML on purpose) |
+| HTML | **Derived** values (name, city, `{{target_audience}}`…) are HTML-escaped; values from `texts.json` are **not** (they may contain HTML on purpose) |
 | JSON-LD | Values are JSON-escaped; `&` and quotes cannot break the JSON |
 | `robots.txt` / `llms.txt` | Plain-text substitution |
 | Empty JSON-LD values | Dropped (an empty `price_range` is not published) |
@@ -178,7 +178,7 @@ Full catalogue in section 7.1. In short: identity (`site_name`, `site_url`, `con
 
 **The offer priced `0` in `hasOfferCatalog` is the "featured action"** (page `/featured-action/`). There must be exactly one.
 
-**`{{target_audience}}`** is computed from the names in `areaServed`: the text `businesses in ` followed by the first three names joined with `, `. If `areaServed` is empty the marker stays unresolved and the build fails wherever it is used (the sample `footer_about` text uses it). The wording is fixed in English in `build.py`, so a site in another language that does not want it simply leaves the marker out of its texts.
+**`{{target_audience}}`** is computed from the names in `areaServed`: the text `businesses in ` followed by the first three names joined with `, `. It is a derived marker like the others: escaped for HTML and JSON-LD, and usable in `robots.txt` and `llms.txt` too. Every `areaServed` entry must be an object such as `{"@type": "City", "name": "Your City"}`. If `areaServed` is empty the marker stays unresolved and the build fails wherever it is used (the sample `footer_about` text uses it). The wording is fixed in English in `build.py`, so a site in another language that does not want it simply leaves the marker out of its texts.
 
 ### 3.3 Pages and front matter
 
@@ -195,7 +195,7 @@ updated: 2026-01-31
 ---
 ```
 
-- Required: `title`, `description`. `updated` is required on indexable pages (it feeds sitemap `lastmod`).
+- Required: `title`, `description`. `updated` is required on indexable pages. The sitemap `lastmod` comes from the `dateModified` of the page's JSON-LD if it has one, or from `updated` if not; when both exist they must be the same date or the build fails. `last_update` in `texts.json` (used by the legal pages and `llms.txt`) is a third, independent value: update it by hand together with the other two.
 - `canonical: none` + `robots: noindex, follow` → pages such as the 404.
 - `active` forces which menu entry is highlighted; otherwise the page's own entry or its closest parent.
 - The page's `<script type="application/ld+json">` block is extracted and merged with the business nodes into one `@graph`.
@@ -344,7 +344,7 @@ NOT PROVIDED (the AI must not invent these):
 7. New service pages: copy `services/sample-service/`, give each a distinct purpose, add to the menu (`header.html`) and the services index. **No near-duplicate pages per town or keyword.**
 8. Images: accurate `alt`, explicit `width` and `height`.
 9. WhatsApp: if the phone is not confirmed for WhatsApp, say so and propose removing the floating link (layout) and the WhatsApp calls to action.
-10. Legal pages use only provided data; missing items stay as `[CONFIRM …]` (the sample pages use neutral placeholders such as `Your legal name` so the template passes the validator; the pre-launch sweep finds them); do not state legal obligations as fact; recommend legal review.
+10. Legal pages use only provided data; missing items stay as `[CONFIRM …]` (the sample pages use neutral placeholders such as `Your legal name` so the template passes the validator; the pre-launch sweep finds them); do not state legal obligations as fact; recommend legal review. Hours, response times and limits appear in several files; remove or replace every one, and delete `openingHoursSpecification` if no hours were provided.
 11. No guides/blog unless requested; if created, follow section 3.5 (≥3 articles for an indexable blog).
 12. No JavaScript, no dependencies, no external resources. Do not edit `legible/` or `tests/` to get around a failure.
 13. Never invent testimonials, awards, certifications, years in business or figures.
@@ -478,10 +478,10 @@ Expected: no output. `README.md`, `DOCUMENTATION.md` and `legible/` may mention 
 Run it on a real project before publishing:
 
 ```bash
-grep -rIniE "Your Business|Your City|Your Region|YOUR-DOMAIN|Service [1-6]\b|City [1-4]\b|Topic [1-5]\b|Free Consultation|Your legal name|Your registered address|Your registration number|Your jurisdiction|example\.com|555|\$(99|149|290)|CONFIRM" dist src
+grep -rIniE 'Your Business|Your City|Your Region|YOUR-DOMAIN|Service [1-6]\b|City [1-4]\b|Topic [1-5]\b|Free Consultation|Your legal name|Your registered address|Your registration number|Your jurisdiction|example\.com|555|\$(49|55|99|149|229|290|299|490)\b|09:00|19:00|9am|7pm|business day|business hours|addressCountry|priceCurrency|CONFIRM' dist src
 ```
 
-The sweep is a review aid, not a pass/fail test. Replace every hit, or justify it explicitly (for example a real price that happens to match). The sample logo and social image are replaced with the site's own assets (section 3.7). Hits for `CONFIRM` mark facts that are still awaiting confirmation.
+The sweep is a review aid, not a pass/fail test. Replace every hit, or justify it explicitly (for example a real price that happens to match). The sample logo and social image are replaced with the site's own assets (section 3.7). Hits for `CONFIRM` mark facts that are still awaiting confirmation. The sweep also flags sample opening hours, response times and limits (for example "max. 3 per week"), currency and country, which are repeated across `entity.json`, pages, FAQs and `llms.txt`: review all of them at once. Keep the command in single quotes: in double quotes the shell turns `\$(99|149|290)` into `$(99|149|290)` and the price patterns match nothing.
 
 ### 7.5 Commands
 
@@ -497,7 +497,7 @@ The sweep is a review aid, not a pass/fail test. Replace every hit, or justify i
 | Local server (port 3001) | `python3 legible/dev.py [--port N] [--minify]` |
 | Validate an existing build | `python3 legible/check_site.py --dir dist --strict --site-url https://example.com` |
 
-`build.sh` variables: `SITE_URL`, `CSS_MINIFY` (default `TRUE`), `CHECK_STRICT` (default `TRUE`). `build.py` also reads `RENDER_GIT_BRANCH` and `RENDER_GIT_COMMIT`, which feed the report when there is no Git checkout. If the executable bit is missing (for example after unpacking an archive), run `bash legible/build.sh`.
+`build.sh` variables: `SITE_URL` (empty counts as not set), `CSS_MINIFY` (default `TRUE`), `CHECK_STRICT` (default `TRUE`). If the output still uses the sample domain `YOUR-DOMAIN.com`, `build.sh` prints a warning but does not fail. `build.py` also reads `RENDER_GIT_BRANCH` and `RENDER_GIT_COMMIT`, which feed the report when there is no Git checkout. If the executable bit is missing (for example after unpacking an archive), run `bash legible/build.sh`.
 
 ### 7.6 Deployment
 
