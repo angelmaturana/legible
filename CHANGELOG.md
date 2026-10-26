@@ -4,6 +4,27 @@ All notable changes to `legible` are recorded here. The format follows [Keep a C
 
 ## [Unreleased]
 
+### Added
+
+- AI workflow for building the base of a site. The AI first looks for `SITE_PLAN.md` in the zip. With a plan it continues it (on `continue` or any similar phrase in any language, or when nothing specific is asked); with no plan, a start command (`start site`, `new site`, `run legible`, or a translation) starts the work and the AI runs a twelve-question interview in three rounds (the site, the contact and offer, the design and gaps), proposes the pages, URLs and design direction for the user to confirm, and returns the zip with a short `SITE_PLAN.md` already inside; later sessions execute one phase each, update the plan and return the zip. Documented in `AGENTS.md`, `DOCUMENTATION.md` (sections 5.0, 5.4, 5.5, 6.1 and 6.2) and the README ("Build a site with an AI").
+- `SITE_PLAN.md` format: briefing, URL map, at most five phases (data, structure and URLs, design and brand, content, legal and close) with statuses (`pending`, `in_progress`, `done`, `blocked`), pending confirmations, engine notes, execution log, a **Later** list and a **Final state** section.
+- Size limits so the plan stays a short base structure an AI can read in full each session: about 120 lines, at most four lines of detail per phase, no per-page outlines or small-task checklists, Later items in one line, at most three log lines per session.
+- `project_stage` in `src/data/site.json` (`template`, `in_progress`, `complete`): a coarse marker set by the AI when phase 1 starts and when the plan completes. The engine and the validator ignore it (the build, the strict validator and the 130 tests pass with it present), so no engine change is needed.
+- Refinement mode: with `project_stage` `complete` and no `SITE_PLAN.md`, the AI does not run the flow (no interview, recovery, continuing or new plan); it works only on the part the user names. Starting over needs an explicit request and a confirmation.
+- Recovery mode: when `project_stage` is `in_progress` (older zips without the field fall back to the sample values in `site.json`) but `SITE_PLAN.md` is missing, the AI audits the project, rebuilds a short plan from the evidence (phases `done` only when supported, nothing guessed) and asks the user to confirm it, instead of starting the interview from zero.
+- Completion and maintenance: when the last phase is done the plan is marked `complete` and its **Final state** records the state of everything; attaching the zip later starts maintenance mode, which fixes or extends only the part the user names.
+- With no plan, any request that is not a start command (and with a plan, any clear request other than continuing it) makes the AI first explain what `legible` is, what it fits, which checks it includes and how it is used; it warns about partial fits, things outside the base and engine changes, and waits for the user's decision (`AGENTS.md` section 1, `DOCUMENTATION.md` section 5.0).
+- Built-in SEO checks are described as part of `legible` (`DOCUMENTATION.md` section 1.0, README "Validation"): generated metadata and JSON-LD, sitemap, `robots.txt`, `llms.txt`, strict validator and pre-launch sweep. The AI never asks the user whether to enable them.
+- Verification rules for phases 1 to 4 (`CHECK_STRICT=FALSE` only to review warnings from pending facts, never in the last phase) and for an AI that cannot run commands.
+- `AGENTS.md` mode for one-session builds, and engine mode that also applies when a plan exists.
+
+### Changed
+
+- "Integrated tools" is now "interactive features" in `AGENTS.md`, the README and `DOCUMENTATION.md`: it means calculators, booking, forms with a backend and maps, which are outside the base. It was previously read as if `legible` lacked tools.
+- `AGENTS.md` is rewritten: the default job is building a site by changing only `src/`; the engine, the tests and the architecture are not to be improved on the AI's own initiative, and deployment is outside the process. An engine change is a minimal exception that must be recorded in the plan.
+- `AGENTS.md` rule 5 points to `DOCUMENTATION.md` section 7.4 explicitly, so it is not confused with the engine exception in `AGENTS.md` section 7.
+- `DOCUMENTATION.md` section 6.1 (one-session prompt) is now 6.3 and is optional; the briefing template is an optional shortcut for the interview.
+
 ## [1.0.0] - 2026-10-25
 
 First release.

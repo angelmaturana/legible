@@ -2,8 +2,8 @@
 
 > **Who this document is for**
 > - **A person** who wants to understand what legible does, how it is built and which rules protect it.
-> - **An AI that generates a site** from this base plus a business briefing (sections 5 and 6).
-> - **An AI that modifies the engine** (`legible/`, `tests/`) and must keep it small, tested and consistent (sections 0.1 and 2).
+> - **An AI that builds a site** from this base: it interviews the user, writes a phased `SITE_PLAN.md` and executes it one phase per session (sections 5 and 6, and [`AGENTS.md`](AGENTS.md)). **This is the default and main use of the project.**
+> - **An AI that modifies the engine** (`legible/`, `tests/`) only as an exception, and must keep the change small, tested and consistent (sections 0.1 and 2).
 >
 > **Language policy:** everything is in **English** — README, this document, `AGENTS.md`, code, comments, identifiers, console messages, tests, data-file names and the sample site. Spanish (or any other language) is supported **only as a per-site choice** (see section 4).
 
@@ -16,10 +16,13 @@
 | Understand what legible is | Section 1 |
 | Understand how it works inside | Sections 2, 3 |
 | Know the language and naming rules | Section 4 |
-| Generate a site with an AI | Sections 5, 6 |
+| Understand the methodology (start command, interview, plan, phases, completion) | Section 5.0 and `AGENTS.md` |
+| Build a site with an AI | `AGENTS.md`, then sections 5, 6 |
 | Look up markers, rules, commands and checks | Section 7 |
 
 ### 0.1 Ground rules when changing the project
+
+These rules apply when the **engine** changes. Building a site is the default job and changes only `src/`; the engine changes only when there is no other way ([`AGENTS.md`](AGENTS.md) section 7).
 
 1. Add no dependencies, no client-side JavaScript and no frameworks. If a change needs one, do not make the change.
 2. Never weaken tests or validator thresholds to get a green result. If a test must change because a name or message changed, update it and say why.
@@ -38,6 +41,19 @@ A static-site generator for **local service businesses**, written with the Pytho
 - **Output:** a `dist/` folder with plain HTML, one CSS file, `sitemap.xml`, `robots.txt`, `llms.txt`, and one JSON-LD (Schema.org) `@graph` per page.
 - **Quality gate:** a validator (`check_site.py`) checks the compiled output; in strict mode warnings also fail the build.
 - **It does not promise** rankings, indexing or traffic — only predictable, inspectable output.
+
+### 1.0 Built-in SEO checks
+
+`legible` ships its own minimal SEO checks. They are part of the base, run on every build and need no configuration:
+
+| Built in | What it does |
+|---|---|
+| Generated metadata and Schema.org JSON-LD | One `@graph` per page, plus title, description, canonical, Open Graph and Twitter tags |
+| `sitemap.xml`, `robots.txt`, `llms.txt` | Generated from the site data; only indexable pages in the sitemap |
+| Strict validator (`check_site.py`) | Checks the compiled output; warnings also fail the build (section 7.2) |
+| Pre-launch sweep | A search for sample values and `[CONFIRM` markers left in a real project (section 7.4) |
+
+Not included: analytics, Search Console, rank tracking, performance audits, accessibility audits and interactive features. These are not promised and are not in the base. An AI that builds a site uses the built-in checks, never asks the user whether to enable them, and records any request for something outside the base in the plan's **Later** list.
 
 ### 1.1 Design principles (non-negotiable)
 
@@ -71,6 +87,7 @@ A static-site generator for **local service businesses**, written with the Pytho
 - **The `featured_action_*` marker names and the `/featured-action/` URL stay.**
 - **The `type` values `guide` and `article` stay English for every site language:** they are architecture, not content.
 - **Legal pages are jurisdiction-neutral templates.** They use neutral placeholders (`Your legal name`, `Your jurisdiction`…) and tell the reader to have the text reviewed by a qualified lawyer; a real project turns missing facts into `[CONFIRM …]` markers.
+- **Building a site comes first; the engine adapts only when it must.** The zip is a generic base. A site is made by changing `src/`, guided by an interview and a phased plan (section 5). An engine change is a small, recorded exception, never a first reaction.
 - **The sample brand assets stay** (legible's own branding) as placeholders to be replaced (section 3.7).
 
 ---
@@ -104,7 +121,8 @@ Mental rule: **`src/` changes per site; `legible/` is the engine and does not.**
 .
 ├── README.md                  Project presentation
 ├── DOCUMENTATION.md           This document (full reference and AI guide)
-├── AGENTS.md                  Entry point for AI agents
+├── AGENTS.md                  Entry point for AI agents (mode, interview, plan and execution protocol)
+├── SITE_PLAN.md                    Phased plan and its status (created by the interview and returned inside the zip; not part of the template)
 ├── LICENSE · readme-logo.svg · .gitignore
 ├── legible/                   ENGINE (reusable, not edited per site)
 │   ├── build.py               Generator
@@ -168,7 +186,7 @@ Mental rule: **`src/` changes per site; `legible/` is the engine and does not.**
 
 | File | Holds | Notes |
 |---|---|---|
-| `src/data/site.json` | Project settings: `site_url`, `site_name`, `language`, `contact_email`, `phone_e164`, `whatsapp_message`, `city`, `region`, `geo_enabled`, `geo_region_code`, `price_range`, `build_banner`, `check_banner`, `generated_content`, `collection_topics`, `collection_paths` (default `{"guides": "guides", "blog": "blog"}`: folder and URL of each collection, lowercase ASCII slugs with hyphens, different from each other), `sitemap_base_order`; optionally `text`, an object of extra marker values | Empty `geo_region_code`/`price_range` are simply omitted from the output. Keys of `texts.json` win over `text` |
+| `src/data/site.json` | Project settings: `site_url`, `site_name`, `language`, `project_stage`, `contact_email`, `phone_e164`, `whatsapp_message`, `city`, `region`, `geo_enabled`, `geo_region_code`, `price_range`, `build_banner`, `check_banner`, `generated_content`, `collection_topics`, `collection_paths` (default `{"guides": "guides", "blog": "blog"}`: folder and URL of each collection, lowercase ASCII slugs with hyphens, different from each other), `sitemap_base_order`; optionally `text`, an object of extra marker values | Empty `geo_region_code`/`price_range` are simply omitted from the output. Keys of `texts.json` win over `text`. `project_stage` (`template`, `in_progress` or `complete`) is ignored by the build and the validator; only an AI reads it (section 5.0) |
 | `src/data/entity.json` | Business identity in Schema.org: a `ProfessionalService` node and a `WebSite` node | **Keep the `ProfessionalService` type**: cities (`areaServed`), categories (`knowsAbout`) and offers (`hasOfferCatalog`) are read from it |
 | `src/data/texts.json` | Reusable copy: key `x` becomes marker `{{x}}` | Derived values override same-named keys |
 
@@ -278,9 +296,161 @@ HTML per URL · `css/site.css` · JSON-LD per page · `sitemap.xml` (indexable p
 
 This part is a **contract**: an AI that reads it together with the repository and receives a **briefing** must be able to produce a complete site without breaking the engine.
 
+### 5.0 The methodology: start, interview, plan, phases, completion
+
+This is how an AI and a person build the base of a site together with legible. It exists so that the AI does the right thing from the first message, does not redesign the engine, and leaves a written trail that survives between sessions.
+
+**Principles**
+
+1. **The AI looks for the plan first.** On entering the zip, `AGENTS.md` tells the AI to look for `SITE_PLAN.md`. If it exists, the AI continues the plan, whether the user says `continue`, `next phase`, `continúa con el plan` or any similar phrase in any language, or says nothing specific. If it does not exist, a start command (`start site`, `new site`, `run legible`, or a translation) starts the interview. No other prompt is needed.
+2. **Anything else gets an explanation first.** With no plan, any request that is not a start command makes the AI explain what legible is, what it fits, which SEO checks it includes (section 1.0) and how it is used, and only then answer. With a plan, the AI explains the same way when the user clearly asks for something other than continuing (a question, an engine change, something outside the base). It never starts an unusual job before warning how legible works.
+3. **One job by default: adapt `src/`.** The engine, the tests and the architecture are fixed. They change only through the recorded exception in `AGENTS.md` section 7. Deployment is outside the process.
+4. **Ask little, propose a lot.** The interview asks only what the AI cannot derive. Page list, URLs, menu, design direction and phases are proposed by the AI and confirmed by the user.
+5. **Never invent.** What the user does not know becomes a visible `[CONFIRM …]` marker and a row in the plan's pending table.
+6. **One phase per session, with real checks.** A phase is `done` only after its verification actually ran.
+7. **The plan is the memory, it travels inside the zip, and it stays small.** `SITE_PLAN.md` lives in the root of the project. The AI returns the zip with the plan inside, so the plan travels with the project; when that zip is attached to a new session, the AI finds the plan and continues. A new session knows nothing else, and it reads the whole plan every time, so the plan is the base structure only: a briefing, a URL map, at most five phases and the lists of pending facts and Later items. Detail is decided when each phase runs, not written in advance.
+
+**The stage beacon.** `src/data/site.json` carries one field, `project_stage`, with three values: `template` (the untouched base), `in_progress` (set when phase 1 starts) and `complete` (set when the plan finishes). `complete` also means that the site is in detailed work and the flow no longer applies, even if the plan is gone (see refinement mode below). The engine ignores it, so it needs no engine change. It is a coarse beacon that lives in the project data, next to the content, so it survives if `SITE_PLAN.md` is deleted; the plan remains the only place with detail and status. If the two disagree, the AI trusts the plan, corrects the field and notes it in the log.
+
+**Why the plan is called `SITE_PLAN.md`.** It holds the plan of the site and, as work advances, its state. The name says what it is (the plan of this site) and avoids any confusion with the engine's own build files.
+
+**What the AI does when the request is not a start or continue command**
+
+`AGENTS.md` section 1 lists the cases: a question (answer it and mention the start command and the plan state), a partial fit (say what does not fit and wait for confirmation), something outside the base (explain, offer options, wait), a request to change the engine (explain that it is fixed, ask which need it solves, enter engine mode only if confirmed), a deployment request (outside the process, not touched) and a review or audit (read-only).
+
+**Fit check**
+
+legible is a generator for one local service business per site. The AI checks the fit in interview question 1 and says so openly instead of forcing it.
+
+| Fit | Examples | Response |
+|---|---|---|
+| Good | Clinic, workshop, consultancy, cleaning, trades, studio with services and a contact route | Continue |
+| Partial | Business with a large catalogue (the shortcuts cover 6 categories and 5 offers), bookings or orders, several languages at once (the base has one `language` setting per site), several locations that each need their own pages | Say what does not fit, what would go to **Later**, and what the options are; continue only after the user confirms |
+| Outside the base | Online store, CMS, user accounts, client-side JavaScript, external widgets, fonts or trackers, another framework | Explain, offer options (**Later**, an engine exception, or another tool) and wait for the decision |
+
+**Decision flow**
+
+```mermaid
+flowchart TD
+    A[User message with the zip] --> B{SITE_PLAN.md in the zip?}
+    B -->|Yes| K{Continue, start or nothing specific?}
+    K -->|Yes, phases left| H[Execute the next pending phase, update the plan, return the zip]
+    K -->|Yes, complete| I[Maintenance: report the final state, work on the part the user names]
+    K -->|No, another request| C
+    B -->|No| M{project_stage in site.json?}
+    M -->|In progress| R[Recovery: audit the project, rebuild SITE_PLAN.md, confirm]
+    R --> G
+    M -->|Complete| Q[Refinement: no flow, work on the part the user names]
+    M -->|Template| E{Start command?}
+    E -->|No| C[Explain legible, its fit, its checks and how it is used]
+    C --> D[Answer according to the request: question, limits, engine, review]
+    E -->|Yes| F[Interview, propose and confirm]
+    F --> G[Return the zip with SITE_PLAN.md inside]
+    G --> H
+    H -->|Last phase done| J[Plan complete: Final state recorded in SITE_PLAN.md]
+    J --> I
+```
+
+**The interview**
+
+Twelve questions in three rounds, listed in `AGENTS.md` section 4. The AI skips what the user already said, writes in the user's language and changes no project file; the only thing it adds is `SITE_PLAN.md`. Each answer decides something concrete:
+
+| Question | Decides | Lands in |
+|---|---|---|
+| 1 Business and kind | The fit check; the `ProfessionalService` identity | `entity.json`, plan briefing |
+| 2 Language and tone | `language`, translated content, localized slugs, `collection_paths` (section 4.2) | `site.json`, every page |
+| 3 Domain and existing URLs | `site_url`, canonical URLs; existing URLs are only noted (legible generates no redirects, and deployment is outside the process) | `site.json`, plan URL map |
+| 4 Place | City, region, country, address fields, `geo` settings | `site.json`, `entity.json` |
+| 5 Contact | Email, phone, WhatsApp link (or its removal) | `site.json`, `layout.html` |
+| 6 Service area | `areaServed` and the `city_1…4` shortcuts | `entity.json` |
+| 7 Services | Categories (`knowsAbout`), one page per real service, its URL | `entity.json`, `src/pages/`, header, services index |
+| 8 Offers | `hasOfferCatalog`, currency, the single offer priced 0 | `entity.json`, pricing and featured-action pages |
+| 9 Design | Colour tokens, logo, favicon, social image; the limits of the base (one stylesheet, system fonts, no external resources, no JavaScript) | `src/css/site.css`, `layout.html`, `partials/`, `src/static/` |
+| 10 Hours and legal | `openingHoursSpecification` or none; legal pages with `[CONFIRM …]` where data is missing | `entity.json`, legal pages |
+| 11 Later | What stays out of the base | plan **Later** list |
+| 12 Unknowns | The pending-confirmation table | plan |
+
+After round 3 the AI shows what it understood and proposes the URL map, the design direction and the phases. The user confirms or corrects, and only then does the AI deliver the plan.
+
+**Delivering the plan**
+
+The AI creates `SITE_PLAN.md` in the root of the project and returns the complete project as a zip, under the name the user attached (normally `legible.zip`), with the plan inside. It says plainly that the plan is already inside. It may also give the plan separately as a convenience, but the copy inside the zip is the one that counts. If it cannot create a zip, it outputs the plan in full and tells the user to place it in the root.
+
+**Keeping the plan small.** The interview must not produce a big plan. The limits, enforced by `AGENTS.md` section 5:
+
+| Part of the plan | Limit |
+|---|---|
+| Whole file | About 120 lines |
+| Briefing | One short line per item |
+| Phase details | At most four lines per phase |
+| URL map | One row per page, a purpose of a few words |
+| Later | One line per item |
+| Execution log | At most three lines per session; old entries are summarized |
+| Not in the plan | Per-page outlines, copy, keyword lists, small-task checklists |
+
+If a request does not fit in the base, it goes to **Later**. When a phase turns out to be too big, it is split (never beyond five phases) or part of it moves to **Later**.
+
+**The phases**
+
+At most five phases, each small enough for one session:
+
+| # | Phase | Stages (section 5.4) |
+|---|---|---|
+| 1 | Data | S1 |
+| 2 | Structure and URLs | S2 |
+| 3 | Design and brand | S3 |
+| 4 | Content | S4 |
+| 5 | Legal, final checks and close | S5, S6 |
+
+The plan format, the statuses (`pending`, `in_progress`, `done`, `blocked`) and the exact protocol are in `AGENTS.md` sections 5 and 6.
+
+**A session in execution mode**
+
+1. The user attaches the zip that contains `SITE_PLAN.md` and says `continue` (or any similar phrase, or nothing specific).
+2. The AI reads `AGENTS.md` and `SITE_PLAN.md` and takes the first phase that is not `done`.
+3. It works only in `src/` and respects anything the user changed by hand, noting it in the log.
+4. It verifies the phase with real commands (`AGENTS.md` section 9).
+5. It updates `SITE_PLAN.md`: phase status and date, verification, the log with the decisions taken, the pending table, the Later list.
+6. It returns the complete zip without `dist/`, and says in two or three lines what was done and which phase is next.
+
+**Verification during the phases.** In phases 1 to 4 the strict build may fail because of `[CONFIRM` markers or pages not yet adapted. Errors are always fixed. Warnings that come only from facts still pending may be reviewed with `CHECK_STRICT=FALSE`, and each one is listed in the plan as expected. In the last phase the strict build runs with no override. If the AI cannot run commands, it says so and lists what the user must run; it never claims a pass.
+
+**Completion and maintenance**
+
+- When the last phase is `done`, the AI sets the overall status to `complete`, sets `project_stage` to `complete` in `site.json`, and fills the **Final state** section of the plan (at most 20 lines): the state of pages, data, design, legal and validator result, the facts still pending, the warnings that remain and why, and the Later list. It shrinks the phase details and the log to one line each.
+- It tells the user that the plan is finished and that everything is recorded in `SITE_PLAN.md` inside the zip. It says nothing about deployment.
+- From then on, attaching the zip starts **maintenance mode**: the AI reports the final state and works only on the part the user names (fix a page, add a service, resolve a pending fact), only in `src/`, with real verification. It records each change as one line in the log and updates the pending table, the final state and Later if they changed. It does not reopen finished phases on its own.
+- This lets the user improve the site later, part by part, without repeating the interview.
+
+**Recovering a missing plan**
+
+If the zip holds an adapted site but no `SITE_PLAN.md` (the file was deleted or never returned), the AI does not start the interview from zero, because the phases would rewrite work that already exists. It reads `project_stage` in `src/data/site.json`:
+
+| `project_stage` | No plan in the zip means | The AI does |
+|---|---|---|
+| `template` | The untouched base | The normal start: the interview on a start command, or an explanation for anything else |
+| `in_progress` | The site was being built and the plan was lost | Recovery mode, below |
+| `complete` | The site is built and in detailed work | Refinement mode: no interview, no recovery, no continuing and no new plan; it asks which part to work on |
+
+In an older zip without the field, it falls back to the sample values (`site_name` `Your Business`, `site_url` `https://YOUR-DOMAIN.com`): if either has been replaced, it treats the site as `in_progress`.
+
+**Refinement mode.** With `project_stage` `complete` and no plan, the AI does not run the flow. It works only on the part the user names, only in `src/`, under the usual rules, verifies it and reports in one or two lines. Starting over from zero requires an explicit request: the AI warns that the interview and the phases would rewrite the existing site, and only after confirmation sets `project_stage` to `template`.
+
+**Recovery mode** (`project_stage` `in_progress`, `AGENTS.md` section 6):
+
+1. It tells the user what it found and recommends rebuilding the plan from the current state; starting the interview from zero remains possible, with a warning.
+2. It audits without changing anything: data files, page tree, layout, partials, design tokens and assets, plus the baseline (section 7.3) and the pre-launch sweep (section 7.4) as evidence.
+3. It writes a short `SITE_PLAN.md` from that evidence: briefing from the data, URL map from the pages, pending table from the `[CONFIRM` and sweep hits. A phase is marked `done` only when the evidence supports it; otherwise it stays `pending` or `in_progress` with the missing piece named. It never guesses facts that are not in the files.
+4. It asks at most three questions about what the files cannot tell, and the user confirms the plan.
+5. It returns the zip with the plan inside and a log line saying it was reconstructed. If every phase is done the status is `complete` with a **Final state**; otherwise the next session continues normally.
+
+**Out of scope: deployment.** The AI does not deal with hosting, DNS, CI, publishing or host-level redirects. Section 7.6 is a reference for people.
+
+**Why it is built this way.** An AI without a protocol tends to refactor what it was not asked to touch, invent facts to fill gaps, drift into unrelated work and lose context between sessions. The start command, the explanation for anything else, the fit check, the confirmed plan that travels inside the zip, the one-phase sessions, the recorded exceptions and the final state each remove one of those failure modes.
+
 ### 5.1 What the AI must understand
 
-- legible = an **engine** (`legible/`) + a **template** (`src/`). To create a site, **only `src/` changes** (plus `site.json`'s settings).
+- legible = an **engine** (`legible/`) + a **template** (`src/`). To create a site, **only `src/` changes** (plus `site.json`'s settings). The AI does not improve or refactor the engine on its own initiative.
 - Business facts live in three files and spread through `{{markers}}`.
 - The validator is strict: any warning stops the build. That is fixed by correcting content, **never** by relaxing rules or tests.
 - No JavaScript, no dependencies, no frameworks — none are added.
@@ -289,11 +459,13 @@ This part is a **contract**: an AI that reads it together with the repository an
 
 ### 5.2 Briefing the AI must receive
 
+The twelve-question interview in `AGENTS.md` section 4 collects the subset needed for a first version and records it in `SITE_PLAN.md`; the table below is the complete set a site can use. Extra items go to the plan's **Later** list.
+
 Minimum set (if something is missing, the AI **asks or marks it pending** — it does not invent it):
 
 | Block | Fields |
 |---|---|
-| Identity | Business name, domain (HTTPS), one-line description |
+| Identity and fit | Business name, domain (HTTPS), one-line description, kind of business (fit check, section 5.0) |
 | Contact | Email, phone (E.164), is WhatsApp confirmed? yes/no |
 | Location | City, region, street address (if customers visit), ISO 3166-2 `geo_region_code` (optional), country |
 | Service area | Up to 4 cities with shortcuts; others as plain list |
@@ -304,15 +476,16 @@ Minimum set (if something is missing, the AI **asks or marks it pending** — it
 | Audience | Who the site speaks to |
 | Tone | Formal/friendly; (Spanish sites: tú/usted) |
 | Legal | Legal name, tax/registration ID, registered address, governing law |
-| Brand | Logo, favicon, 1200×630 social image, colours (optional) |
+| Design and brand | Logo, favicon, 1200×630 social image, colours, a reference site, or "keep the base look" |
 | Collections | Guides? Blog? How many pieces, which topics |
 | **Language** | `en` (default) or another; for non-English also the desired URL slugs |
+| **URLs** | Existing URLs that must be kept (legible generates no redirects; the host handles them) |
 | **Not provided** | An explicit list of what is unknown and must not be invented |
 
 **Fill-in template**
 
 ```text
-BUSINESS BRIEFING (copy, fill in, paste into the prompt in 6.1)
+BUSINESS BRIEFING (optional shortcut: fill in and paste it so the interview can skip these questions)
 Name:
 Domain (https):
 One-line description:
@@ -327,7 +500,8 @@ price_range (or empty):
 Opening hours (confirmed hours, or 'no hours'):
 Audience:                 Tone (formal or friendly; tú or usted for Spanish):
 Legal: legal name / tax or registration ID / registered address / governing law:
-Brand: logo / favicon / 1200x630 social image / colours (optional):
+Design: logo / favicon / 1200x630 social image / colours / reference site, or 'keep the base look':
+Existing URLs to keep (legible generates no redirects):
 Collections: guides? blog? how many pieces and which topics:
 LANGUAGE: en (default) or other. URL slugs for non-English sites:
 NOT PROVIDED (the AI must not invent these):
@@ -346,34 +520,67 @@ NOT PROVIDED (the AI must not invent these):
 9. WhatsApp: if the phone is not confirmed for WhatsApp, say so and propose removing the floating link (layout) and the WhatsApp calls to action.
 10. Legal pages use only provided data; missing items stay as `[CONFIRM …]` (the sample pages use neutral placeholders such as `Your legal name` so the template passes the validator; the pre-launch sweep finds them); do not state legal obligations as fact; recommend legal review. Hours, response times and limits appear in several files; remove or replace every one, and delete `openingHoursSpecification` if no hours were provided.
 11. No guides/blog unless requested; if created, follow section 3.5 (≥3 articles for an indexable blog).
-12. No JavaScript, no dependencies, no external resources. Do not edit `legible/` or `tests/` to get around a failure.
+12. No JavaScript, no dependencies, no external resources. Do not edit `legible/` or `tests/` to get around a failure. The only engine change allowed is the recorded, minimal exception in `AGENTS.md` section 7, and it never weakens a test or a validator rule. Interactive features (calculators, booking, forms with a backend, maps) are not part of the base: they go to **Later**, or are listed in the plan as an exception that needs an explicit decision. The built-in SEO checks (section 1.0) are part of the base and are always used.
 13. Never invent testimonials, awards, certifications, years in business or figures.
 14. **Non-English sites:** apply section 4.2 completely (language setting, translated content, localised slugs, `collection_paths`) and keep markers, keys and `type` values in English.
 
 ### 5.4 Stages (the AI stops after each one if asked to)
 
+The stages are the work inside the plan's phases: S0 is the interview; S1 is phase 1 (data); S2 is phase 2 (structure and URLs); S3 is phase 3 (design and brand); S4 is phase 4 (content); S5 and S6 are phase 5 (legal, final checks and close). Collections (guides and blog, section 3.5) are not part of a first version and go to **Later** unless the user insists; if they are built, they are an extra stage after S4. A plan phase is one session. In one-session mode the stages run in order in a single session.
+
 | Stage | What it does | Checked with |
 |---|---|---|
-| S0 Read | Read `AGENTS.md`, this document and `README.md`; inspect `src/data/*.json`, `layout.html`, `partials/`, one page, `llms.txt`. Reply with a short plan and the list of missing briefing data | Plan delivered |
+| S0 Read | Read `AGENTS.md`, this document and `README.md`; inspect `src/data/*.json`, `layout.html`, `partials/`, one page, `llms.txt`. In one-session mode, reply with a short plan and the list of missing briefing data. In phased mode this stage is the interview and the output is `SITE_PLAN.md` | Plan delivered |
 | S1 Data | Fill `site.json`, `entity.json`, `texts.json` | `SITE_URL=… ./legible/build.sh` (may fail on pages not yet adapted) |
-| S2 Structure | Decide pages and menu; create/remove service pages | Menu, internal links, `sitemap_base_order` |
-| S3 Content | Write pages following section 5.3 rule 6 | Strict validator |
-| S4 Brand and legal | Logo, images, legal pages with `[CONFIRM …]` where data is missing | Pre-launch sweep (section 7.4) |
-| S5 Collections (optional) | Guides/blog per section 3.5 | Build report |
+| S2 Structure | Decide pages, URLs and menu; create or remove service pages; update `sitemap_base_order` and internal links | Menu, internal links, `sitemap_base_order` |
+| S3 Design and brand | Colour tokens in `site.css`, layout and partials within the invariants, logo, favicon, social image | Build; look at the output in the dev server |
+| S4 Content | Write pages following section 5.3 rule 6 | Strict validator |
+| S5 Legal | Legal pages with `[CONFIRM …]` where data is missing | Pre-launch sweep (section 7.4) |
 | S6 Close | Full baseline; inspect `dist/` (sitemap, robots, llms.txt, JSON-LD of home and one service page) | Final report |
 
 ### 5.5 Definition of done
 
+**For a phase** (one session):
+
+- The phase's verification **actually ran** with real results; the phase is `done` only then. In phases 1 to 4 the strict build may fail on pending facts: review those warnings with `CHECK_STRICT=FALSE`, list each one in the plan as expected, and never apply that override in the last phase. If commands cannot be run, say so and list what the user must run; never claim a pass.
+- `SITE_PLAN.md` is updated: status, date, verification, execution log, pending confirmations and Later list.
+- The complete zip (without `dist/`) is returned with the changes and the updated plan.
+
+**For the plan** (all phases `done`, overall status `complete`):
+
 - Tests and strict build **actually run** and green, or remaining failures listed and justified.
 - Pre-launch sweep resolved or each hit justified.
 - `dist/` inspected, not just sources.
-- Final report with three sections: (1) what changed, by file; (2) commands run and their real results; (3) a table of facts still awaiting client confirmation, including expected validator warnings.
+- The **Final state** section of `SITE_PLAN.md` is filled with the state of everything: what changed, the real results of the commands, the facts still awaiting confirmation (including expected validator warnings) and the Later list.
+- The user is told that the plan is finished and that the state is recorded inside the zip. Deployment is not mentioned.
 
 ---
 
 ## 6. Prompt templates
 
-### 6.1 Generate a site
+### 6.1 Start a site (interview and plan)
+
+Attach the zip and say one of the start commands:
+
+```text
+start site
+```
+
+Equivalent commands are `new site`, `run legible` and their translations (for example `empezar sitio`, `nuevo sitio`, `ejecutar legible`). With no `SITE_PLAN.md` in the zip, the AI starts the interview and returns the zip with the plan inside.
+
+### 6.2 Continue the plan
+
+Attach the zip that already contains `SITE_PLAN.md` (the one the AI returned) and say:
+
+```text
+continue
+```
+
+Any similar phrase works (`next phase`, `continúa con el plan`, `sigue`), and so does saying nothing specific: on entering the zip the AI looks for the plan and, if it exists, continues it. The AI executes the next pending phase, updates the plan and returns the zip. When the plan is complete, the same command starts maintenance mode: the AI reports the final state and asks which part to work on.
+
+### 6.3 Build everything in one session (optional)
+
+Use it only when the user explicitly wants the whole site without a phased plan. It overrides the interview and the plan (`AGENTS.md` one-session mode); every other rule still applies.
 
 ```text
 Read AGENTS.md first.
@@ -501,6 +708,8 @@ The sweep is a review aid, not a pass/fail test. Replace every hit, or justify i
 
 ### 7.6 Deployment
 
+This section is a reference for people. An AI that builds a site does not deal with deployment (`AGENTS.md` section 8, rule 7).
+
 Publish `dist/` on any static host (Cloudflare Pages, GitHub Pages, Netlify, Render, S3, Nginx).
 
 ```text
@@ -526,3 +735,18 @@ The build environment needs Python 3.8+ and `bash`. A failed validation exits no
 | Locale file | `legible/locales/<language>.json`: engine-generated strings for one language |
 | Briefing | The set of business facts a site is built from (section 5.2); anything not in it is not invented |
 | Pre-launch sweep | The search for sample values and `[CONFIRM` markers left in a real project (section 7.4) |
+| Built-in checks | The minimal SEO checks that `legible` ships: generated metadata and JSON-LD, sitemap, `robots.txt`, `llms.txt`, strict validator and pre-launch sweep (section 1.0) |
+| Interactive feature | Anything that needs client-side JavaScript, a backend or an external service (calculator, booking, form backend, map). Not in the base; goes to **Later** |
+| Interview | The twelve questions in three rounds in `AGENTS.md` section 4 that produce the plan; the only thing it adds to the project is `SITE_PLAN.md` |
+| Fit check | The AI's check, in interview question 1, of whether the business suits legible (section 5.0) |
+| URL map | The table in `SITE_PLAN.md` of every page, its URL and its purpose, proposed by the AI and confirmed by the user |
+| `SITE_PLAN.md` | The phased plan for the first version, with its status; it lives in the project root and travels inside the zip |
+| Phase | One step of the plan, small enough for one session; statuses `pending`, `in_progress`, `done`, `blocked` |
+| Start command | `start site`, `new site` or `run legible` (or a translation): starts the interview when there is no plan. With a plan, `continue` and similar phrases (or no specific request) continue it |
+| `project_stage` | The field in `site.json` that marks the project as `template`, `in_progress` or `complete`; ignored by the engine, read by AIs |
+| Refinement mode | What the AI does when `project_stage` is `complete` and there is no plan: no flow, only the part the user names |
+| Recovery mode | What the AI does when `project_stage` is `in_progress` and `SITE_PLAN.md` is missing: audit the project and rebuild a short plan from the evidence |
+| Maintenance mode | What the AI does with a `complete` plan: report the final state and work only on the part the user names |
+| Final state | The closing section of `SITE_PLAN.md`: state of everything, pending facts, remaining warnings and Later |
+| Later | The plan's list of requests beyond the first version |
+| Engine exception | A minimal, recorded change to `legible/` made only when `src/` cannot meet the need (`AGENTS.md` section 7) |

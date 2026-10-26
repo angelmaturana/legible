@@ -18,7 +18,7 @@
 
 The aim is predictable, inspectable output—not guaranteed rankings, indexing, rich results, traffic or AI citations. The included site is generic sample content; replace it with verified business information before publishing.
 
-The full technical reference, marker catalogue, content rules and AI-agent guide live in [`DOCUMENTATION.md`](DOCUMENTATION.md). AI agents should start at [`AGENTS.md`](AGENTS.md). The generated files and their roles are summarized in [Generated outputs](DOCUMENTATION.md#36-generated-outputs).
+The full technical reference, marker catalogue, content rules and AI-agent guide live in [`DOCUMENTATION.md`](DOCUMENTATION.md). AI agents should start at [`AGENTS.md`](AGENTS.md): the project is meant to be used to **build a site**, not to modify the engine. See [Build a site with an AI](#build-a-site-with-an-ai). The generated files and their roles are summarized in [Generated outputs](DOCUMENTATION.md#36-generated-outputs).
 
 ## Features at a glance
 
@@ -60,11 +60,26 @@ Open `http://localhost:3001` while the development server is running. Stop it wi
 
 `SITE_URL` is a placeholder in the commands above. Set it to the site's real canonical HTTPS origin before deploying. If `SITE_URL` is missing or empty, `site_url` from `src/data/site.json` is used; if that is still the sample domain, `build.sh` prints a warning.
 
+## Build a site with an AI
+
+The zip is a generic base. Attach it to an AI assistant and say `start site` (also `new site`, `run legible` or the equivalent in your language). The assistant follows the protocol in [`AGENTS.md`](AGENTS.md), which begins by looking for `SITE_PLAN.md`:
+
+1. **Interview.** If the zip has no `SITE_PLAN.md`, the assistant asks twelve short questions in three rounds (the business, the contact and offer, the design and gaps) and proposes the pages, URLs and design direction for you to confirm.
+2. **Plan.** It returns your zip with a short `SITE_PLAN.md` already inside, for the base of the site only. You do not need to add it anywhere.
+3. **Execute, one phase per session.** Attach the zip that contains the plan and say `continue` (or anything similar, or nothing specific): the assistant finds the plan and carries on. It executes the next pending phase, verifies it, updates the plan and returns the zip.
+4. **Finish and maintain.** When the last phase is done, the plan records the final state of everything. Later, attach the zip again and ask for any part to be fixed or extended.
+
+If the zip holds a site in progress but the plan is missing, the assistant does not start from zero: it audits the project, rebuilds a short `SITE_PLAN.md` from what it finds and asks you to confirm it. If the site is already marked complete (`project_stage` in `site.json`), no plan is needed: the assistant simply works on the part you name.
+
+The assistant changes only `src/`. It does not improve or refactor the engine, the tests or the architecture, and it does not deal with deployment. Anything beyond the base (blog, guides, interactive features) goes to the plan's **Later** list.
+
+If there is no plan and you ask for anything other than a start command, the assistant first explains what `legible` is, what it fits and how it is used, and warns you when the request is outside what it does. To skip the plan and build everything in one session, say so explicitly (see [`DOCUMENTATION.md` section 6.3](DOCUMENTATION.md#63-build-everything-in-one-session-optional)). The methodology, step by step, is in [`DOCUMENTATION.md` section 5.0](DOCUMENTATION.md#50-the-methodology-start-interview-plan-phases-completion).
+
 ## Configure a site
 
 Start with these three files:
 
-- `src/data/site.json` — canonical URL, site name, language, contact information, location, collection settings and generated-index copy.
+- `src/data/site.json` — canonical URL, site name, language, project stage (a marker for AI-assisted builds; the build ignores it), contact information, location, collection settings and generated-index copy.
 - `src/data/entity.json` — business identity, service areas, service categories, offers and opening hours in Schema.org form.
 - `src/data/texts.json` — reusable copy referenced by `{{placeholders}}` in templates and generated files.
 
@@ -107,7 +122,8 @@ Set `"language": "en"` or `"language": "es"` in `src/data/site.json`. This confi
 ├── tests/test_legible.py  regression suite
 ├── README.md
 ├── DOCUMENTATION.md      full reference and AI-agent guide
-├── AGENTS.md             entry point for AI agents
+├── AGENTS.md             entry point for AI agents: interview, plan and execution
+├── SITE_PLAN.md          short plan and its status (created by the interview inside your zip, not in the template)
 ├── LICENSE
 └── readme-logo.svg
 ```
@@ -130,6 +146,8 @@ flowchart TD
 The build checks configuration, renders all pages, generates optional guide/blog indexes, writes site-level files and invokes the validator. The production output contains files that a static host can serve; Python is needed at build time, not to serve the published site.
 
 ## Validation
+
+`legible` includes minimal SEO checks as part of the build, with nothing to install or configure: metadata, Schema.org JSON-LD, `sitemap.xml`, `robots.txt` and `llms.txt` are generated, and a strict validator checks the result. It does not replace analytics, Search Console or rank tracking.
 
 `legible/check_site.py` validates the compiled output: metadata, headings, links and assets, placeholders, JSON-LD references, sitemap and `robots.txt`. Strict mode is enabled by default, so warnings also cause a non-zero exit. For the full list of checks and thresholds, see [`DOCUMENTATION.md` section 7.2](DOCUMENTATION.md#72-validator-rules).
 
@@ -155,7 +173,7 @@ Optional build settings are `CSS_MINIFY=FALSE` for readable, unminified output a
 - `llms.txt` is an informational index; support and impact vary by consumer.
 - The validator cannot determine whether business claims are true, content meets every visitor's needs, or a site complies with all applicable laws.
 - Sample business facts and legal copy must be reviewed and replaced. Obtain a suitable legal review before using the legal templates in production.
-- Complex interactivity, a CMS, a large editorial platform or a highly customizable pipeline may require a broader framework.
+- Complex interactivity, a CMS, a large editorial platform or a highly customizable pipeline may require a broader framework. Interactive features (calculators, booking, forms with a backend, maps) are outside the base: record them in the plan's **Later** list or decide explicitly how to handle them. The SEO checks described under Validation are built in and are not optional extras.
 
 ## Contributing
 
