@@ -2,6 +2,7 @@
   "site_url": "https://YOUR-DOMAIN.com",
   "site_name": "Your Business",
   "language": "en",
+  "project_stage": "template",
   "contact_email": "hello@example.com",
   "phone_e164": "+15550100",
   "whatsapp_message": "Hello, I am interested in your services. My business is:",

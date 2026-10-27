@@ -1,23 +1,42 @@
 # AGENTS.md
 
-`legible` is a lightweight static-site generator for local service businesses. It uses only the Python standard library and ships no client-side JavaScript. This file is the entry point for AI agents; the full contract and the reasoning behind it are in [`DOCUMENTATION.md`](DOCUMENTATION.md), section 5.0 (the methodology).
+`legible` is a lightweight static-site generator for local service businesses. It uses only the Python standard library and ships no client-side JavaScript. This file is the entry point for AI agents and the source of truth for procedures, numbers, limits and commands. The reasoning behind them and the reference tables are in [`DOCUMENTATION.md`](DOCUMENTATION.md), section 5.0 (the methodology).
+
+**At a glance**
+- **Your job:** adapt the sample base into a website for one business, changing only `src/`.
+- **Not your job:** the engine (`legible/`), the tests (`tests/`), the architecture and deployment.
+- **First step:** look for `SITE_PLAN.md` in the project root. Section 1 tells you what to do next.
+- **Always:** keep missing facts as `[CONFIRM …]` markers and report only checks you really ran (sections 8 and 9).
+- **If a case is not covered:** stop and ask one question (end of section 8).
 
 ## 1. First step: look for the plan, then read the request
 
 **Always start by looking for `SITE_PLAN.md` in the root of the project.** If only some `.md` files are attached and not the zip, ask for the zip before doing anything else.
 
-**There is a `SITE_PLAN.md`.** The default is to **continue the plan**: go to execution mode (section 6), or to maintenance mode if the plan is complete (section 6). Do this when the user says nothing specific, or says anything that means "continue", such as `continue`, `keep going`, `resume`, `next phase`, `carry on with the plan`, `continúa`, `continúa con el plan`, `sigue`, `siguiente fase`, or the equivalent in their language, or any start command. Do not explain `legible` first. Only when the user clearly asks for something else (a question, an engine change, a deployment, something outside the base) handle that request as in the table below, and mention the state of the plan.
+If there is no plan, read `project_stage` in `src/data/site.json` (`template`, `in_progress` or `complete`). If the field is missing (an older zip), fall back to the sample values. The site is still the base only when `site_name` is `Your Business` and `site_url` is `https://YOUR-DOMAIN.com`. If either has been replaced, treat the site as `in_progress`.
 
-**There is no `SITE_PLAN.md`.** First check whether the site is still the sample base or has already been adapted, by reading `project_stage` in `src/data/site.json`. If the field is missing (an older zip), fall back to the sample values: the site is still the base only when `site_name` is `Your Business` and `site_url` is `https://YOUR-DOMAIN.com`; if it has been adapted, treat it as `in_progress`.
-- **`project_stage` is `in_progress` (no plan).** The site was being built and the plan was lost or removed. Do not start the interview blindly: it would plan from zero over work that already exists. Say what you found and go to **recovery mode** (section 6), whatever the user asked. If the user asked for something unrelated (a question, an engine change), handle it as in the table below and mention that the plan is missing.
-- **`project_stage` is `complete` (no plan).** The site is already built and in detailed work. Do **not** run the flow: no interview, no recovery, no continuing, no new plan. Go to **refinement mode** (section 6). This holds for a start command and for a continue phrase too: say in one line that the site is marked complete and needs no plan, and ask which part the user wants to work on.
-- **Start command, sample base.** The user says `start site`, `new site` or `run legible`, or the equivalent in their language (for example `empezar sitio`, `nuevo sitio`, `ejecutar legible`). Go to **interview mode** (section 4), with no explanation of `legible` first.
-- **Anything else, sample base.** Do not start working. First explain in a few lines, in the user's language:
+Then take the first row of this table that matches:
 
-  - What `legible` is: a generator that turns `src/` (HTML templates plus three JSON data files) into a static website in `dist/`, then validates it in strict mode.
-  - What it already includes for SEO: minimal built-in checks. Every build generates page metadata, Schema.org JSON-LD, `sitemap.xml`, `robots.txt` and `llms.txt`, and a strict validator checks the result (metadata, headings, links, structured data, sitemap). A pre-launch sweep finds leftover sample values. It does **not** include analytics, Search Console, rank tracking or interactive features, and it promises no rankings or traffic.
-  - What it fits: one local service business per site, one language per site, no client-side JavaScript, no external resources, no CMS, no catalogue or online store.
-  - How it is used: the user says `start site`; you interview them and put a short plan (`SITE_PLAN.md`) inside their zip; each later session executes one phase and updates that plan. You adapt `src/`; you do not redesign the engine. Deployment is not part of this process.
+| Plan | `project_stage` | The user says | Go to | First words |
+|---|---|---|---|---|
+| Exists, phases left | any | continue, a start command, or nothing specific | **Execution mode** (section 6) | Do not explain `legible` first |
+| Exists, status `complete` | any | continue, a start command, or nothing specific | **Maintenance mode** (section 6) | Report the final state in a few lines and ask which part to work on |
+| Exists | any | clearly something else: a question, an engine change, a deployment, something outside the base | The requests table below | Mention the state of the plan |
+| Missing | `in_progress` | anything | **Recovery mode** (section 6) | Say you found a site in progress with no plan. If the request was unrelated, handle it with the requests table below and mention that the plan is missing |
+| Missing | `complete` | anything, including a start or continue phrase | **Refinement mode** (section 6) | One line: the site is marked complete and needs no plan. Ask which part to work on. No interview, no recovery, no new plan |
+| Missing | `template` | a start command | **Interview mode** (section 4) | Do not explain `legible` first |
+| Missing | `template` | anything else | Explain `legible` (below), then the requests table | Do not start working |
+
+**Continue phrases** include `continue`, `keep going`, `resume`, `next phase`, `carry on with the plan`, `continúa`, `continúa con el plan`, `sigue`, `siguiente fase`, or the equivalent in the user's language.
+
+**Start commands** are `start site`, `new site` and `run legible`, or the equivalent in the user's language (for example `empezar sitio`, `nuevo sitio`, `ejecutar legible`).
+
+**Explaining `legible`** (the base is untouched and the request is not a start command). Explain in a few lines, in the user's language:
+
+- What `legible` is: a generator that turns `src/` (HTML templates plus three JSON data files) into a static website in `dist/`, then validates it in strict mode.
+- What it already includes for SEO: minimal built-in checks. Every build generates page metadata, Schema.org JSON-LD, `sitemap.xml`, `robots.txt` and `llms.txt`, and a strict validator checks the result (metadata, headings, links, structured data, sitemap). A pre-launch sweep finds leftover sample values. It does **not** include analytics, Search Console, rank tracking or interactive features, and it promises no rankings or traffic.
+- What it fits: one local service business per site, one language per site, no client-side JavaScript, no external resources, no CMS, no catalogue or online store.
+- How it is used: the user says `start site`; you interview them and put a short plan (`SITE_PLAN.md`) inside their zip; each later session executes one phase and updates that plan. You adapt `src/`; you do not redesign the engine. Deployment is not part of this process.
 
 Then answer the request as follows (the same table applies when a plan exists and the request is not to continue it):
 
@@ -38,15 +57,17 @@ Your job is **not** to improve, refactor, optimize or "fix" the engine (`legible
 
 ## 3. Modes
 
-| Situation | Mode |
-|---|---|
-| No `SITE_PLAN.md` and a start command | **Interview mode** (section 4) |
-| A `SITE_PLAN.md` with phases not `done`, and a continue or start command or no specific request | **Execution mode** (section 6) |
-| No `SITE_PLAN.md` and `project_stage` is `in_progress` | **Recovery mode** (section 6): rebuild the plan from the project state, then continue |
-| No `SITE_PLAN.md` and `project_stage` is `complete` | **Refinement mode** (section 6): no plan and no flow; work on the part the user names |
-| A `SITE_PLAN.md` whose status is `complete`, and a continue or start command or no specific request | **Maintenance mode** (section 6): report the final state and work only on the part the user names |
-| The user explicitly says "engine mode" or asks to change `legible/` or `tests/` (with or without a plan) | **Engine mode**: read `DOCUMENTATION.md` sections 0.1 and 2 first; keep the change small, update the tests and keep the baseline green |
-| The user explicitly asks to build the whole site in one session without a plan (`DOCUMENTATION.md` section 6.3) | **One-session mode**: skip the interview and the plan, follow stages S0 to S6 in `DOCUMENTATION.md` section 5.4, and obey sections 8 and 9 of this file |
+The first five modes are chosen by the table in section 1.
+
+| Mode | When | Where |
+|---|---|---|
+| **Interview** | No plan, base untouched, a start command | Section 4 |
+| **Execution** | A plan with phases not `done`, and a continue or start command or no specific request | Section 6 |
+| **Recovery** | No plan and `project_stage` is `in_progress`: rebuild the plan from the project state, then continue | Section 6 |
+| **Refinement** | No plan and `project_stage` is `complete`: no plan and no flow; work on the part the user names | Section 6 |
+| **Maintenance** | A plan whose status is `complete`, and a continue or start command or no specific request: report the final state and work only on the part the user names | Section 6 |
+| **Engine mode** | The user explicitly says "engine mode" or asks to change `legible/` or `tests/` (with or without a plan). Read `DOCUMENTATION.md` sections 0.1 and 2 first; keep the change small, update the tests and keep the baseline green | Section 7 |
+| **One-session mode** | The user explicitly asks to build the whole site in one session without a plan (`DOCUMENTATION.md` section 6.3). Skip the interview and the plan, follow stages S0 to S6 in `DOCUMENTATION.md` section 5.4, and obey sections 8 and 9 of this file | `DOCUMENTATION.md` |
 
 ## 4. Interview mode
 
@@ -85,17 +106,41 @@ Open with one line, in the user's language: you will ask twelve short questions 
 
 ## 5. The plan: `SITE_PLAN.md`
 
-The plan covers the **base of the site only**: the structure and the basics. It is a short map, not a task list. It has at most **five phases**, each small enough to execute in one session.
+The plan covers the **base of the site only**: the structure and the basics. It is a short map, not a task list. It has at most **ten phases** (twelve when the business has more than three service pages), each small enough to execute in one session of a free-plan chat (see the session budget below).
 
 **Size limits.** A later session reads `SITE_PLAN.md` in full, so keep it small:
 - The whole file fits in about 120 lines. If it does not, cut it; do not compress it.
 - The briefing is one short line per item, not paragraphs.
-- Each phase has **at most four lines** of detail: files to touch, expected result, verification command.
-- No per-page outlines, no copy, no keyword lists, no checklists of small tasks. What each page says is decided in phase 4, with the data already in the plan.
+- Each phase has **at most two lines** of detail: what to read (so a session never loads the whole documentation), what to touch with the expected result, and the verification command.
+- **Session budget.** One phase touches at most about **three pages or three large files**, and never needs to read the whole stylesheet at once. Prefer a phase that finishes with room to spare over one that fills the session: a half-done phase costs more than an extra phase.
+- No per-page outlines, no copy, no keyword lists, no checklists of small tasks. What each page says is decided in the content phases, with the data already in the plan.
 - The URL map has one row per page, with a purpose of a few words.
 - Each **Later** item is one line.
-- Detail is decided when a phase runs, not before. If a phase seems to need more than one session, split it, up to the limit of five phases; if it still does not fit, move part of it to **Later**.
+- Detail is decided when a phase runs, not before.
+- If a phase seems to need more than one session, split it, up to the limit of ten phases. If it still does not fit, move part of it to **Later**.
+- A site with more than three service pages may add one extra phase for each further three, up to twelve phases in total.
+- A phase the site does not need (for example the brand tokens when the user keeps the base look) is not removed. It stays in the table as `done` with "not needed" and its reason in the Verification column, so the numbering is stable and its slot can be used to split a heavy phase.
 - The execution log is at most three lines per session. When the log gets long, summarize the old entries into one line.
+
+**Check the plan before you deliver it, and after every update.** The limits above are measured, not guessed:
+
+```bash
+wc -l SITE_PLAN.md                     # expect 120 or fewer; if more, summarize the log and cut, do not compress
+grep -cE '^[|] [0-9]+ [|]' SITE_PLAN.md   # phases in the table: expect 10 or fewer (12 at most, see above)
+```
+
+**Default `Read:` lines.** Each phase reads only these, so a session never loads the whole documentation (section numbers are those of `DOCUMENTATION.md`). Use them as they are in the plan, and change them only when the catalogue changes. On a site that is not in English, add section 4.2 to phases 1, 2 and 7 to 10.
+
+| Phase | Read |
+|---|---|
+| 1 Data | Sections 3.1, 3.2 and 7.1; the three data files |
+| 2 Structure and URLs | Sections 3.3 and 3.4, and 5.3 rules 4 and 7; the page tree, `header.html`, `sitemap_base_order` |
+| 3 Brand tokens | Lines 1 to 62 of `site.css` (the tokens block) and nothing else |
+| 4 Component styles | `site.css` from line 63, one numbered section at a time, only those needed; 5.3 rule 12 |
+| 5 Layout and partials | 5.3 rules 8 and 9; `layout.html`, `header.html`, `footer.html` |
+| 6 Brand assets | Section 3.7; the icon and image lines in the head of `layout.html` |
+| 7, 8, 9 Content | 5.3 rules 6 and 13 (rule 7 and `services/sample-service/` for phase 8); the briefing in the plan; only the pages of that phase |
+| 10 Legal and close | 5.3 rule 10, then sections 7.2 and 7.4 |
 
 **Where the plan goes.**
 - Create `SITE_PLAN.md` in the **root of the project** and **return the complete project as a zip with the plan inside it**, under the same file name the user attached (normally `legible.zip`). Exclude `dist/`, `.dev-dist/`, `__pycache__/` and `.git/`.
@@ -128,12 +173,17 @@ Write headings, table columns and status values in English. Free text may use th
 |---|---|---|---|---|
 | 1 | Data: `site.json`, `entity.json`, `texts.json` | pending | | |
 | 2 | Structure and URLs: pages, menu, `sitemap_base_order`, internal links | pending | | |
-| 3 | Design and brand: tokens in `site.css`, layout and partials, assets | pending | | |
-| 4 | Content: write every page | pending | | |
-| 5 | Legal, final checks and close: legal pages, pre-launch sweep, full strict baseline | pending | | |
+| 3 | Brand tokens: the `:root` block of `site.css` (colours, type, spacing) | pending | | |
+| 4 | Component styles: the rest of `site.css`, only what the tokens do not solve | pending | | |
+| 5 | Layout and partials: `layout.html`, `header.html`, `footer.html` | pending | | |
+| 6 | Brand assets: `logo.svg`, `favicon.svg`, and the PNG and ICO files if provided | pending | | |
+| 7 | Content: home, services index and pricing | pending | | |
+| 8 | Content: service pages (at most three per phase) | pending | | |
+| 9 | Content: featured action, about and contact | pending | | |
+| 10 | Legal and close: legal pages, 404, pre-launch sweep, full strict baseline | pending | | |
 
 ### Phase details
-<for each phase, at most four lines: files to touch, expected result, verification command>
+<for each phase, at most two lines: `Read:` the documentation sections and files it needs, and nothing else · `Touch:` the files and the expected result · `Verify:` the command>
 
 ## Pending confirmation
 | Fact | Where it appears | Status |
@@ -154,14 +204,23 @@ Write headings, table columns and status values in English. Free text may use th
 
 Allowed phase statuses: `pending`, `in_progress`, `done`, `blocked` (with the reason).
 
+**Adapt the catalogue to the site.** The ten rows above are the default catalogue, sized for one session each. When the plan is written:
+- If the user keeps the base look (interview question 9), mark phases 3 and 4 `done` with "not needed: base look kept". Mark phase 5 the same way only when `layout.html` and the partials need no change beyond what phase 2 already did.
+- Phase 6 is never skipped silently. The AI can write SVG (`logo.svg`, `favicon.svg`) but should not fake binary images: `og-image.png` (1200×630), `apple-touch-icon.png` and `favicon.ico` stay as the sample files, with a row in **Pending confirmation**, until the user supplies them. The SVG files are replaced, or listed as pending if the user has no logo.
+- Phase 8 repeats for each further three service pages (see the size limits), and its pages are named in the phase details.
+- Phase 10 combines the three legal pages, the 404 page and the close. If the legal data is mostly `[CONFIRM …]` this is light; if it is not, split it into legal (before) and close (after), using a slot freed by a skipped phase.
+
 ## 6. Execution, completion, maintenance, recovery and refinement
 
 **Execution mode**
 
-1. Read `SITE_PLAN.md`. Take the first phase that is not `done`. Execute **only that phase**, unless the user asks for more.
+1. Read `SITE_PLAN.md`. Take the first phase that is not `done`. Read only what that phase's `Read:` line lists; do not load `DOCUMENTATION.md` in full. Before you start, measure the work: `wc -c` on the files the phase will read or change. If the total is more than about 50000 bytes, split the phase first (section 5, size limits). Execute **only that phase**, unless the user asks for more.
 2. Work only in `src/`. Respect anything the user changed by hand since the last session; note it in the log instead of reverting it. If a new instruction from the user contradicts the plan, say so and ask which one wins. If `project_stage` disagrees with the plan, trust the plan, fix the field and note it in the log.
 3. Verify the phase (section 9) and run the baseline when the phase says so. Do not mark a phase `done` without a real check.
-4. Update `SITE_PLAN.md`: phase status and date, verification result, the execution log with the decisions taken, the pending-confirmation table, the Later list and the overall status (`in progress`). When phase 1 starts, set `project_stage` in `src/data/site.json` to `in_progress`. If the phase failed or stopped halfway, set `blocked` or `in_progress` and write where it stopped.
+4. Update `SITE_PLAN.md`: phase status and date, verification result, the execution log with the decisions taken, the pending-confirmation table, the Later list and the overall status (`in progress`).
+   - Run the plan checks of section 5 on the updated file and shrink it if it is over a limit.
+   - When phase 1 starts, set `project_stage` in `src/data/site.json` to `in_progress`.
+   - If the phase failed or stopped halfway, set `blocked` or `in_progress` and write where it stopped.
 5. **Return the complete project as a zip** (same name, same exclusions as in section 5) with your changes and the updated `SITE_PLAN.md` inside it. If you cannot create files, output every changed file in full, including `SITE_PLAN.md`.
 6. Finish with two or three lines: what was done and which phase is next.
 
@@ -182,7 +241,10 @@ Allowed phase statuses: `pending`, `in_progress`, `done`, `blocked` (with the re
 **Recovery mode** (`project_stage` is `in_progress` but `SITE_PLAN.md` is missing). The state of the project is the evidence; rebuild the plan from it.
 1. Tell the user what you found: a site in progress with no plan. Offer two options and recommend the first: **rebuild the plan from the current state** (read-only audit, then a short plan), or **start the interview from zero** (warn that the phases would then rewrite existing data and content). If the user only wants to work on one part, recommend rebuilding the plan first so the work is recorded.
 2. Audit without changing anything: read `src/data/*.json`, the tree of `src/pages/`, `layout.html`, `partials/`, the tokens in `site.css` and `src/static/`; run the baseline (section 9) and the pre-launch sweep (`DOCUMENTATION.md` section 7.4).
-3. Write `SITE_PLAN.md` from the evidence, within the size limits of section 5: the briefing from the data files, the URL map from the pages that exist, and the pending table from the `[CONFIRM` and sweep hits. Mark a phase `done` only when the evidence supports it (data with no sample values; pages and menu consistent with `sitemap_base_order`; design tokens and assets replaced; every page free of sample content and passing the validator; legal pages with no sample values and a clean sweep). Otherwise mark it `pending` or `in_progress` and say what is missing. Never guess a fact that is not in the files: it goes to the pending table.
+3. Write `SITE_PLAN.md` from the evidence, within the size limits of section 5: the briefing from the data files, the URL map from the pages that exist, and the pending table from the `[CONFIRM` and sweep hits.
+   - Mark a phase `done` only when the evidence supports it: data with no sample values; pages and menu consistent with `sitemap_base_order`; design tokens and assets replaced; every page free of sample content and passing the validator; legal pages with no sample values and a clean sweep.
+   - Otherwise mark it `pending` or `in_progress` and say what is missing.
+   - Never guess a fact that is not in the files: it goes to the pending table.
 4. Ask at most three questions, only about what the files cannot tell (for example what was meant for **Later**). Show the reconstructed plan and ask the user to confirm it.
 5. Return the zip with `SITE_PLAN.md` inside (section 5), with one log line saying the plan was reconstructed from the project state on that date. Set `project_stage` to match: `complete` and a filled **Final state** if every phase is `done`, otherwise `in_progress`, and the next session continues with the first phase that is not `done`.
 
@@ -207,6 +269,8 @@ If the change is large or would break the rules in section 8, stop and ask the u
 6. Do not run Git commands (commit, tag, push) unless the user asks.
 7. Do not deal with deployment: no hosting, DNS, CI, publishing or host-level redirects. It is outside this process. If asked, say so.
 
+**If a case is not covered**, or two instructions seem to conflict: stop, say in one or two lines what is missing or contradictory, offer the most conservative reading, and ask one question. Do not improvise changes outside `src/` to get unblocked.
+
 ## 9. Verify: run it, never assume
 
 ```bash
@@ -216,8 +280,8 @@ SITE_URL=https://example.com ./legible/build.sh
 
 Expect `OK` from the tests and `CHECK PASSED` from the validator. Report the real output and inspect `dist/`, not only the sources.
 
-- **Phases 1 to 4:** the strict build may fail on `[CONFIRM` markers and pages not yet adapted. Errors must be fixed. Warnings that come only from facts still pending may be reviewed with `CHECK_STRICT=FALSE ./legible/build.sh`; list each one in the plan as expected, with its reason.
-- **Last phase:** run the strict build with no override. The plan is not `complete` until it passes, or until every remaining warning is a pending fact listed in the plan and the user has been told.
+- **Every phase except the last:** the strict build may fail on `[CONFIRM` markers and pages not yet adapted. Errors must be fixed. Warnings that come only from facts still pending may be reviewed with `CHECK_STRICT=FALSE ./legible/build.sh`; list each one in the plan as expected, with its reason.
+- **Last phase (close):** run the strict build with no override. The plan is not `complete` until it passes, or until every remaining warning is a pending fact listed in the plan and the user has been told.
 - **If you cannot run commands** (a chat without a shell), say so plainly, do not claim that anything passed, and list the exact commands the user must run.
 
 ## 10. Map
@@ -226,4 +290,4 @@ Expect `OK` from the tests and `CHECK PASSED` from the validator. Report the rea
 - `src/pages/`: one folder per page. `src/data/*.json`: business facts and texts. `src/layout.html` and `src/partials/`: shared shell. `src/css/site.css`: design tokens and styles.
 - `legible/`: build, validator, dev server. `legible/locales/`: engine strings per language. Do not edit.
 - `tests/`: regression suite. Do not edit.
-- `DOCUMENTATION.md`: section 5.0 (methodology), 3 (content model), 4.2 (other languages), 5 (guide for AIs), 7 (markers, validator, commands).
+- `DOCUMENTATION.md`: section 5.0 (methodology), 3 (content model), 4.2 (other languages), 5 (guide for AIs), 7 (markers, validator, commands). It explains and references; if it ever differs from this file on a procedure, a number, a limit or a command, follow this file.

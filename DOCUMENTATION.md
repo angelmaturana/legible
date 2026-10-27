@@ -30,6 +30,7 @@ These rules apply when the **engine** changes. Building a site is the default jo
 4. Keep changes small and reviewable. A change that turns out to be big is split.
 5. Keep `README.md`, `DOCUMENTATION.md` and `AGENTS.md` in step with any rename or behaviour change.
 6. Report with facts: run the commands and paste real results. Never claim something passed if it was not run.
+7. Keep one source of truth. [`AGENTS.md`](AGENTS.md) holds the procedures, numbers, limits and commands that an AI follows; this document holds the reasoning and the reference tables. Change a number or a step in `AGENTS.md` only, and do not copy it here: refer to the section instead. If the two ever differ, `AGENTS.md` wins and the other file is fixed.
 
 ---
 
@@ -122,7 +123,7 @@ Mental rule: **`src/` changes per site; `legible/` is the engine and does not.**
 ├── README.md                  Project presentation
 ├── DOCUMENTATION.md           This document (full reference and AI guide)
 ├── AGENTS.md                  Entry point for AI agents (mode, interview, plan and execution protocol)
-├── SITE_PLAN.md                    Phased plan and its status (created by the interview and returned inside the zip; not part of the template)
+├── SITE_PLAN.md               Phased plan and its status (created by the interview and returned inside the zip; not part of the template)
 ├── LICENSE · readme-logo.svg · .gitignore
 ├── legible/                   ENGINE (reusable, not edited per site)
 │   ├── build.py               Generator
@@ -300,23 +301,25 @@ This part is a **contract**: an AI that reads it together with the repository an
 
 This is how an AI and a person build the base of a site together with legible. It exists so that the AI does the right thing from the first message, does not redesign the engine, and leaves a written trail that survives between sessions.
 
+**Where the rules live.** The procedures, numbers, limits and commands are in [`AGENTS.md`](AGENTS.md), which is the source of truth. This section explains why the method is built this way and holds the reference tables (the fit check, and what each interview answer decides). It points to `AGENTS.md` instead of repeating it, so a change is made in one place only.
+
 **Principles**
 
-1. **The AI looks for the plan first.** On entering the zip, `AGENTS.md` tells the AI to look for `SITE_PLAN.md`. If it exists, the AI continues the plan, whether the user says `continue`, `next phase`, `continúa con el plan` or any similar phrase in any language, or says nothing specific. If it does not exist, a start command (`start site`, `new site`, `run legible`, or a translation) starts the interview. No other prompt is needed.
+1. **The AI looks for the plan first.** On entering the zip, `AGENTS.md` tells the AI to look for `SITE_PLAN.md`. If it exists, the AI continues the plan, whether the user says `continue` (or anything similar, in any language) or says nothing specific. If it does not exist, a start command starts the interview. No other prompt is needed. The routing table is in `AGENTS.md` section 1.
 2. **Anything else gets an explanation first.** With no plan, any request that is not a start command makes the AI explain what legible is, what it fits, which SEO checks it includes (section 1.0) and how it is used, and only then answer. With a plan, the AI explains the same way when the user clearly asks for something other than continuing (a question, an engine change, something outside the base). It never starts an unusual job before warning how legible works.
 3. **One job by default: adapt `src/`.** The engine, the tests and the architecture are fixed. They change only through the recorded exception in `AGENTS.md` section 7. Deployment is outside the process.
 4. **Ask little, propose a lot.** The interview asks only what the AI cannot derive. Page list, URLs, menu, design direction and phases are proposed by the AI and confirmed by the user.
 5. **Never invent.** What the user does not know becomes a visible `[CONFIRM …]` marker and a row in the plan's pending table.
 6. **One phase per session, with real checks.** A phase is `done` only after its verification actually ran.
-7. **The plan is the memory, it travels inside the zip, and it stays small.** `SITE_PLAN.md` lives in the root of the project. The AI returns the zip with the plan inside, so the plan travels with the project; when that zip is attached to a new session, the AI finds the plan and continues. A new session knows nothing else, and it reads the whole plan every time, so the plan is the base structure only: a briefing, a URL map, at most five phases and the lists of pending facts and Later items. Detail is decided when each phase runs, not written in advance.
+7. **The plan is the memory, it travels inside the zip, and it stays small.** `SITE_PLAN.md` lives in the root of the project. The AI returns the zip with the plan inside, so the plan travels with the project; when that zip is attached to a new session, the AI finds the plan and continues. A new session knows nothing else, and it reads the whole plan every time, so the plan is the base structure only: a briefing, a URL map, a few small phases and the lists of pending facts and Later items. Detail is decided when each phase runs, not written in advance.
 
-**The stage beacon.** `src/data/site.json` carries one field, `project_stage`, with three values: `template` (the untouched base), `in_progress` (set when phase 1 starts) and `complete` (set when the plan finishes). `complete` also means that the site is in detailed work and the flow no longer applies, even if the plan is gone (see refinement mode below). The engine ignores it, so it needs no engine change. It is a coarse beacon that lives in the project data, next to the content, so it survives if `SITE_PLAN.md` is deleted; the plan remains the only place with detail and status. If the two disagree, the AI trusts the plan, corrects the field and notes it in the log.
+**The stage beacon.** `src/data/site.json` carries one field, `project_stage`, with three values: `template` (the untouched base), `in_progress` (set when phase 1 starts) and `complete` (set when the plan finishes). `complete` also means that the site is in detailed work and the flow no longer applies, even if the plan is gone (see refinement mode below). The engine ignores it, so it needs no engine change. While the plan exists and phase 1 has not started, the field is still `template`; that is consistent because the AI always looks for the plan before it reads the field. It is a coarse beacon that lives in the project data, next to the content, so it survives if `SITE_PLAN.md` is deleted; the plan remains the only place with detail and status. If the two disagree, the AI trusts the plan, corrects the field and notes it in the log.
 
 **Why the plan is called `SITE_PLAN.md`.** It holds the plan of the site and, as work advances, its state. The name says what it is (the plan of this site) and avoids any confusion with the engine's own build files.
 
 **What the AI does when the request is not a start or continue command**
 
-`AGENTS.md` section 1 lists the cases: a question (answer it and mention the start command and the plan state), a partial fit (say what does not fit and wait for confirmation), something outside the base (explain, offer options, wait), a request to change the engine (explain that it is fixed, ask which need it solves, enter engine mode only if confirmed), a deployment request (outside the process, not touched) and a review or audit (read-only).
+The cases (a question, a partial fit, something outside the base, a request to change the engine, a deployment request, a review or audit) and the answer to each are in the requests table in `AGENTS.md` section 1.
 
 **Fit check**
 
@@ -329,6 +332,8 @@ legible is a generator for one local service business per site. The AI checks th
 | Outside the base | Online store, CMS, user accounts, client-side JavaScript, external widgets, fonts or trackers, another framework | Explain, offer options (**Later**, an engine exception, or another tool) and wait for the decision |
 
 **Decision flow**
+
+This diagram summarizes the routing table in `AGENTS.md` section 1. If they ever differ, the table wins.
 
 ```mermaid
 flowchart TD
@@ -374,75 +379,42 @@ After round 3 the AI shows what it understood and proposes the URL map, the desi
 
 **Delivering the plan**
 
-The AI creates `SITE_PLAN.md` in the root of the project and returns the complete project as a zip, under the name the user attached (normally `legible.zip`), with the plan inside. It says plainly that the plan is already inside. It may also give the plan separately as a convenience, but the copy inside the zip is the one that counts. If it cannot create a zip, it outputs the plan in full and tells the user to place it in the root.
+The AI creates `SITE_PLAN.md` in the root of the project and returns the complete project as a zip with the plan inside. That is deliberate: the zip is the only thing that travels between sessions, so a plan that is not inside it is lost (principle 7). The exact procedure, including what to do when a zip cannot be created, is in `AGENTS.md` section 5.
 
-**Keeping the plan small.** The interview must not produce a big plan. The limits, enforced by `AGENTS.md` section 5:
+**Keeping the plan small.** The interview must not produce a big plan: a new session reads the whole plan every time, and a long plan uses context that the work itself needs. The limits (length of the file, lines per phase, the URL map, the Later list, the execution log, and what does not belong in the plan) and the commands that measure them are in `AGENTS.md` section 5. They are measured, not estimated, because an estimate of length is unreliable.
 
-| Part of the plan | Limit |
-|---|---|
-| Whole file | About 120 lines |
-| Briefing | One short line per item |
-| Phase details | At most four lines per phase |
-| URL map | One row per page, a purpose of a few words |
-| Later | One line per item |
-| Execution log | At most three lines per session; old entries are summarized |
-| Not in the plan | Per-page outlines, copy, keyword lists, small-task checklists |
-
-If a request does not fit in the base, it goes to **Later**. When a phase turns out to be too big, it is split (never beyond five phases) or part of it moves to **Later**.
+If a request does not fit in the base, it goes to **Later**.
 
 **The phases**
 
-At most five phases, each small enough for one session:
+The plan is a short list of phases, each small enough to finish in one session of a free-plan chat with room to spare. The default catalogue, the session budget, how to adapt the catalogue to a site and the default `Read:` line of each phase are in `AGENTS.md` section 5. The method behind them:
 
-| # | Phase | Stages (section 5.4) |
-|---|---|---|
-| 1 | Data | S1 |
-| 2 | Structure and URLs | S2 |
-| 3 | Design and brand | S3 |
-| 4 | Content | S4 |
-| 5 | Legal, final checks and close | S5, S6 |
+- **Design and content are each split into several phases**, because they are the largest and least predictable parts of the base (the stylesheet and the pages are its biggest files), and a phase that does not finish costs more than an extra phase.
+- **A phase the site does not need stays in the plan as `done`, with the reason**, instead of being deleted. The numbering stays stable between sessions and the freed slot can be used to split a heavy phase.
+- **The brand-assets phase never fakes binary images.** An AI can write SVG, but not a real PNG or ICO. The sample `og-image.png` stays in place (the validator requires that file to exist), and each sample binary is listed as pending until the user supplies the real one.
+- **Each phase reads only what it needs**, through its `Read:` line, so no session has to load this whole document.
+- **The phases map onto the stages of section 5.4**, which describe the work itself and are used as they are in one-session mode.
 
 The plan format, the statuses (`pending`, `in_progress`, `done`, `blocked`) and the exact protocol are in `AGENTS.md` sections 5 and 6.
 
 **A session in execution mode**
 
-1. The user attaches the zip that contains `SITE_PLAN.md` and says `continue` (or any similar phrase, or nothing specific).
-2. The AI reads `AGENTS.md` and `SITE_PLAN.md` and takes the first phase that is not `done`.
-3. It works only in `src/` and respects anything the user changed by hand, noting it in the log.
-4. It verifies the phase with real commands (`AGENTS.md` section 9).
-5. It updates `SITE_PLAN.md`: phase status and date, verification, the log with the decisions taken, the pending table, the Later list.
-6. It returns the complete zip without `dist/`, and says in two or three lines what was done and which phase is next.
+The user attaches the zip that contains `SITE_PLAN.md` and says `continue` (or anything similar, or nothing specific). The AI takes the first phase that is not `done`, reads only what that phase lists, works only in `src/`, verifies the phase with real commands, updates the plan and returns the zip. The steps and the verification rules are in `AGENTS.md` sections 6 and 9.
 
-**Verification during the phases.** In phases 1 to 4 the strict build may fail because of `[CONFIRM` markers or pages not yet adapted. Errors are always fixed. Warnings that come only from facts still pending may be reviewed with `CHECK_STRICT=FALSE`, and each one is listed in the plan as expected. In the last phase the strict build runs with no override. If the AI cannot run commands, it says so and lists what the user must run; it never claims a pass.
+Two principles explain most of the design: **one phase per session**, so no session is asked for more than it can finish and verify; and **real checks**, so a phase is `done` only after its verification actually ran. The strict build is relaxed only for warnings that come from facts still pending, and never in the last phase; an AI that cannot run commands says so and never claims a pass.
 
 **Completion and maintenance**
 
-- When the last phase is `done`, the AI sets the overall status to `complete`, sets `project_stage` to `complete` in `site.json`, and fills the **Final state** section of the plan (at most 20 lines): the state of pages, data, design, legal and validator result, the facts still pending, the warnings that remain and why, and the Later list. It shrinks the phase details and the log to one line each.
-- It tells the user that the plan is finished and that everything is recorded in `SITE_PLAN.md` inside the zip. It says nothing about deployment.
-- From then on, attaching the zip starts **maintenance mode**: the AI reports the final state and works only on the part the user names (fix a page, add a service, resolve a pending fact), only in `src/`, with real verification. It records each change as one line in the log and updates the pending table, the final state and Later if they changed. It does not reopen finished phases on its own.
-- This lets the user improve the site later, part by part, without repeating the interview.
+When the last phase is `done`, the plan is marked `complete`, `project_stage` becomes `complete`, and the plan's **Final state** records the state of everything, so a later session does not have to rediscover it. From then on, attaching the zip starts maintenance mode: the AI reports the final state and works only on the part the user names. This lets the user improve the site part by part without repeating the interview. The steps are in `AGENTS.md` section 6.
 
 **Recovering a missing plan**
 
-If the zip holds an adapted site but no `SITE_PLAN.md` (the file was deleted or never returned), the AI does not start the interview from zero, because the phases would rewrite work that already exists. It reads `project_stage` in `src/data/site.json`:
+If the zip holds an adapted site but no `SITE_PLAN.md` (the file was deleted or never returned), the AI does not start the interview from zero, because the phases would rewrite work that already exists. It reads `project_stage` in `src/data/site.json`. The table in `AGENTS.md` section 1 says what to do for each value, including the fallback for older zips that lack the field.
 
-| `project_stage` | No plan in the zip means | The AI does |
-|---|---|---|
-| `template` | The untouched base | The normal start: the interview on a start command, or an explanation for anything else |
-| `in_progress` | The site was being built and the plan was lost | Recovery mode, below |
-| `complete` | The site is built and in detailed work | Refinement mode: no interview, no recovery, no continuing and no new plan; it asks which part to work on |
+- **Recovery mode** (`in_progress`) rebuilds a short plan from evidence: the data files, the pages, the design tokens, the baseline and the pre-launch sweep (sections 7.3 and 7.4). A phase is marked `done` only when the evidence supports it, a fact that is not in the files is never guessed, and the user confirms the plan before it is used.
+- **Refinement mode** (`complete`) applies no flow at all: the AI works only on the part the user names. Starting over from zero requires an explicit request and a warning that the interview and the phases would rewrite the existing site.
 
-In an older zip without the field, it falls back to the sample values (`site_name` `Your Business`, `site_url` `https://YOUR-DOMAIN.com`): if either has been replaced, it treats the site as `in_progress`.
-
-**Refinement mode.** With `project_stage` `complete` and no plan, the AI does not run the flow. It works only on the part the user names, only in `src/`, under the usual rules, verifies it and reports in one or two lines. Starting over from zero requires an explicit request: the AI warns that the interview and the phases would rewrite the existing site, and only after confirmation sets `project_stage` to `template`.
-
-**Recovery mode** (`project_stage` `in_progress`, `AGENTS.md` section 6):
-
-1. It tells the user what it found and recommends rebuilding the plan from the current state; starting the interview from zero remains possible, with a warning.
-2. It audits without changing anything: data files, page tree, layout, partials, design tokens and assets, plus the baseline (section 7.3) and the pre-launch sweep (section 7.4) as evidence.
-3. It writes a short `SITE_PLAN.md` from that evidence: briefing from the data, URL map from the pages, pending table from the `[CONFIRM` and sweep hits. A phase is marked `done` only when the evidence supports it; otherwise it stays `pending` or `in_progress` with the missing piece named. It never guesses facts that are not in the files.
-4. It asks at most three questions about what the files cannot tell, and the user confirms the plan.
-5. It returns the zip with the plan inside and a log line saying it was reconstructed. If every phase is done the status is `complete` with a **Final state**; otherwise the next session continues normally.
+The steps are in `AGENTS.md` section 6.
 
 **Out of scope: deployment.** The AI does not deal with hosting, DNS, CI, publishing or host-level redirects. Section 7.6 is a reference for people.
 
@@ -526,14 +498,14 @@ NOT PROVIDED (the AI must not invent these):
 
 ### 5.4 Stages (the AI stops after each one if asked to)
 
-The stages are the work inside the plan's phases: S0 is the interview; S1 is phase 1 (data); S2 is phase 2 (structure and URLs); S3 is phase 3 (design and brand); S4 is phase 4 (content); S5 and S6 are phase 5 (legal, final checks and close). Collections (guides and blog, section 3.5) are not part of a first version and go to **Later** unless the user insists; if they are built, they are an extra stage after S4. A plan phase is one session. In one-session mode the stages run in order in a single session.
+The stages are the work inside the plan's phases: S0 is the interview; S1 is phase 1 (data); S2 is phase 2 (structure and URLs); S3 is phases 3 to 6 (brand tokens, component styles, layout and partials, brand assets); S4 is phases 7 to 9 (content); S5 and S6 are phase 10 (legal and close). Collections (guides and blog, section 3.5) are not part of a first version and go to **Later** unless the user insists; if they are built, they are an extra stage after S4. A plan phase is one session. In one-session mode the stages run in order in a single session.
 
 | Stage | What it does | Checked with |
 |---|---|---|
 | S0 Read | Read `AGENTS.md`, this document and `README.md`; inspect `src/data/*.json`, `layout.html`, `partials/`, one page, `llms.txt`. In one-session mode, reply with a short plan and the list of missing briefing data. In phased mode this stage is the interview and the output is `SITE_PLAN.md` | Plan delivered |
 | S1 Data | Fill `site.json`, `entity.json`, `texts.json` | `SITE_URL=… ./legible/build.sh` (may fail on pages not yet adapted) |
 | S2 Structure | Decide pages, URLs and menu; create or remove service pages; update `sitemap_base_order` and internal links | Menu, internal links, `sitemap_base_order` |
-| S3 Design and brand | Colour tokens in `site.css`, layout and partials within the invariants, logo, favicon, social image | Build; look at the output in the dev server |
+| S3 Design and brand | Colour tokens in `site.css` (phase 3), component styles (phase 4), layout and partials within the invariants (phase 5), logo, favicon, social image (phase 6) | Build; look at the output in the dev server |
 | S4 Content | Write pages following section 5.3 rule 6 | Strict validator |
 | S5 Legal | Legal pages with `[CONFIRM …]` where data is missing | Pre-launch sweep (section 7.4) |
 | S6 Close | Full baseline; inspect `dist/` (sitemap, robots, llms.txt, JSON-LD of home and one service page) | Final report |
@@ -542,7 +514,7 @@ The stages are the work inside the plan's phases: S0 is the interview; S1 is pha
 
 **For a phase** (one session):
 
-- The phase's verification **actually ran** with real results; the phase is `done` only then. In phases 1 to 4 the strict build may fail on pending facts: review those warnings with `CHECK_STRICT=FALSE`, list each one in the plan as expected, and never apply that override in the last phase. If commands cannot be run, say so and list what the user must run; never claim a pass.
+- The phase's verification **actually ran** with real results; the phase is `done` only then. The rules for warnings that come from pending facts, and for an AI that cannot run commands, are in `AGENTS.md` section 9.
 - `SITE_PLAN.md` is updated: status, date, verification, execution log, pending confirmations and Later list.
 - The complete zip (without `dist/`) is returned with the changes and the updated plan.
 
@@ -741,7 +713,7 @@ The build environment needs Python 3.8+ and `bash`. A failed validation exits no
 | Fit check | The AI's check, in interview question 1, of whether the business suits legible (section 5.0) |
 | URL map | The table in `SITE_PLAN.md` of every page, its URL and its purpose, proposed by the AI and confirmed by the user |
 | `SITE_PLAN.md` | The phased plan for the first version, with its status; it lives in the project root and travels inside the zip |
-| Phase | One step of the plan, small enough for one session; statuses `pending`, `in_progress`, `done`, `blocked` |
+| Phase | One step of the plan, small enough for one session of a free-plan chat; statuses `pending`, `in_progress`, `done`, `blocked`. The catalogue and its limits are in `AGENTS.md` section 5 |
 | Start command | `start site`, `new site` or `run legible` (or a translation): starts the interview when there is no plan. With a plan, `continue` and similar phrases (or no specific request) continue it |
 | `project_stage` | The field in `site.json` that marks the project as `template`, `in_progress` or `complete`; ignored by the engine, read by AIs |
 | Refinement mode | What the AI does when `project_stage` is `complete` and there is no plan: no flow, only the part the user names |
