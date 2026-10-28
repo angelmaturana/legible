@@ -10,6 +10,7 @@ What it covers (and nothing more; check_site.py already validates each page's HT
   4. Guides and blog: valid and invalid front matter.
   5. Domain (SITE_URL) and unresolved markers.
   6. Geo tags and home links to guides and blog.
+  7. FLOW_OFF.lock (the maintainer's local switch) is absent and gitignored.
 """
 import contextlib
 import io
@@ -1276,6 +1277,19 @@ class TestCommandLine(unittest.TestCase):
                         [sys.executable, str(script), '--dir', str(out), '--strict', *flag],
                         capture_output=True, text=True, env=env, cwd=project)
                     self.assertEqual(r.returncode, 0, f'{r.stdout}\n{r.stderr}')
+
+
+class TestFlowSwitch(unittest.TestCase):
+    """FLOW_OFF.lock is a maintainer's local switch and must never ship in a zip."""
+
+    def test_flow_off_lock_is_absent(self):
+        self.assertFalse(
+            (REPO / 'FLOW_OFF.lock').exists(),
+            'FLOW_OFF.lock exists: run "legible flow on" (delete it) before packaging or distributing')
+
+    def test_flow_off_lock_is_gitignored(self):
+        gitignore = (REPO / '.gitignore').read_text(encoding='utf-8').splitlines()
+        self.assertIn('FLOW_OFF.lock', gitignore)
 
 
 if __name__ == '__main__':

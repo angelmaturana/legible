@@ -27,7 +27,7 @@ Figures below are from the included template and the checks run for this release
 | Feature | Verified result |
 | --- | --- |
 | Generated HTML pages | 11, including the 404 page |
-| Automated tests | 130 `unittest` tests in `tests/test_legible.py` |
+| Automated tests | 132 `unittest` tests in `tests/test_legible.py` |
 | Python runtime dependencies | None; the engine uses the standard library |
 | Client-side JavaScript | None; script elements carry JSON-LD data only |
 | Build validation | Strict by default; errors and warnings fail the build |
@@ -62,18 +62,44 @@ Open `http://localhost:3001` while the development server is running. Stop it wi
 
 ## Build a site with an AI
 
-The zip is a generic base. Attach it to an AI assistant and say `start site` (also `new site`, `run legible` or the equivalent in your language). The assistant follows the protocol in [`AGENTS.md`](AGENTS.md), which begins by looking for `SITE_PLAN.md`:
+The zip is a generic base. Attach it to an AI assistant and say `legible start`. The command is exact and always in English, whatever language you speak; other phrases (`run legible`, `ejecuta legible`, `start site`) are not commands and only get a short explanation of what `legible` is and the list of commands. The assistant follows the protocol in [`AGENTS.md`](AGENTS.md), which begins by looking for `SITE_PLAN.md`:
 
 1. **Interview.** If the zip has no `SITE_PLAN.md`, the assistant asks twelve short questions in three rounds (the business, the contact and offer, the design and gaps) and proposes the pages, URLs and design direction for you to confirm.
 2. **Plan.** It returns your zip with a short `SITE_PLAN.md` already inside, for the base of the site only. You do not need to add it anywhere.
-3. **Execute, one phase per session.** Attach the zip that contains the plan and say `continue` (or anything similar, or nothing specific): the assistant finds the plan and carries on. It executes the next pending phase, verifies it, updates the plan and returns the zip.
+3. **Execute, one phase per session.** Attach the zip that contains the plan and say `legible continue` (or anything similar in your language, or nothing specific): the assistant finds the plan and carries on. It executes the next pending phase, verifies it, updates the plan and returns the zip.
 4. **Finish and maintain.** When the last phase is done, the plan records the final state of everything. Later, attach the zip again and ask for any part to be fixed or extended.
 
 If the zip holds a site in progress but the plan is missing, the assistant does not start from zero: it audits the project, rebuilds a short `SITE_PLAN.md` from what it finds and asks you to confirm it. If the site is already marked complete (`project_stage` in `site.json`), no plan is needed: the assistant simply works on the part you name.
 
 The assistant changes only `src/`. It does not improve or refactor the engine, the tests or the architecture, and it does not deal with deployment. Anything beyond the base (blog, guides, interactive features) goes to the plan's **Later** list.
 
-If there is no plan and you ask for anything other than a start command, the assistant first explains what `legible` is, what it fits and how it is used, and warns you when the request is outside what it does. To skip the plan and build everything in one session, say so explicitly (see [`DOCUMENTATION.md` section 6.3](DOCUMENTATION.md#63-build-everything-in-one-session-optional)). The methodology, step by step, is in [`DOCUMENTATION.md` section 5.0](DOCUMENTATION.md#50-the-methodology-start-interview-plan-phases-completion).
+If there is no plan and you ask for anything other than `legible start`, the assistant first explains what `legible` is, what it fits and how it is used, and warns you when the request is outside what it does. To skip the plan and build everything in one session, say so explicitly (see [`DOCUMENTATION.md` section 6.3](DOCUMENTATION.md#63-build-everything-in-one-session-optional)). The methodology, step by step, is in [`DOCUMENTATION.md` section 5.0](DOCUMENTATION.md#50-the-methodology-start-interview-plan-phases-completion).
+
+### AI commands
+
+| Command | What it does | It asks |
+|---|---|---|
+| `legible start` | Full interview (twelve questions, three rounds) | Everything |
+| `legible start <url>` | Style from a website | The business name, and whether to keep the same theme |
+| `legible start name: …; activity: …` | Your data in one line; the design is proposed from the theme | Nothing |
+| `legible start <url> name: …; activity: …` | Style from a website plus your data | Nothing |
+| `legible start` + attached images | A design image (style) and/or a data image (card, flyer, menu); `style: design.png; data: card.jpg` says which is which | Nothing if there are data |
+| `legible continue` | Continues the plan | Nothing |
+| `legible help` | A simple explanation of what `legible` is, plus this list | Nothing |
+| `legible flow off` / `legible flow on` | For maintainers: turns the AI flows off or on by creating or deleting `FLOW_OFF.lock` | Nothing |
+
+Examples:
+
+```text
+legible start
+legible start https://example-style-site.com/
+legible start name: Bodega La Esquina; activity: wine shop with tastings; city: Valdemoro; phone: 600 000 000
+legible start style: design.png; data: card.jpg
+```
+
+With inputs, the AI runs a **fast start**: it asks only for the business name and the theme if they are missing, writes the plan with no confirmation round and leaves everything else as `[CONFIRM …]` for later. Descriptive example text it writes is marked `<!-- SAMPLE COPY -->` and the [pre-launch sweep](#before-launch) finds it; facts (phone, address, hours, prices, reviews) are never invented. From a reference website or image it takes the palette, structure and proportions, never the name, logo, images or text, and it is limited by what `legible` allows (system fonts, no scripts, no external resources). Fields, rules and details: [`DOCUMENTATION.md` section 6.1.1](DOCUMENTATION.md#611-the-commands-and-the-fast-start).
+
+`FLOW_OFF.lock` is a local switch: it is ignored by git and the test suite fails while it exists, so run `legible flow on` before packaging a zip. Every signal the AI reads (the lock, `SITE_PLAN.md`, `project_stage`, your message), who sets it and in what order it wins are in the control-surface table of [section 5.0](DOCUMENTATION.md#50-the-methodology-start-interview-plan-phases-completion). Engine mode is not a file: the AI announces `Engine mode on` and `Engine mode off` in the conversation.
 
 ## Configure a site
 
@@ -92,7 +118,7 @@ For a new page, create `src/pages/<slug>/index.html` with front matter (`title`,
 The template contains valid sample values which the validator cannot identify as false business facts. Run this search and review every result before publishing:
 
 ```bash
-grep -rIniE 'Your Business|Your City|Your Region|YOUR-DOMAIN|Service [1-6]\b|City [1-4]\b|Topic [1-5]\b|Free Consultation|Your legal name|Your registered address|Your registration number|Your jurisdiction|example\.com|555|\$(49|55|99|149|229|290|299|490)\b|09:00|19:00|9am|7pm|business day|business hours|addressCountry|priceCurrency|CONFIRM' dist src
+grep -rIniE 'Your Business|Your City|Your Region|YOUR-DOMAIN|Service [1-6]\b|City [1-4]\b|Topic [1-5]\b|Free Consultation|Your legal name|Your registered address|Your registration number|Your jurisdiction|example\.com|555|\$(49|55|99|149|229|290|299|490)\b|09:00|19:00|9am|7pm|business day|business hours|addressCountry|priceCurrency|CONFIRM|SAMPLE COPY' dist src
 ```
 
 This search is a review aid, not a pass/fail test. Replace or justify every hit, especially sample contact details, offers, prices, legal placeholders, logo and social image. How to read the result is explained in [`DOCUMENTATION.md`](DOCUMENTATION.md#74-pre-launch-sweep).

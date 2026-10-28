@@ -11,3 +11,6 @@ __pycache__/
 Thumbs.db
 .idea/
 .vscode/
+
+# Interruptor local del mantenedor (apaga los flujos de IA). Nunca se publica.
+FLOW_OFF.lock

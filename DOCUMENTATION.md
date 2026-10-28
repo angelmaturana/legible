@@ -16,7 +16,7 @@
 | Understand what legible is | Section 1 |
 | Understand how it works inside | Sections 2, 3 |
 | Know the language and naming rules | Section 4 |
-| Understand the methodology (start command, interview, plan, phases, completion) | Section 5.0 and `AGENTS.md` |
+| Understand the methodology (commands, interview, plan, phases, completion) | Section 5.0 and `AGENTS.md` |
 | Build a site with an AI | `AGENTS.md`, then sections 5, 6 |
 | Look up markers, rules, commands and checks | Section 7 |
 
@@ -305,8 +305,8 @@ This is how an AI and a person build the base of a site together with legible. I
 
 **Principles**
 
-1. **The AI looks for the plan first.** On entering the zip, `AGENTS.md` tells the AI to look for `SITE_PLAN.md`. If it exists, the AI continues the plan, whether the user says `continue` (or anything similar, in any language) or says nothing specific. If it does not exist, a start command starts the interview. No other prompt is needed. The routing table is in `AGENTS.md` section 1.
-2. **Anything else gets an explanation first.** With no plan, any request that is not a start command makes the AI explain what legible is, what it fits, which SEO checks it includes (section 1.0) and how it is used, and only then answer. With a plan, the AI explains the same way when the user clearly asks for something other than continuing (a question, an engine change, something outside the base). It never starts an unusual job before warning how legible works.
+1. **The AI looks for the plan first.** On entering the zip, `AGENTS.md` tells the AI to look for `SITE_PLAN.md`. If it exists, the AI continues the plan, whether the user says `legible continue` (or anything similar, in any language) or says nothing specific. If it does not exist, `legible start` starts the interview. No other prompt is needed. The routing table is in `AGENTS.md` section 1.
+2. **Anything else gets an explanation first.** With no plan, any request that is not `legible start` makes the AI explain what legible is, what it fits, which SEO checks it includes (section 1.0) and how it is used, and only then answer. With a plan, the AI explains the same way when the user clearly asks for something other than continuing (a question, an engine change, something outside the base). It never starts an unusual job before warning how legible works.
 3. **One job by default: adapt `src/`.** The engine, the tests and the architecture are fixed. They change only through the recorded exception in `AGENTS.md` section 7. Deployment is outside the process.
 4. **Ask little, propose a lot.** The interview asks only what the AI cannot derive. Page list, URLs, menu, design direction and phases are proposed by the AI and confirmed by the user.
 5. **Never invent.** What the user does not know becomes a visible `[CONFIRM …]` marker and a row in the plan's pending table.
@@ -317,7 +317,24 @@ This is how an AI and a person build the base of a site together with legible. I
 
 **Why the plan is called `SITE_PLAN.md`.** It holds the plan of the site and, as work advances, its state. The name says what it is (the plan of this site) and avoids any confusion with the engine's own build files.
 
-**What the AI does when the request is not a start or continue command**
+**The control surface: what tells the AI what**
+
+The method keeps its state in three places, and the user's message adds a fourth. Each signal has one owner and one meaning, so an AI never has to guess.
+
+| Signal | Lives in | Survives the session? | Set by | Meaning |
+|---|---|---|---|---|
+| `FLOW_OFF.lock` | A file in the project root | Yes, until deleted | The maintainer (`legible flow off` / `legible flow on`) | The AI flows are off: ordinary repository work |
+| `SITE_PLAN.md` | A file in the project root, inside the zip | Yes, it travels with the zip | The AI | Which phase comes next, or that the plan is complete |
+| `project_stage` | A field in `src/data/site.json` | Yes | The AI | `template`, `in_progress` or `complete`: a coarse beacon for when the plan is missing |
+| The user's message | The conversation | No | The user | A command (`legible start`, `legible continue`, `legible help`, `legible flow off`, `legible flow on`) or any other request |
+
+**Precedence.** The lock wins over everything; then the plan; then `project_stage`; and only then the message. This is also the order of the routing table in `AGENTS.md` section 1.
+
+**Engine mode is deliberately different: it is not state.** It has no file and no field. It exists only in the session where the user asks for a change to `legible/` or `tests/` and confirms it. Because nothing persists, the AI makes it visible: it says `Engine mode on: <the change>` when it enters and ends its final message with `Engine mode off` and the record of what changed (the plan's **Engine notes**, or the final message and `CHANGELOG.md` when there is no plan). The next session starts again with the engine fixed.
+
+**Why a lock file for the flows and not for the engine.** The two switches serve different people. The flows switch is for the maintainer, who works on the project across many sessions and needs the setting to stay put, so it is a file; the maintainer must remove it before packaging, which `.gitignore` and the test suite enforce. Engine mode is an occasional, justified exception for someone building a site, so it stays short-lived and visible in the conversation instead of becoming a setting that could linger.
+
+**What the AI does when the request is not `legible start` or `legible continue`**
 
 The cases (a question, a partial fit, something outside the base, a request to change the engine, a deployment request, a review or audit) and the answer to each are in the requests table in `AGENTS.md` section 1.
 
@@ -337,7 +354,10 @@ This diagram summarizes the routing table in `AGENTS.md` section 1. If they ever
 
 ```mermaid
 flowchart TD
-    A[User message with the zip] --> B{SITE_PLAN.md in the zip?}
+    A[User message with the zip] --> L{FLOW_OFF.lock in the root?}
+    L -->|Yes| N[Flows off: ordinary repository work, no interview or plan, engine changes recorded in CHANGELOG.md]
+    L -->|No| B{SITE_PLAN.md in the zip?}
+    A -.->|legible help, in any state| C
     B -->|Yes| K{Continue, start or nothing specific?}
     K -->|Yes, phases left| H[Execute the next pending phase, update the plan, return the zip]
     K -->|Yes, complete| I[Maintenance: report the final state, work on the part the user names]
@@ -346,10 +366,10 @@ flowchart TD
     M -->|In progress| R[Recovery: audit the project, rebuild SITE_PLAN.md, confirm]
     R --> G
     M -->|Complete| Q[Refinement: no flow, work on the part the user names]
-    M -->|Template| E{Start command?}
+    M -->|Template| E{legible start?}
     E -->|No| C[Explain legible, its fit, its checks and how it is used]
     C --> D[Answer according to the request: question, limits, engine, review]
-    E -->|Yes| F[Interview, propose and confirm]
+    E -->|Yes| F[Full interview, or fast start when the message has inputs: a style URL, fields or images]
     F --> G[Return the zip with SITE_PLAN.md inside]
     G --> H
     H -->|Last phase done| J[Plan complete: Final state recorded in SITE_PLAN.md]
@@ -358,7 +378,7 @@ flowchart TD
 
 **The interview**
 
-Twelve questions in three rounds, listed in `AGENTS.md` section 4. The AI skips what the user already said, writes in the user's language and changes no project file; the only thing it adds is `SITE_PLAN.md`. Each answer decides something concrete:
+Twelve questions in three rounds, listed in `AGENTS.md` section 4. They run only when `legible start` comes with no inputs; with a style URL, fields in one line or images the AI runs the shorter **fast start** (section 6.1.1). The AI skips what the user already said, writes in the user's language and changes no project file; the only thing it adds is `SITE_PLAN.md`. Each answer decides something concrete:
 
 | Question | Decides | Lands in |
 |---|---|---|
@@ -532,23 +552,68 @@ The stages are the work inside the plan's phases: S0 is the interview; S1 is pha
 
 ### 6.1 Start a site (interview and plan)
 
-Attach the zip and say one of the start commands:
+Attach the zip and say the start command, exactly as written and in English whatever language you speak:
 
 ```text
-start site
+legible start
 ```
 
-Equivalent commands are `new site`, `run legible` and their translations (for example `empezar sitio`, `nuevo sitio`, `ejecutar legible`). With no `SITE_PLAN.md` in the zip, the AI starts the interview and returns the zip with the plan inside.
+It has no aliases and no translations. Phrases such as `start site`, `run legible` or `ejecutar legible` are not commands: the AI answers with a short explanation of what `legible` is and the list of commands. With no `SITE_PLAN.md` in the zip and the base untouched, `legible start` starts the interview and returns the zip with the plan inside. Followed by inputs, it starts a **fast start** instead (section 6.1.1).
+
+### 6.1.1 The commands, and the fast start
+
+| Command | What it does | It asks |
+|---|---|---|
+| `legible start` | Full interview (twelve questions, three rounds) | Everything |
+| `legible start <url>` | Style from a website | The business name, and whether to keep the same theme |
+| `legible start name: …; activity: …` | Your data in one line; the design is proposed from the theme | Nothing |
+| `legible start <url> name: …; activity: …` | Style from a website plus your data | Nothing |
+| `legible start` + attached images | An image of a design (style) and/or an image of the business data; `style: design.png; data: card.jpg` says which is which | Nothing if there are data; otherwise the name and the theme |
+| `legible continue` | Continues the plan; with a plan, loose phrases in any language also work | Nothing |
+| `legible help` | A simple explanation of what `legible` is, plus this list | Nothing |
+| `legible flow off` / `legible flow on` | Turns the AI flows off or on for a working copy | Nothing |
+
+**Fast start.** The full interview exists for someone who brings nothing. When the start command comes with inputs, the AI reads them, asks only for what is missing from a minimum (the business name and the theme) and writes the plan with no confirmation round. Every other fact is derived or left as a `[CONFIRM …]` row in the plan's **Pending confirmation**, to be settled later.
+
+Examples (the businesses are made up):
+
+```text
+legible start https://example-style-site.com/
+legible start name: Bodega La Esquina; activity: wine shop with tastings; city: Valdemoro; phone: 600 000 000
+legible start style: https://example-style-site.com/; name: Bodega La Esquina; activity: wine shop with tastings
+legible start style: design.png; data: card.jpg
+```
+
+The fields are `name`, `activity`, `city`, `phone`, `email`, `address`, `hours`, `services`, `style` (a URL, an image file name or a short description), `data` (an image file name) and `site` (the domain). Spanish names work too (`nombre`, `actividad`, `ciudad`, `tel`, `dir`, `horario`, `servicios`, `estilo`, `datos`, `web`). They go in any order, separated by `;`; only the first `:` of each field splits key and value, so hours and URLs are safe, and a value must not contain `;`. Free text with the same facts also works. When typed fields and an image or website disagree, the typed fields win.
+
+| Inputs | What the AI asks |
+|---|---|
+| A style source only (URL, image or description) | One message: the business name, and whether to keep the same theme as the reference (if not, what the business does) |
+| Any data, typed or read from an image | Nothing, unless the name or the theme is missing |
+
+**What the AI may and may not write.**
+
+| Kind | Rule |
+|---|---|
+| Facts: phone, email, address, hours, prices, years in business, awards, certifications, reviews, figures, legal data | Never invented. They come from the user or stay `[CONFIRM …]` |
+| Descriptive copy: headlines, introductions, service blurbs, calls to action | May be written as short, generic examples on the theme, with no claim that could be checked. Each such page starts with `<!-- SAMPLE COPY -->` and is listed in **Pending confirmation**; the pre-launch sweep finds the marker |
+| Facts read from an image | Used, and recorded as "read from image, verify" |
+
+**How the style is read.** The AI uses what it can: the text of the page, or the image if it can see one. Some assistants read more than others, so the plan records how much was really read ("text only, palette estimated", "from a screenshot"). From the reference it takes the palette, the feel of the typography (mapped to system fonts), the order of the sections, the proportions and the shape of buttons and cards. It does not copy the reference's name, logo, images or text, and it does not build a page that could be mistaken for it. The base limits apply (one stylesheet, system fonts, no external resources, no client-side JavaScript), so fonts, carousels, animations and menus that need scripts are not imitated. If the AI cannot read the URL or see the image, it says so and asks for the other source (a screenshot or a short `style:` description) instead of inventing a style.
+
+**`legible help`.** At most six short lines in plain words (what it is, what you get, what it fits, how it works, that deployment is not part of it), then the command table above and the state of the plan.
+
+**Turning the flows off (for the maintainer).** `legible flow off` makes the AI create `FLOW_OFF.lock` in the project root; `legible flow on` deletes it. While the file exists the AI skips the interview, the plan and the explanations and treats the project as an ordinary repository, so the project itself can be edited and tested. The lock is a local switch: it is listed in `.gitignore`, and `tests/test_legible.py` fails if it exists, so it cannot reach a distributed zip unnoticed. Run `legible flow on` before packaging. The procedure the AI follows is in `AGENTS.md` section 1.
 
 ### 6.2 Continue the plan
 
 Attach the zip that already contains `SITE_PLAN.md` (the one the AI returned) and say:
 
 ```text
-continue
+legible continue
 ```
 
-Any similar phrase works (`next phase`, `continúa con el plan`, `sigue`), and so does saying nothing specific: on entering the zip the AI looks for the plan and, if it exists, continues it. The AI executes the next pending phase, updates the plan and returns the zip. When the plan is complete, the same command starts maintenance mode: the AI reports the final state and asks which part to work on.
+Any similar phrase works (`continue`, `next phase`, `continúa con el plan`, `sigue`), and so does saying nothing specific: on entering the zip the AI looks for the plan and, if it exists, continues it. The AI executes the next pending phase, updates the plan and returns the zip. When the plan is complete, the same command starts maintenance mode: the AI reports the final state and asks which part to work on.
 
 ### 6.3 Build everything in one session (optional)
 
@@ -657,10 +722,10 @@ Expected: no output. `README.md`, `DOCUMENTATION.md` and `legible/` may mention 
 Run it on a real project before publishing:
 
 ```bash
-grep -rIniE 'Your Business|Your City|Your Region|YOUR-DOMAIN|Service [1-6]\b|City [1-4]\b|Topic [1-5]\b|Free Consultation|Your legal name|Your registered address|Your registration number|Your jurisdiction|example\.com|555|\$(49|55|99|149|229|290|299|490)\b|09:00|19:00|9am|7pm|business day|business hours|addressCountry|priceCurrency|CONFIRM' dist src
+grep -rIniE 'Your Business|Your City|Your Region|YOUR-DOMAIN|Service [1-6]\b|City [1-4]\b|Topic [1-5]\b|Free Consultation|Your legal name|Your registered address|Your registration number|Your jurisdiction|example\.com|555|\$(49|55|99|149|229|290|299|490)\b|09:00|19:00|9am|7pm|business day|business hours|addressCountry|priceCurrency|CONFIRM|SAMPLE COPY' dist src
 ```
 
-The sweep is a review aid, not a pass/fail test. Replace every hit, or justify it explicitly (for example a real price that happens to match). The sample logo and social image are replaced with the site's own assets (section 3.7). Hits for `CONFIRM` mark facts that are still awaiting confirmation. The sweep also flags sample opening hours, response times and limits (for example "max. 3 per week"), currency and country, which are repeated across `entity.json`, pages, FAQs and `llms.txt`: review all of them at once. Keep the command in single quotes: in double quotes the shell turns `\$(99|149|290)` into `$(99|149|290)` and the price patterns match nothing.
+The sweep is a review aid, not a pass/fail test. Replace every hit, or justify it explicitly (for example a real price that happens to match). The sample logo and social image are replaced with the site's own assets (section 3.7). Hits for `CONFIRM` mark facts that are still awaiting confirmation. Hits for `SAMPLE COPY` mark pages whose descriptive text was written as an example in a fast start (section 6.1.1) and must be rewritten with the business's real wording or confirmed. The sweep also flags sample opening hours, response times and limits (for example "max. 3 per week"), currency and country, which are repeated across `entity.json`, pages, FAQs and `llms.txt`: review all of them at once. Keep the command in single quotes: in double quotes the shell turns `\$(99|149|290)` into `$(99|149|290)` and the price patterns match nothing.
 
 ### 7.5 Commands
 
@@ -714,7 +779,8 @@ The build environment needs Python 3.8+ and `bash`. A failed validation exits no
 | URL map | The table in `SITE_PLAN.md` of every page, its URL and its purpose, proposed by the AI and confirmed by the user |
 | `SITE_PLAN.md` | The phased plan for the first version, with its status; it lives in the project root and travels inside the zip |
 | Phase | One step of the plan, small enough for one session of a free-plan chat; statuses `pending`, `in_progress`, `done`, `blocked`. The catalogue and its limits are in `AGENTS.md` section 5 |
-| Start command | `start site`, `new site` or `run legible` (or a translation): starts the interview when there is no plan. With a plan, `continue` and similar phrases (or no specific request) continue it |
+| Command | The exact English phrases `legible start`, `legible continue`, `legible help`, `legible flow off` and `legible flow on` (section 6.1.1). Anything else is not a command and gets an explanation when there is no plan |
+| `FLOW_OFF.lock` | A file in the project root, created by `legible flow off`, that turns the AI flows off in a working copy. Ignored by git; the test suite fails if it exists |
 | `project_stage` | The field in `site.json` that marks the project as `template`, `in_progress` or `complete`; ignored by the engine, read by AIs |
 | Refinement mode | What the AI does when `project_stage` is `complete` and there is no plan: no flow, only the part the user names |
 | Recovery mode | What the AI does when `project_stage` is `in_progress` and `SITE_PLAN.md` is missing: audit the project and rebuild a short plan from the evidence |
@@ -722,3 +788,6 @@ The build environment needs Python 3.8+ and `bash`. A failed validation exits no
 | Final state | The closing section of `SITE_PLAN.md`: state of everything, pending facts, remaining warnings and Later |
 | Later | The plan's list of requests beyond the first version |
 | Engine exception | A minimal, recorded change to `legible/` made only when `src/` cannot meet the need (`AGENTS.md` section 7) |
+| Fast start | `legible start` followed by inputs (a style URL, fields in one line, images): the AI asks only for the missing name or theme and writes the plan with no confirmation round (section 6.1.1) |
+| Sample copy | Short descriptive text the AI writes as an example in a fast start; the page carries `<!-- SAMPLE COPY -->` and the pre-launch sweep finds it. Facts are never sample copy |
+| Engine mode | The session in which the AI may change `legible/` or `tests/` after the user asks and confirms. It has no file or field: the AI announces `Engine mode on` and `Engine mode off` (section 5.0, control surface) |
