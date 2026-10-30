@@ -212,7 +212,7 @@ grep -cE '^[|] [0-9]+ [|]' SITE_PLAN.md   # phases in the table: expect 10 or fe
   diff before.txt after.txt
   ```
 
-  Expected: only added lines (`>`), namely `SITE_PLAN.md`, `LECCIONES_APRENDIDAS.md` if the lessons log applies, and files the phase created in `src/`. A missing line (`<`) is a lost file: add it and compare again, unless the phase deleted it on purpose and the plan log says so. `tests/`, `legible/`, `src/static/` and the images must all be present. Do not list the verification output in the plan, only that it matched. If you cannot run commands, say so and do not claim the zip is complete.
+  Expected: only added lines (`>`), namely `SITE_PLAN.md` and files the phase created in `src/`. A missing line (`<`) is a lost file: add it and compare again, unless the phase deleted it on purpose and the plan log says so. `tests/`, `legible/`, `src/static/` and the images must all be present. Do not list the verification output in the plan, only that it matched. If you cannot run commands, say so and do not claim the zip is complete.
 - Say plainly that the plan is already inside the zip and that the user does not need to add it anywhere. The zip is what carries the project between sessions: when it is attached to a new session with the plan inside, the work continues from there.
 - You may also give the plan as a separate file or as text, but only as a convenience. The copy inside the zip is the one that counts.
 - If you cannot create a zip, output `SITE_PLAN.md` in full and tell the user to place it in the root of the project.
