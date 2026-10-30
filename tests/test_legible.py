@@ -11,11 +11,13 @@ What it covers (and nothing more; check_site.py already validates each page's HT
   5. Domain (SITE_URL) and unresolved markers.
   6. Geo tags and home links to guides and blog.
   7. FLOW_OFF.lock (the maintainer's local switch) is absent and gitignored.
+  8. The suite does not depend on the template's sample pages or data (see "Page lookup" below).
 """
 import contextlib
 import io
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -32,11 +34,83 @@ sys.dont_write_bytecode = True  # tests must not leave legible/__pycache__/
 sys.path.insert(0, str(LEGIBLE))
 import build  # noqa: E402
 
+PAGES = REPO / 'src' / 'pages'
+
+
+# --------------------------------------------------------------------------- page lookup
+# The tests never name a page of the template (`services/`, `pricing/`, `about/`...): an adapted site
+# renames, replaces or drops them, and a suite that fails to import there is useless as a baseline.
+# They ask for "a page that exists" instead. Anything that really reads the template's sample data
+# is marked @ONLY_TEMPLATE.
+
+def route_dir(route):
+    """Folder of a route, relative to `src/pages/` or to the output: '/news/' -> 'news', '/' -> ''."""
+    return route.strip('/')
+
+
+def page_routes(pages_dir):
+    """Routes (`/news/`) of the hand-written pages in `pages_dir`, alphabetical, home and 404 left out.
+
+    Guide and blog pieces (front matter `type: guide` or `article`) are generated content, not pages."""
+    pages_dir = Path(pages_dir)
+    routes = []
+    for f in pages_dir.rglob('index.html'):
+        if f.parent == pages_dir:
+            continue
+        front, _ = build.parse_front_matter(f.read_text(encoding='utf-8'))
+        if front.get('type') in ('guide', 'article'):
+            continue
+        routes.append('/' + f.parent.relative_to(pages_dir).as_posix() + '/')
+    return sorted(routes)
+
+
+def pick_page(pages_dir, accepts=None, what='an <h1>', skip=()):
+    """(route, file) of the first page of `pages_dir` whose text `accepts` (default: it has an <h1>).
+
+    The home page is the last resort; routes in `skip` are passed over. Fails, naming what was
+    needed, if no page fits."""
+    pages_dir = Path(pages_dir)
+    accepts = accepts or (lambda text: '<h1' in text)
+    for route in page_routes(pages_dir) + ['/']:
+        f = pages_dir / route_dir(route) / 'index.html'
+        if route not in skip and f.is_file() and accepts(f.read_text(encoding='utf-8')):
+            return route, f
+    raise AssertionError(f'no page of {pages_dir} has {what}; the tests need one page like that')
+
+
+def has_dated_json_ld(text):
+    """True when the page declares `updated` and repeats that date elsewhere (its JSON-LD `dateModified`)."""
+    front, _ = build.parse_front_matter(text)
+    return bool(front.get('updated')) and text.count(front['updated']) > 1
+
+
+def is_indexable_with_description(text):
+    """True for a page whose description the validator checks: it has one and is not `noindex`."""
+    front, _ = build.parse_front_matter(text)
+    return bool(front.get('description')) and 'noindex' not in front.get('robots', '')
+
+
+def related_page(pages_dir):
+    """A route a guide can use as its `service` (the field accepts any existing page): the first page, else home."""
+    routes = page_routes(pages_dir)
+    return routes[0] if routes else '/'
+
+
+def write_stub_page(pages_dir, route):
+    """Create the smallest valid page at `route` inside `pages_dir` (the home page for '/')."""
+    d = Path(pages_dir) / route_dir(route)
+    d.mkdir(parents=True, exist_ok=True)
+    (d / 'index.html').write_text('---\ntitle: S\ndescription: S\n---\n<main></main>', encoding='utf-8')
+
+
+def built_page(out, route):
+    """The built file of a route inside the output folder."""
+    return Path(out) / route_dir(route) / 'index.html'
+
+
 SITE = json.loads((REPO / 'src' / 'data' / 'site.json').read_text(encoding='utf-8'))
 TOPIC_1 = build.COLLECTION_TOPICS[0]
-_SERVICES = sorted(p.parent.name for p in (REPO / 'src' / 'pages' / 'services').glob('*/index.html'))
-SERVICE_SLUG = _SERVICES[0]                  # a service that exists in this project
-SERVICE = f'/services/{SERVICE_SLUG}/'
+RELATED_PAGE = related_page(PAGES)           # a page that exists in this project, for the `service` field
 WITHOUT_COLLECTIONS = not any((REPO / 'src' / 'pages' / c).exists() for c in ('guides', 'blog'))
 IS_TEMPLATE = SITE.get('site_url', '').startswith('https://YOUR-DOMAIN')
 ONLY_WITHOUT_COLLECTIONS = unittest.skipUnless(
@@ -54,15 +128,16 @@ def copy_project(dest):
     return dest
 
 
-def run_build(project, out, site_url=None, minify=True):
+def run_build(project, out, site_url=None, minify=True, strict=False):
     """Run the given project's build.py (without validating). Returns a CompletedProcess."""
     env = {k: v for k, v in os.environ.items() if k != 'SITE_URL'}
     if site_url is not None:
         env['SITE_URL'] = site_url
-    return subprocess.run(
-        [sys.executable, str(project / 'legible' / 'build.py'),
-         '--out', str(out), '--minify', 'true' if minify else 'false', '--no-validate'],
-        capture_output=True, text=True, env=env, cwd=project)
+    cmd = [sys.executable, str(project / 'legible' / 'build.py'),
+           '--out', str(out), '--minify', 'true' if minify else 'false', '--no-validate']
+    if strict:
+        cmd.append('--strict')
+    return subprocess.run(cmd, capture_output=True, text=True, env=env, cwd=project)
 
 
 def run_check(project, out, site_url=None, strict=True):
@@ -106,7 +181,7 @@ def piece_html(coll, slug, **over):
         'published': '2026-01-10',
         'updated': '2026-02-15',
         'summary': 'Short summary of the test piece.',
-        'service': SERVICE,
+        'service': RELATED_PAGE,
     }
     front.update(over)
     fm = '\n'.join(f'{k}: {v}' for k, v in front.items() if v is not None)
@@ -130,7 +205,7 @@ def piece_html(coll, slug, **over):
         <h2>First steps</h2>
         <p>{lorem(130)}</p>
         <p>{lorem(80)} If you want us to do it for you, see the
-        <a href="{SERVICE}">related service</a>.</p>
+        <a href="{RELATED_PAGE}">related service</a>.</p>
     </section>
 </main>
 """
@@ -162,6 +237,12 @@ class TempProject(unittest.TestCase):
         mode = 'strict' if kw.get('strict', True) else 'errors only'
         self.assertEqual(r.returncode, 0, f'check_site should pass ({mode}):\n{r.stdout}')
         return r
+
+    def use_marker_in_a_page(self, marker):
+        """Put `marker` before the <h1> of a page of the project. Returns the page's route and source path."""
+        route, page = pick_page(self.project / 'src' / 'pages')
+        page.write_text(page.read_text(encoding='utf-8').replace('<h1', f'<p>{marker}</p>\n<h1', 1), encoding='utf-8')
+        return route, page.relative_to(self.project).as_posix()
 
 
 # --------------------------------------------------------------------------- 1. smoke
@@ -416,7 +497,7 @@ class TestMinifyHtml(unittest.TestCase):
         self.assertEqual(self.m('<a href="/x"   class="a"   >t</a>'), '<a href="/x" class="a">t</a>')
 
     def test_space_between_inline_elements_is_kept(self):
-        # Regression: `<strong>x</strong> <small>y</small>` came out glued ("xy"). It happened on /pricing/.
+        # Regression: `<strong>x</strong> <small>y</small>` came out glued ("xy"). It happened on a pricing page.
         html = '<p><strong>299 €</strong> <small>(on request)</small></p>'
         self.assertEqual(self.m(html), html)
         self.assertEqual(self.m('<span>a</span>\n   <span>b</span>'), '<span>a</span> <span>b</span>')
@@ -490,9 +571,7 @@ class TestDirectCollections(unittest.TestCase):
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
         self.pages = Path(self._tmp.name)
-        service = self.pages / 'services' / SERVICE_SLUG
-        service.mkdir(parents=True)
-        (service / 'index.html').write_text('---\ntitle: S\ndescription: S\n---\n<main></main>', encoding='utf-8')
+        write_stub_page(self.pages, RELATED_PAGE)
 
     def add(self, coll, slug, **over):
         d = self.pages / coll / slug
@@ -564,8 +643,8 @@ class TestDirectCollections(unittest.TestCase):
         self.assertIn('earlier than published', p)
 
     def test_service_that_does_not_exist(self):
-        self.add('guides', 'a', service='/services/does-not-exist/')
-        self.assertIn('service "/services/does-not-exist/" does not point to an existing page', self.problems())
+        self.add('guides', 'a', service='/does-not-exist/')
+        self.assertIn('service "/does-not-exist/" does not point to an existing page', self.problems())
 
     def test_handwritten_index_and_misplaced_path(self):
         (self.pages / 'guides').mkdir()
@@ -810,7 +889,8 @@ class TestDomain(TempProject):
         everything = read_all(self.out)
         for route, text in everything.items():
             self.assertNotIn('YOUR-DOMAIN', text, f'{route} keeps the default domain')
-        for route in ('index.html', 'pricing/index.html', 'robots.txt', 'llms.txt', 'sitemap.xml'):
+        a_page = built_page(self.out, pick_page(self.project / 'src' / 'pages')[0]).relative_to(self.out).as_posix()
+        for route in ('index.html', a_page, 'robots.txt', 'llms.txt', 'sitemap.xml'):
             self.assertIn('https://example.org', everything[route], f'{route} does not use the new domain')
         self.assertIn('<link rel="canonical" href="https://example.org/">', everything['index.html'].replace('"/>', '">'))
         self.assertIn('https://example.org/sitemap.xml', everything['robots.txt'])
@@ -855,27 +935,22 @@ class TestDomain(TempProject):
 
 class TestMarkers(TempProject):
     def test_stray_marker_in_a_page_stops_the_build(self):
-        page = self.project / 'src' / 'pages' / 'about' / 'index.html'
-        page.write_text(page.read_text(encoding='utf-8').replace('<h1', '<p>{{made_up_marker}}</p>\n<h1', 1),
-                          encoding='utf-8')
+        route, _ = self.use_marker_in_a_page('{{made_up_marker}}')
         r = run_build(self.project, self.out)
         self.assertNotEqual(r.returncode, 0)
         self.assertIn('{{made_up_marker}}', r.stderr + r.stdout)
         self.assertIn('texts.json', r.stderr + r.stdout)
-        self.assertIn('/about/', r.stderr + r.stdout, 'must say which page it is on')
+        self.assertIn(route, r.stderr + r.stdout, 'must say which page it is on')
         self.assertNotIn('Traceback', r.stderr)
 
     def test_marker_resolved_from_texts_json(self):
-        page = self.project / 'src' / 'pages' / 'about' / 'index.html'
-        page.write_text(page.read_text(encoding='utf-8').replace('<h1', '<p>{{my_marker}}</p>\n<h1', 1),
-                          encoding='utf-8')
+        route, _ = self.use_marker_in_a_page('{{my_marker}}')
         texts = self.project / 'src' / 'data' / 'texts.json'
         data = json.loads(texts.read_text(encoding='utf-8'))
         data['my_marker'] = 'Text added from texts.json'
         texts.write_text(json.dumps(data, ensure_ascii=False), encoding='utf-8')
         self.build_ok()
-        self.assertIn('Text added from texts.json',
-                      (self.out / 'about' / 'index.html').read_text(encoding='utf-8'))
+        self.assertIn('Text added from texts.json', built_page(self.out, route).read_text(encoding='utf-8'))
 
     def test_computed_entity_json_values_win_over_texts_json(self):
         texts = self.project / 'src' / 'data' / 'texts.json'
@@ -903,10 +978,6 @@ class TestMarkers(TempProject):
         data.update(extra)
         texts.write_text(json.dumps(data, ensure_ascii=False), encoding='utf-8')
 
-    def _use_marker_in_about(self, marker):
-        page = self.project / 'src' / 'pages' / 'about' / 'index.html'
-        page.write_text(page.read_text(encoding='utf-8').replace('<h1', f'<p>{marker}</p>\n<h1', 1), encoding='utf-8')
-
     def _edit_entity(self, edit):
         path = self.project / 'src' / 'data' / 'entity.json'
         data = json.loads(path.read_text(encoding='utf-8'))
@@ -921,16 +992,16 @@ class TestMarkers(TempProject):
     def test_a_text_can_reference_an_earlier_text(self):
         """Regression: a text that uses another text defined BEFORE it used to fail with a misleading 'has no value'."""
         self._write_texts(nest_a='Alpha', nest_b='Beta {{nest_a}}')
-        self._use_marker_in_about('{{nest_b}}')
+        route, _ = self.use_marker_in_a_page('{{nest_b}}')
         r = self.build_ok()
         self.assertNotIn('Traceback', r.stderr)
-        text = (self.out / 'about' / 'index.html').read_text(encoding='utf-8')
+        text = built_page(self.out, route).read_text(encoding='utf-8')
         self.assertIn('Beta Alpha', text)
         self.assertNotIn('{{', text)
 
     def test_circular_text_references_still_fail_cleanly(self):
         self._write_texts(circ_a='{{circ_b}}', circ_b='{{circ_a}}')
-        self._use_marker_in_about('{{circ_a}}')
+        self.use_marker_in_a_page('{{circ_a}}')
         r = run_build(self.project, self.out)
         self.assertNotEqual(r.returncode, 0)
         self.assertIn('has no value', r.stderr + r.stdout)
@@ -961,10 +1032,535 @@ class TestMarkers(TempProject):
         self.assertNotIn('Traceback', r.stderr)
 
 
+class TestOptionalContactData(TempProject):
+    """Regression: a derived site without email/telephone/address in entity.json used to crash
+    the build with an unreadable TypeError/AttributeError instead of falling back to
+    src/data/site.json, as DOCUMENTATION says optional business data should."""
+
+    @staticmethod
+    def _business(data):
+        nodes = data if isinstance(data, list) else data.get('@graph', [data])
+        return next(n for n in nodes if 'areaServed' in n)
+
+    def _edit_entity(self, edit):
+        path = self.project / 'src' / 'data' / 'entity.json'
+        data = json.loads(path.read_text(encoding='utf-8'))
+        edit(data)
+        path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8')
+
+    def _edit_site(self, **over):
+        path = self.project / 'src' / 'data' / 'site.json'
+        cfg = json.loads(path.read_text(encoding='utf-8'))
+        cfg.update(over)
+        path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding='utf-8')
+
+    def _home(self):
+        return (self.out / 'index.html').read_text(encoding='utf-8')
+
+    def _published_with(self, needle):
+        """Text of every built HTML page that contains `needle`."""
+        return [text for route, text in read_all(self.out).items() if route.endswith('.html') and needle in text]
+
+    def _assert_location_fallback(self):
+        """The address printed by the pages comes from site.json "city"/"region" and never says None."""
+        location = f'{SITE.get("city", "")}, {SITE.get("region", "")}'
+        pages = self._published_with(location)
+        self.assertTrue(pages, f'no page prints the site.json fallback address "{location}"')
+        for text in pages:
+            self.assertNotIn('None', text)
+
+    def _assert_email_fallback(self):
+        """The email printed by the pages comes from site.json "contact_email" and never says None."""
+        email = SITE.get('contact_email', '')
+        if not email:
+            self.skipTest('site.json has no contact_email to fall back to')
+        self.assertTrue(self._published_with(email), f'no page prints the site.json fallback email "{email}"')
+        self.assertNotIn('None', self._home())
+
+    def test_missing_contact_point_falls_back_to_site_json(self):
+        self._edit_entity(lambda d: self._business(d).pop('contactPoint', None))
+        r = self.build_ok()
+        self.assertNotIn('Traceback', r.stderr)
+        self.assertNotIn('None', self._home())
+
+    def test_null_contact_point_falls_back_to_site_json(self):
+        """entity.json may have "contactPoint": null, not just a missing key."""
+        self._edit_entity(lambda d: self._business(d).__setitem__('contactPoint', None))
+        r = self.build_ok()
+        self.assertNotIn('Traceback', r.stderr)
+        self.assertNotIn('None', self._home())
+
+    def test_missing_telephone_with_no_fallback_omits_whatsapp_instead_of_crashing(self):
+        self._edit_entity(lambda d: self._business(d)['contactPoint'].pop('telephone', None))
+        self._edit_site(phone_e164='')
+        self.build_ok()
+        home = self._home()
+        self.assertNotIn('wa.me', home)
+        self.assertNotIn('None', home)
+
+    def test_null_address_falls_back_to_site_json(self):
+        """entity.json may have "address": null, not just a missing key."""
+        self._edit_entity(lambda d: self._business(d).__setitem__('address', None))
+        self.build_ok()
+        self._assert_location_fallback()
+
+    def test_missing_address_falls_back_to_site_json(self):
+        self._edit_entity(lambda d: self._business(d).pop('address', None))
+        self.build_ok()
+        self._assert_location_fallback()
+
+    def test_missing_email_falls_back_to_site_json(self):
+        self._edit_entity(lambda d: self._business(d).pop('email', None))
+        self.build_ok()
+        self._assert_email_fallback()
+
+    def test_null_email_falls_back_to_site_json(self):
+        self._edit_entity(lambda d: self._business(d).__setitem__('email', None))
+        self.build_ok()
+        self._assert_email_fallback()
+
+
+class TestSampleFallbacks(TempProject):
+    """Regression: a marker for an offer, city or category that entity.json does not provide used to be
+    filled with sample text ("Service 2", "$149", "City 4") and published with no warning at all."""
+
+    @staticmethod
+    def _business(data):
+        nodes = data if isinstance(data, list) else data.get('@graph', [data])
+        return next(n for n in nodes if 'areaServed' in n)
+
+    def _edit_entity(self, edit):
+        path = self.project / 'src' / 'data' / 'entity.json'
+        data = json.loads(path.read_text(encoding='utf-8'))
+        edit(self._business(data))
+        path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8')
+
+    @staticmethod
+    def _keep_two_offers(business):
+        """Leave one paid offer and the free one, so the slots from 3 on have no data."""
+        items = business['hasOfferCatalog']['itemListElement']
+        free = [o for o in items if o.get('price') in ('0', 0)]
+        business['hasOfferCatalog']['itemListElement'] = [o for o in items if o not in free][:1] + free
+
+    # -- the pure functions
+
+    def test_filled_slots_use_entity_values_and_report_no_fallback(self):
+        business = {'knowsAbout': ['Plumbing'], 'areaServed': [{'name': 'Leeds'}],
+                    'hasOfferCatalog': {'itemListElement': [{'name': 'Boiler repair', 'price': 120}]}}
+        values, fallbacks = build.sample_slots(business)
+        self.assertEqual(values['{{service_category_1}}'], 'Plumbing')
+        self.assertEqual(values['{{city_1}}'], 'Leeds')
+        self.assertEqual(values['{{service_1_name}}'], 'Boiler repair')
+        self.assertEqual(values['{{service_1_price}}'], '120')
+        self.assertFalse([m for m in fallbacks if '_1' in m], 'filled slots are not fallbacks')
+
+    def test_empty_slots_get_a_sample_value_and_are_listed_as_fallbacks(self):
+        values, fallbacks = build.sample_slots({'hasOfferCatalog': {'itemListElement': [{'name': 'Only', 'price': '5'}]}})
+        self.assertEqual(values['{{service_2_name}}'], 'Service 2')
+        self.assertEqual(values['{{service_2_price}}'], '$149')
+        self.assertEqual(values['{{city_4}}'], 'City 4')
+        self.assertIn('{{service_2_name}}', fallbacks)
+        self.assertIn('hasOfferCatalog has 1 offer', fallbacks['{{service_2_name}}'][2])
+        self.assertIn('areaServed has 0 entries', fallbacks['{{city_1}}'][2])
+
+    def test_a_placeholder_or_null_value_counts_as_empty(self):
+        business = {'knowsAbout': ['{{service_category_1}}', None],
+                    'hasOfferCatalog': {'itemListElement': [{'name': None, 'price': '{{x}}'}]}}
+        values, fallbacks = build.sample_slots(business)
+        for marker in ('{{service_category_1}}', '{{service_category_2}}', '{{service_1_name}}', '{{service_1_price}}'):
+            self.assertIn(marker, fallbacks, marker)
+
+    def test_an_offer_without_a_price_does_not_publish_the_word_none(self):
+        values, fallbacks = build.sample_slots({'hasOfferCatalog': {'itemListElement': [{'name': 'Quote only'}]}})
+        self.assertNotIn('None', ''.join(values.values()))
+        self.assertIn('offer 1 price is empty', fallbacks['{{service_1_price}}'][2])
+
+    def test_free_offer_name_falls_back_only_when_it_has_none(self):
+        values, fallbacks = build.sample_slots({'hasOfferCatalog': {'itemListElement': [{'name': 'Intro call', 'price': '0'}]}})
+        self.assertEqual(values['{{featured_action_name}}'], 'Intro call')
+        self.assertNotIn('{{featured_action_name}}', fallbacks)
+        values, fallbacks = build.sample_slots({'hasOfferCatalog': {'itemListElement': [{'price': 0}]}})
+        self.assertEqual(values['{{featured_action_name}}'], 'Free Consultation')
+        self.assertIn('{{featured_action_name}}', fallbacks)
+        values, _ = build.sample_slots({'hasOfferCatalog': {'itemListElement': [{'name': 'Paid', 'price': '9'}]}})
+        self.assertNotIn('{{featured_action_name}}', values, 'with no free offer the marker must stay unresolved')
+
+    def test_null_and_malformed_lists_do_not_raise_a_traceback(self):
+        values, _ = build.sample_slots({'knowsAbout': None, 'areaServed': None, 'hasOfferCatalog': None})
+        self.assertEqual(values['{{service_category_1}}'], 'Service 1')
+        values, _ = build.sample_slots({'hasOfferCatalog': {'itemListElement': ['not an offer']}})
+        self.assertEqual(values['{{service_1_name}}'], 'Service 1')
+        with self.assertRaises(SystemExit):
+            build.sample_slots({'knowsAbout': 'Plumbing'})
+
+    def test_a_fallback_nobody_publishes_is_not_reported(self):
+        _, fallbacks = build.sample_slots({})
+        self.assertEqual(build.sample_fallback_warnings(fallbacks, set()), [])
+
+    def test_markers_of_one_offer_are_reported_together_once(self):
+        _, fallbacks = build.sample_slots({})
+        hits = {'{{service_2_name}}', '{{service_2_price}}', '{{city_1}}'}
+        warnings = build.sample_fallback_warnings(fallbacks, hits)
+        self.assertEqual(len(warnings), 2)
+        offer = next(msg for _, msg in warnings if '{{service_2_name}}' in msg)
+        self.assertIn('{{service_2_price}}', offer)
+        self.assertIn("'Service 2'", offer)
+        self.assertIn('entity.json', offer)
+
+    # -- the whole build
+
+    @ONLY_TEMPLATE
+    def test_the_template_has_no_sample_fallbacks_even_in_strict_mode(self):
+        r = run_build(self.project, self.out, strict=True)
+        self.assertEqual(r.returncode, 0, f'{r.stdout}\n{r.stderr}')
+        self.assertIn('No warnings', r.stdout)
+
+    def test_a_published_sample_value_is_a_warning_that_names_marker_and_page(self):
+        self._edit_entity(self._keep_two_offers)
+        _, source = self.use_marker_in_a_page('{{service_5_name}}')
+        r = run_build(self.project, self.out)
+        self.assertEqual(r.returncode, 0, 'without --strict it is only a warning')
+        text = ' '.join(r.stdout.split())
+        self.assertIn('{{service_5_name}}', text)
+        self.assertIn("'Service 5'", text)
+        self.assertIn('hasOfferCatalog has 2 offers', text)
+        self.assertIn(source, text)
+        self.assertNotIn('Traceback', r.stderr)
+
+    def test_strict_mode_fails_on_a_published_sample_value(self):
+        self._edit_entity(self._keep_two_offers)
+        self.use_marker_in_a_page('{{service_5_name}}')
+        r = run_build(self.project, self.out, strict=True)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn('Errors', r.stdout)
+        self.assertIn('{{service_5_name}}', ' '.join(r.stdout.split()))
+        self.assertNotIn('Traceback', r.stderr)
+
+    def test_a_sample_value_that_no_page_uses_stays_silent(self):
+        """Dropping every page that mentioned the last services leaves nothing to warn about."""
+        self._edit_entity(self._keep_two_offers)
+        for path in list((self.project / 'src').rglob('*.html')) + [self.project / 'src' / 'data' / 'texts.json',
+                                                                    self.project / 'src' / 'static' / 'llms.txt']:
+            text = path.read_text(encoding='utf-8')
+            for n in range(3, 6):
+                for suffix in ('name', 'price_number', 'price'):
+                    text = text.replace('{{service_%d_%s}}' % (n, suffix), 'Fixed text')
+            path.write_text(text, encoding='utf-8')
+        entity = self.project / 'src' / 'data' / 'entity.json'
+        entity.write_text(entity.read_text(encoding='utf-8').replace('{{service_category_3}}', 'Fixed').replace(
+            '{{service_category_4}}', 'Fixed').replace('{{service_category_5}}', 'Fixed'), encoding='utf-8')
+        r = run_build(self.project, self.out, strict=True)
+        self.assertEqual(r.returncode, 0, f'{r.stdout}\n{r.stderr}')
+        self.assertNotIn('sample value', ' '.join(r.stdout.split()))
+
+    def test_build_script_fails_on_a_sample_value_unless_check_strict_is_false(self):
+        self._edit_entity(self._keep_two_offers)
+        self.use_marker_in_a_page('{{service_5_name}}')
+        env = {k: v for k, v in os.environ.items() if k not in ('SITE_URL', 'CHECK_STRICT')}
+        env['SITE_URL'] = 'https://example.com'
+        def run_script(**extra):
+            return subprocess.run(['bash', str(self.project / 'legible' / 'build.sh')], capture_output=True,
+                                  text=True, cwd=self.project, env={**env, **extra})
+        strict = run_script()
+        self.assertNotEqual(strict.returncode, 0, 'strict by default')
+        self.assertNotIn('Build finished', strict.stdout)
+        relaxed = run_script(CHECK_STRICT='FALSE')
+        self.assertIn('{{service_5_name}}', ' '.join(relaxed.stdout.split()), 'the warning is still shown')
+
+
+class TestLeadStripContact(TempProject):
+    """Regression: the closing strip of /guides/ and /blog/ always linked to WhatsApp. Without a telephone the
+    link came out as href="" (the validator fails on it) and a business with no email got mailto:"".
+    The line now offers only the channels the site has, and `lead_strip.contact_html` can replace it."""
+
+    @staticmethod
+    def _business(data):
+        nodes = data if isinstance(data, list) else data.get('@graph', [data])
+        return next(n for n in nodes if 'areaServed' in n)
+
+    def _edit_entity(self, edit):
+        path = self.project / 'src' / 'data' / 'entity.json'
+        data = json.loads(path.read_text(encoding='utf-8'))
+        edit(self._business(data))
+        path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8')
+
+    def _edit_site(self, **over):
+        path = self.project / 'src' / 'data' / 'site.json'
+        cfg = json.loads(path.read_text(encoding='utf-8'))
+        cfg.update(over)
+        path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding='utf-8')
+
+    def _no_phone(self):
+        self._edit_entity(lambda b: (b.get('contactPoint') or {}).pop('telephone', None))
+        self._edit_site(phone_e164='')
+
+    def _no_email(self):
+        self._edit_entity(lambda b: b.pop('email', None))
+        self._edit_site(contact_email='')
+
+    def _strips(self):
+        """The closing strip (`lead-strip` section) of the guides and blog indexes, built from scratch."""
+        import re
+        add_piece(self.project, 'guides', 'a')
+        for s in ('one', 'two', 'three'):
+            add_piece(self.project, 'blog', s)
+        self.build_ok()
+        found = {}
+        for coll in ('guides', 'blog'):
+            page = (self.out / coll / 'index.html').read_text(encoding='utf-8')
+            m = re.search(r'<section class="lead-strip.*?</section>', page, re.S)
+            self.assertIsNotNone(m, f'/{coll}/ has no closing strip')
+            found[coll] = m.group(0)
+        return found
+
+    # -- the function
+
+    def test_the_contact_line_follows_the_available_channels(self):
+        both = build._lead_strip_html(True, True)
+        self.assertIn('mailto:{{contact_email}}', both)
+        self.assertIn('href="{{whatsapp_link}}"', both)
+        email_only = build._lead_strip_html(True, False)
+        self.assertIn('mailto:{{contact_email}}', email_only)
+        self.assertNotIn('whatsapp', email_only.lower())
+        wa_only = build._lead_strip_html(False, True)
+        self.assertIn('href="{{whatsapp_link}}"', wa_only)
+        self.assertNotIn('mailto', wa_only)
+        neither = build._lead_strip_html(False, False)
+        self.assertNotIn('text-muted-lg', neither, 'no channel, no contact line')
+        self.assertIn('class="button primary"', neither, 'the call-to-action button stays')
+
+    def test_default_call_is_unchanged_for_other_callers(self):
+        self.assertEqual(build._lead_strip_html(), build._lead_strip_html(True, True))
+
+    def test_every_locale_has_the_three_contact_lines(self):
+        en, es = build.load_locale('en'), build.load_locale('es')
+        self.assertEqual(sorted(en), sorted(es), 'en.json and es.json must define the same keys')
+        for data in (en, es):
+            self.assertIn('{email}', data['lead_strip_contact_email_only'])
+            self.assertNotIn('{whatsapp}', data['lead_strip_contact_email_only'])
+            self.assertIn('{whatsapp}', data['lead_strip_contact_whatsapp_only'])
+            self.assertNotIn('{email}', data['lead_strip_contact_whatsapp_only'])
+
+    # -- the whole build
+
+    @ONLY_TEMPLATE
+    def test_with_both_channels_the_strip_is_the_one_it_always_was(self):
+        for strip in self._strips().values():
+            self.assertIn(f'mailto:{SITE["contact_email"]}', strip)
+            self.assertRegex(strip, r'href="https://wa\.me/[^"]+"')
+
+    def test_without_a_telephone_the_strip_has_only_the_email(self):
+        self._no_phone()
+        for coll, strip in self._strips().items():
+            self.assertIn('mailto:', strip, coll)
+            self.assertNotIn('WhatsApp', strip, coll)
+            self.assertNotIn('href=""', strip, coll)
+
+    def test_without_an_email_the_strip_has_only_whatsapp(self):
+        self._no_email()
+        for coll, strip in self._strips().items():
+            self.assertRegex(strip, r'href="https://wa\.me/[^"]+"')
+            self.assertNotIn('mailto', strip, coll)
+
+    def test_without_any_contact_the_strip_keeps_its_button_and_no_empty_links(self):
+        self._no_phone()
+        self._no_email()
+        for coll, strip in self._strips().items():
+            self.assertIn('class="button primary"', strip, coll)
+            self.assertNotIn('text-muted-lg', strip, coll)
+            self.assertNotIn('href=""', strip, coll)
+            self.assertNotIn('mailto', strip, coll)
+
+    def test_contact_html_replaces_the_line_and_resolves_markers(self):
+        self._no_phone()
+        self._edit_site(generated_content={'lead_strip': {'contact_html': 'Visit us or write to {{contact_email}}.'}})
+        for coll, strip in self._strips().items():
+            self.assertIn(f'Visit us or write to {SITE["contact_email"]}.', strip, coll)
+            self.assertNotIn('{{', strip, coll)
+
+    def test_an_empty_contact_html_removes_the_line(self):
+        self._edit_site(generated_content={'lead_strip': {'contact_html': ''}})
+        for coll, strip in self._strips().items():
+            self.assertNotIn('text-muted-lg', strip, coll)
+            self.assertIn('class="button primary"', strip, coll)
+
+
+class TestLocaleOverrides(TempProject):
+    """Regression: the texts the engine generates (home resources, guides and blog indexes, closing strip,
+    llms.txt) say "your business" and could not be changed from src/. `generated_content.locale_overrides`
+    in site.json replaces any locale text, is validated (an unknown key or an empty text stops the build
+    and names the key) and never touches the default output."""
+
+    @staticmethod
+    def _cfg(overrides):
+        return {'generated_content': {'locale_overrides': overrides}}
+
+    def _apply(self, overrides, language='en'):
+        return build.apply_locale_overrides(build.load_locale(language), self._cfg(overrides), language)
+
+    def _fails(self, overrides, *needles, language='en'):
+        with self.assertRaises(SystemExit) as ctx:
+            self._apply(overrides, language)
+        message = str(ctx.exception)
+        self.assertIn('locale_overrides', message)
+        for needle in needles:
+            self.assertIn(needle, message)
+        return message
+
+    def _edit_site(self, **over):
+        path = self.project / 'src' / 'data' / 'site.json'
+        cfg = json.loads(path.read_text(encoding='utf-8'))
+        cfg.update(over)
+        path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding='utf-8')
+
+    def _with_collections(self):
+        add_piece(self.project, 'guides', 'a')
+        for slug in ('one', 'two', 'three'):
+            add_piece(self.project, 'blog', slug)
+
+    # -- the function
+
+    def test_without_overrides_the_locale_is_returned_as_it_is(self):
+        locale = build.load_locale('en')
+        for config in ({}, {'generated_content': {}}, {'generated_content': None},
+                       {'generated_content': []}, {'generated_content': {'locale_overrides': None}}):
+            self.assertIs(build.apply_locale_overrides(locale, config, 'en'), locale, config)
+
+    def test_an_override_replaces_the_text_and_leaves_the_original_untouched(self):
+        locale = build.load_locale('en')
+        merged = build.apply_locale_overrides(locale, self._cfg({'nav_guides': 'Library'}), 'en')
+        self.assertEqual(merged['nav_guides'], 'Library')
+        self.assertEqual(locale['nav_guides'], 'Guides')
+        self.assertEqual({k: v for k, v in merged.items() if k != 'nav_guides'},
+                         {k: v for k, v in locale.items() if k != 'nav_guides'})
+
+    def test_every_default_text_is_a_valid_override_of_itself(self):
+        for language in ('en', 'es'):
+            locale = build.load_locale(language)
+            self.assertEqual(build.apply_locale_overrides(locale, self._cfg(dict(locale)), language), locale, language)
+
+    def test_an_unknown_key_is_named_with_a_suggestion(self):
+        self._fails({'home_resource_heading': 'x'}, '"home_resource_heading"', 'did you mean "home_resources_heading"',
+                    'legible/locales/en.json')
+        self._fails({'zzz': 'x'}, '"zzz"', 'no such key', language='es')
+
+    def test_an_empty_or_wrong_typed_text_is_rejected(self):
+        self._fails({'blog_index_lead': ''}, '"blog_index_lead"', 'non-empty')
+        self._fails({'blog_index_lead': '   '}, '"blog_index_lead"', 'non-empty')
+        self._fails({'nav_guides': 5}, '"nav_guides"', 'must be a text', 'int')
+        self._fails({'nav_blog': None}, '"nav_blog"', 'must be a text')
+        self._fails({'months': 'January'}, '"months"', '12')
+        self._fails({'months': ['a'] * 11}, '"months"', '12')
+        self._fails({'months': [''] + ['a'] * 11}, '"months"', '12')
+
+    def test_overrides_must_be_an_object(self):
+        self._fails(['nav_guides'], 'must be an object', 'list')
+        self._fails('nav_guides', 'must be an object', 'str')
+
+    def test_all_the_problems_are_reported_at_once(self):
+        message = self._fails({'typo_key': 'x', 'nav_blog': '', 'nav_guides': 'Library'}, '2 problems', '"typo_key"', '"nav_blog"')
+        self.assertNotIn('"nav_guides"', message, 'a valid override is not a problem')
+
+    def test_placeholders_may_be_dropped_but_not_invented(self):
+        merged = self._apply({'lead_strip_contact': 'Write to {email}', 'blog_index_lead': 'Notes for you.',
+                              'lead_strip_lead_html': 'Ask for your {action_link} today.'})
+        self.assertEqual(merged['lead_strip_contact'], 'Write to {email}')
+        self._fails({'lead_strip_lead_html': 'Ask {action_url}'}, '"lead_strip_lead_html"', '{action_url}', '{action_link}')
+        self._fails({'nav_guides': 'Guides {count}'}, '"nav_guides"', '{count}', 'no {placeholders}')
+        self._fails({'lead_strip_contact_email_only': 'Call {whatsapp}'}, '{whatsapp}', '{email}')
+
+    def test_site_markers_are_not_placeholders(self):
+        merged = self._apply({'home_resources_heading': 'Resources from {{site_name}}',
+                              'blog_index_lead': 'Notes from {{site_name}}; for steps, {guides_txt}.'})
+        self.assertEqual(merged['home_resources_heading'], 'Resources from {{site_name}}')
+
+    def test_the_date_format_and_the_months_can_be_overridden(self):
+        merged = self._apply({'long_date': '{day}/{month}/{year}', 'months': [f'm{i}' for i in range(1, 13)]})
+        self.assertEqual(build.format_long_date('2026-03-05', merged), '5/m3/2026')
+        self._fails({'long_date': '{day} {'}, '"long_date"', 'not a valid date format')
+        self._fails({'long_date': '{day} of {mes}'}, '"long_date"', '{mes}')
+
+    def test_it_works_in_spanish_too(self):
+        merged = self._apply({'nav_blog': 'Novedades'}, 'es')
+        self.assertEqual(merged['nav_blog'], 'Novedades')
+        self.assertEqual(merged['nav_guides'], build.load_locale('es')['nav_guides'])
+
+    # -- the whole build
+
+    def test_the_default_texts_are_published_when_nothing_is_overridden(self):
+        self._with_collections()
+        self.build_ok()
+        locale = build.load_locale(SITE.get('language', 'en'))
+        self.assertIn(locale['home_resources_heading'], (self.out / 'index.html').read_text(encoding='utf-8'))
+        self.assertIn(locale['guides_index_lead'], (self.out / 'guides' / 'index.html').read_text(encoding='utf-8'))
+
+    def test_overrides_reach_home_indexes_and_llms_with_markers_resolved(self):
+        self._with_collections()
+        self._edit_site(text={'zebra': 'Zebra Labs'}, generated_content={'locale_overrides': {
+            'home_resources_heading': 'Resources from {{zebra}}',
+            'guides_index_heading': 'Guides by {{zebra}}',
+            'guides_index_lead': 'Practical help from {{zebra}}.',
+            'blog_index_lead': 'Notes by {{zebra}}; for steps, {guides_txt}.',
+            'lead_strip_headline': 'Talk to the {{zebra}} team',
+            'llms_guides_description': 'Guides written by {{zebra}}.',
+            'llms_blog_description': 'Articles by {{zebra}}.',
+        }})
+        self.build_ok()
+        home = (self.out / 'index.html').read_text(encoding='utf-8')
+        guides = (self.out / 'guides' / 'index.html').read_text(encoding='utf-8')
+        blog = (self.out / 'blog' / 'index.html').read_text(encoding='utf-8')
+        llms = (self.out / 'llms.txt').read_text(encoding='utf-8')
+        self.assertIn('Resources from Zebra Labs', home)
+        self.assertIn('Guides by Zebra Labs', guides)
+        self.assertIn('Practical help from Zebra Labs.', guides)
+        self.assertRegex(blog, r'Notes by Zebra Labs; for steps, see the <a href="/guides/">guides</a>\.')
+        self.assertIn('Talk to the Zebra Labs team', guides)
+        self.assertIn('Talk to the Zebra Labs team', blog)
+        self.assertIn('Guides written by Zebra Labs.', llms)
+        self.assertIn('Articles by Zebra Labs.', llms)
+        for name, text in (('home', home), ('guides', guides), ('blog', blog), ('llms', llms)):
+            self.assertNotIn('{{zebra}}', text, name)
+            self.assertNotIn('{guides_txt}', text, name)
+
+    def test_the_per_section_setting_wins_over_an_override(self):
+        self._with_collections()
+        self._edit_site(generated_content={
+            'locale_overrides': {'guides_index_heading': 'From the locale', 'guides_index_lead': 'Lead from the locale.'},
+            'guides_index': {'heading': 'From the section'}})
+        self.build_ok()
+        guides = (self.out / 'guides' / 'index.html').read_text(encoding='utf-8')
+        self.assertIn('<h1>From the section</h1>', guides)
+        self.assertNotIn('From the locale', guides)
+        self.assertIn('Lead from the locale.', guides)
+
+    def test_a_broken_override_stops_the_build_and_names_the_key(self):
+        self._edit_site(generated_content={'locale_overrides': {'home_resource_heading': 'x'}})
+        r = run_build(self.project, self.out)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn('"home_resource_heading"', r.stdout + r.stderr)
+        self.assertIn('did you mean "home_resources_heading"', r.stdout + r.stderr)
+        self.assertNotIn('Traceback', r.stdout + r.stderr)
+
+    def test_card_labels_with_special_characters_keep_the_markup_valid(self):
+        self._with_collections()
+        self._edit_site(generated_content={'locale_overrides': {'card_read_guide': 'Read "the" guide & more'}})
+        self.build_ok()
+        guides = (self.out / 'guides' / 'index.html').read_text(encoding='utf-8')
+        self.assertIn('Read &quot;the&quot; guide &amp; more', guides)
+        self.assertNotIn('aria-label="Read "', guides)
+
+    def test_the_override_of_the_date_reaches_the_published_pages(self):
+        self._with_collections()
+        self._edit_site(generated_content={'locale_overrides': {'long_date': '{day}.{month}.{year}'}})
+        self.build_ok()
+        self.assertRegex((self.out / 'blog' / 'index.html').read_text(encoding='utf-8'), r'>\d{1,2}\.[A-Za-zñé]+\.\d{4}</time>')
+
+
 class TestSitemapDates(TempProject):
     def test_updated_and_json_ld_date_mismatch_fails_the_build(self):
         """Regression: changing only `updated` used to leave a stale sitemap lastmod and still pass."""
-        page = self.project / 'src' / 'pages' / 'about' / 'index.html'
+        route, page = pick_page(self.project / 'src' / 'pages', has_dated_json_ld,
+                                what='an `updated` date that its JSON-LD repeats')
         text = page.read_text(encoding='utf-8')
         front, _ = build.parse_front_matter(text)
         old = front['updated']
@@ -973,7 +1569,7 @@ class TestSitemapDates(TempProject):
         r = run_build(self.project, self.out)
         self.assertNotEqual(r.returncode, 0)
         out = r.stderr + r.stdout
-        self.assertIn('/about/', out)
+        self.assertIn(route, out)
         self.assertIn('2027-03-01', out)
         self.assertIn(old, out)
         self.assertNotIn('Traceback', r.stderr)
@@ -984,10 +1580,10 @@ class TestSitemapDates(TempProject):
         self.assertIn('<lastmod>', sitemap)
 
     @ONLY_TEMPLATE
-    def test_sample_service_has_updated(self):
-        page = REPO / 'src' / 'pages' / 'services' / SERVICE_SLUG / 'index.html'
-        front, _ = build.parse_front_matter(page.read_text(encoding='utf-8'))
-        self.assertIn('updated', front)
+    def test_every_sample_page_has_updated(self):
+        for route in page_routes(PAGES) + ['/']:
+            front, _ = build.parse_front_matter((PAGES / route_dir(route) / 'index.html').read_text(encoding='utf-8'))
+            self.assertIn('updated', front, route)
 
 
 # --------------------------------------------------------------------------- 6. geo tags
@@ -1117,13 +1713,15 @@ class TestSpecialCharactersAndWarnings(TempProject):
 
     def _break(self):
         """One error (broken link) and one warning (short description) at once."""
-        svc = self.project / 'src' / 'pages' / 'services' / 'index.html'
-        svc.write_text(svc.read_text(encoding='utf-8').replace(
-            '<a href="/pricing/">', '<a href="/path-that-does-not-exist-with-a-fairly-long-name/">', 1), encoding='utf-8')
-        pr = self.project / 'src' / 'pages' / 'pricing' / 'index.html'
-        import re
-        pr.write_text(re.sub(r'^description:.*$', 'description: Short.', pr.read_text(encoding='utf-8'), count=1, flags=re.M),
-                      encoding='utf-8')
+        pages = self.project / 'src' / 'pages'
+        link = re.compile(r'(<a\b[^>]*?\bhref=")/[a-z0-9][^"]*(")')
+        route, linked = pick_page(pages, lambda text: bool(link.search(text)), what='a link to another page')
+        linked.write_text(link.sub(r'\1/path-that-does-not-exist-with-a-fairly-long-name/\2',
+                                   linked.read_text(encoding='utf-8'), count=1), encoding='utf-8')
+        _, described = pick_page(pages, is_indexable_with_description,
+                                 what='an indexable page with a description', skip=(route,))
+        described.write_text(re.sub(r'^description:.*$', 'description: Short.', described.read_text(encoding='utf-8'),
+                                    count=1, flags=re.M), encoding='utf-8')
 
     def test_build_report_shows_errors_even_with_warnings(self):
         self._break()
@@ -1144,9 +1742,9 @@ class TestSpecialCharactersAndWarnings(TempProject):
 
     def test_duplicate_jsonld_id_fails_the_build_and_names_the_id_and_the_page(self):
         """A page node that repeats an entity @id used to drop the whole JSON-LD silently (misleading later error)."""
-        page = self.project / 'src' / 'pages' / 'about' / 'index.html'
+        route, page = pick_page(self.project / 'src' / 'pages', lambda text: text.count('"@graph": [') == 1,
+                                what='exactly one JSON-LD "@graph"')
         text = page.read_text(encoding='utf-8')
-        self.assertEqual(text.count('"@graph": ['), 1)
         page.write_text(text.replace(
             '"@graph": [', '"@graph": [{"@type": "ProfessionalService", "@id": "{{site_url}}/#business", "name": "Duplicate"},', 1),
             encoding='utf-8')
@@ -1155,16 +1753,16 @@ class TestSpecialCharactersAndWarnings(TempProject):
         self.assertIn('BUILD FAILED', r.stderr)
         self.assertIn('duplicate JSON-LD @id', r.stderr)
         self.assertIn('/#business', r.stderr)
-        self.assertIn('/about/', r.stderr)
+        self.assertIn(route, r.stderr)
         self.assertNotIn('Traceback', r.stderr)
 
     def test_slug_containing_index_html_keeps_its_url(self):
         """The page URL drops only the final index.html: a folder named my-index.html-guide must not become my--guide."""
         slug = 'my-index.html-guide'
+        _, source = pick_page(self.project / 'src' / 'pages')
         page = self.project / 'src' / 'pages' / slug / 'index.html'
         page.parent.mkdir(parents=True)
-        page.write_text((self.project / 'src' / 'pages' / 'about' / 'index.html').read_text(encoding='utf-8'),
-                        encoding='utf-8')
+        page.write_text(source.read_text(encoding='utf-8'), encoding='utf-8')
         self.build_ok()
         text = (self.out / slug / 'index.html').read_text(encoding='utf-8')
         self.assertIn(f'/{slug}/', text)
@@ -1174,9 +1772,10 @@ class TestSpecialCharactersAndWarnings(TempProject):
 
     def test_internal_http_link_is_an_error(self):
         self.build_ok()
-        f = self.out / 'pricing' / 'index.html'
+        f = self.out / 'index.html'
+        insecure = SITE['site_url'].replace('https://', 'http://').rstrip('/')
         f.write_text(f.read_text(encoding='utf-8').replace(
-            '</main>', '<p><a href="http://YOUR-DOMAIN.com/contact/">c</a></p></main>', 1), encoding='utf-8')
+            '</main>', f'<p><a href="{insecure}{RELATED_PAGE}">c</a></p></main>', 1), encoding='utf-8')
         r = run_check(self.project, self.out, strict=False)
         self.assertNotEqual(r.returncode, 0)
         self.assertIn('http instead of https', r.stdout)
@@ -1290,6 +1889,131 @@ class TestFlowSwitch(unittest.TestCase):
     def test_flow_off_lock_is_gitignored(self):
         gitignore = (REPO / '.gitignore').read_text(encoding='utf-8').splitlines()
         self.assertIn('FLOW_OFF.lock', gitignore)
+
+
+# --------------------------------------------------------------------------- 8. independence from the sample pages
+
+# Names of the template's sample pages and data. A line of this file may use them only if it says
+# `# template-only` (the tests marked @ONLY_TEMPLATE that really read the sample data).
+_SAMPLE_PAGE_NAMES = ('services', 'pricing', 'about', 'contact', 'featured-action', 'sample-service', 'privacy-policy', 'cookie-policy', 'legal-notice')  # template-only
+_SAMPLE_DATA = ('Your City', 'Your Region', 'Your Business', 'hello@example.com')  # template-only
+# Classes that build projects and edit pages: the ones that used to name a sample page.
+_PAGE_EDITING_TESTS = ('TestMarkers', 'TestSitemapDates', 'TestDirectCollections', 'TestOptionalContactData',
+                       'TestDomain', 'TestSpecialCharactersAndWarnings')
+
+
+class TestPageLookup(unittest.TestCase):
+    """The helpers that find "a page that exists" so the tests do not have to name one."""
+
+    HTML = '---\ntitle: t\ndescription: d\n---\n<main><h1>x</h1></main>'
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.pages = Path(self._tmp.name)
+
+    def page(self, route, text=HTML):
+        d = self.pages / route_dir(route)
+        d.mkdir(parents=True, exist_ok=True)
+        (d / 'index.html').write_text(text, encoding='utf-8')
+
+    def test_route_dir(self):
+        self.assertEqual((route_dir('/news/'), route_dir('/news/item/'), route_dir('/')), ('news', 'news/item', ''))
+
+    def test_routes_are_alphabetical_and_leave_out_home_404_and_generated_pieces(self):
+        for route in ('/', '/zeta/', '/alpha/', '/alpha/inner/'):
+            self.page(route)
+        (self.pages / '404.html').write_text(self.HTML, encoding='utf-8')
+        self.page('/guides/g/', '---\ntype: guide\n---\n<h1>x</h1>')
+        self.page('/blog/b/', '---\ntype: article\n---\n<h1>x</h1>')
+        self.assertEqual(page_routes(self.pages), ['/alpha/', '/alpha/inner/', '/zeta/'])
+
+    def test_pick_page_takes_the_first_page_that_fits(self):
+        self.page('/', self.HTML + ' only-home')
+        self.page('/a/', '---\ntitle: t\n---\n<main>no heading</main>')
+        self.page('/b/')
+        self.page('/c/')
+        self.assertEqual(pick_page(self.pages)[0], '/b/', 'a page with no <h1> does not fit')
+        self.assertEqual(pick_page(self.pages, skip=('/b/',))[0], '/c/')
+        route, f = pick_page(self.pages, lambda text: 'only-home' in text)
+        self.assertEqual((route, f), ('/', self.pages / 'index.html'), 'the home page is a valid page too')
+
+    def test_pick_page_uses_home_as_the_last_resort_and_fails_clearly_without_a_match(self):
+        self.page('/')
+        self.assertEqual(pick_page(self.pages)[0], '/')
+        with self.assertRaises(AssertionError) as cm:
+            pick_page(self.pages, lambda text: False, what='a page nobody has')
+        self.assertIn('a page nobody has', str(cm.exception))
+
+    def test_related_page_is_the_first_page_or_home(self):
+        self.assertEqual(related_page(self.pages), '/', 'a project with no pages but the home')
+        self.page('/zeta/')
+        self.page('/alpha/')
+        self.assertEqual(related_page(self.pages), '/alpha/')
+
+    def test_a_guide_can_point_to_home_or_to_a_nested_stub_page(self):
+        """Regression: `service` was fixed to the template's first service and the whole suite stopped importing
+        in a project without it."""
+        for route in ('/', '/deep/page/'):
+            with self.subTest(route=route):
+                pages = self.pages / route_dir(route).replace('/', '_')
+                pages.mkdir(exist_ok=True)
+                write_stub_page(pages, route)
+                d = pages / 'guides' / 'a'
+                d.mkdir(parents=True)
+                (d / 'index.html').write_text(piece_html('guides', 'a', service=route), encoding='utf-8')
+                self.assertEqual(build.load_collections(pages)['guides'][0]['service'], route)
+
+    def test_dated_json_ld_and_indexable_description_predicates(self):
+        self.assertTrue(has_dated_json_ld('---\nupdated: 2026-01-02\n---\n"dateModified": "2026-01-02"'))
+        self.assertFalse(has_dated_json_ld('---\nupdated: 2026-01-02\n---\nno repeated date'))
+        self.assertFalse(has_dated_json_ld('---\ntitle: t\n---\nbody'))
+        self.assertTrue(is_indexable_with_description('---\ndescription: d\nrobots: index, follow\n---\n'))
+        self.assertFalse(is_indexable_with_description('---\ndescription: d\nrobots: noindex, follow\n---\n'))
+        self.assertFalse(is_indexable_with_description('---\nrobots: index, follow\n---\n'))
+
+
+class TestSuiteIsIndependentOfTheSamplePages(unittest.TestCase):
+    """Regression: the suite named the template's pages (`services/`, `pricing/`, `about/`...) and its sample
+    data. In an adapted site it did not even import (`_SERVICES[0]` raised IndexError), so every pilot lost
+    the suite as a baseline. These two checks keep it that way."""
+
+    def test_no_test_names_a_sample_page_or_its_data(self):
+        names = '|'.join(re.escape(n) for n in _SAMPLE_PAGE_NAMES)
+        patterns = [re.compile(r"/ '(?:%s)'" % names),               # a path join such as `pages / 'news'`
+                    re.compile(r"(?<![\w.:/])/(?:%s)/" % names)]     # a route such as '/news/'
+        patterns += [re.compile(re.escape(s)) for s in _SAMPLE_DATA]
+        offenders = [f'line {n}: {line.strip()}'
+                     for n, line in enumerate(Path(__file__).read_text(encoding='utf-8').splitlines(), 1)
+                     if '# template-only' not in line and any(p.search(line) for p in patterns)]
+        self.assertEqual(offenders, [], 'a test names a sample page or sample data: find the page with pick_page(), '
+                                        'read the value from SITE, or mark the line `# template-only`')
+
+    @ONLY_TEMPLATE
+    def test_the_page_editing_tests_pass_in_a_site_whose_pages_were_renamed(self):
+        """Rename every sample page, change the domain, the city and the email, and run those tests there."""
+        with tempfile.TemporaryDirectory() as tmp:
+            project = copy_project(Path(tmp) / 'project')
+            shutil.copytree(REPO / 'tests', project / 'tests', ignore=shutil.ignore_patterns('__pycache__'))
+            routes = sorted(page_routes(project / 'src' / 'pages'), key=len, reverse=True)
+            top = sorted({r.split('/')[1] for r in routes})
+            for name in top:
+                (project / 'src' / 'pages' / name).rename(project / 'src' / 'pages' / f'x-{name}')
+            for f in (project / 'src').rglob('*'):
+                if f.is_file() and f.suffix in ('.html', '.json', '.txt', '.xml'):
+                    text = f.read_text(encoding='utf-8')
+                    for name in top:
+                        text = text.replace(f'/{name}/', f'/x-{name}/')
+                    f.write_text(text, encoding='utf-8')
+            site = project / 'src' / 'data' / 'site.json'
+            cfg = json.loads(site.read_text(encoding='utf-8'))
+            cfg.update(site_url='https://adapted-site.test', city='Elsewhere', region='Another Region',
+                       contact_email='write@adapted-site.test', project_stage='in_progress')
+            site.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding='utf-8')
+            env = {k: v for k, v in os.environ.items() if k != 'SITE_URL'}
+            r = subprocess.run([sys.executable, '-B', '-m', 'unittest', *(f'test_legible.{c}' for c in _PAGE_EDITING_TESTS)],
+                               capture_output=True, text=True, env=env, cwd=project / 'tests')
+            self.assertEqual(r.returncode, 0, f'the suite fails in an adapted site:\n{r.stderr[-3000:]}')
 
 
 if __name__ == '__main__':

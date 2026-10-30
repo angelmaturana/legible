@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import difflib
 import html
 import json
 import os
@@ -59,7 +60,78 @@ def load_locale(language):
     return data
 
 
-LOCALE = load_locale(LANGUAGE)
+# `{name}` placeholders of a locale text (the engine fills them in); `{{marker}}` is not one of them.
+_LOCALE_PLACEHOLDER = re.compile(r'(?<!\{)\{([A-Za-z_][A-Za-z0-9_]*)\}(?!\})')
+
+
+def _locale_placeholders(text):
+    return sorted(set(_LOCALE_PLACEHOLDER.findall(text)))
+
+
+def apply_locale_overrides(locale, config, language):
+    """Return `locale` with `generated_content.locale_overrides` of site.json applied on top.
+
+    The texts the engine generates (home resources, guides and blog indexes, closing strip, llms.txt) come
+    from legible/locales/<language>.json and speak of "your business". A site changes them from src/ with
+    `generated_content.locale_overrides`: an object `{locale key: new text}`. Everything is validated and
+    reported at once, so a typo cannot silently leave the default text published:
+      - the key must exist in the locale file;
+      - the text must be non-empty and of the same kind as the default (`months` is a list of 12 texts);
+      - it may use only the `{placeholders}` the default has (a subset is fine, `{{markers}}` are free).
+    Per-section values (`generated_content.guides_index.title`, ...) still win over an override.
+    `locale` is not modified."""
+    generated = config.get('generated_content')
+    overrides = generated.get('locale_overrides') if isinstance(generated, dict) else None
+    if overrides is None:
+        return locale
+    where = 'src/data/site.json › generated_content › locale_overrides'
+    if not isinstance(overrides, dict):
+        raise SystemExit(f'✗ BUILD FAILED: {where} must be an object {{"locale_key": "text"}} '
+                         f'(found {type(overrides).__name__})')
+    problems = []
+    clean = {}
+    for key, value in overrides.items():
+        default = locale.get(key)
+        if key not in locale:
+            near = difflib.get_close_matches(str(key), list(locale), n=1)
+            hint = f' (did you mean "{near[0]}"?)' if near else ''
+            problems.append(f'"{key}": no such key{hint}; the valid keys are in legible/locales/{language}.json')
+        elif isinstance(default, list):
+            if (not isinstance(value, list) or len(value) != len(default)
+                    or not all(isinstance(v, str) and v.strip() for v in value)):
+                problems.append(f'"{key}": must be a list of {len(default)} non-empty texts')
+            else:
+                clean[key] = list(value)
+        elif isinstance(default, str):
+            if not isinstance(value, str):
+                problems.append(f'"{key}": must be a text (found {type(value).__name__})')
+                continue
+            if not value.strip():
+                problems.append(f'"{key}": must be a non-empty text')
+                continue
+            allowed = _locale_placeholders(default)
+            extra = [name for name in _locale_placeholders(value) if name not in allowed]
+            if extra:
+                can = ', '.join('{' + a + '}' for a in allowed) or 'no {placeholders}'
+                problems.append(f'"{key}": uses {", ".join("{" + e + "}" for e in extra)}, which this text '
+                                f'does not receive (it can use: {can})')
+                continue
+            if key == 'long_date':
+                try:
+                    value.format(day=1, month='m', year=2000)
+                except (KeyError, IndexError, ValueError) as exc:
+                    problems.append(f'"{key}": not a valid date format ({exc}); use {{day}}, {{month}} and {{year}}')
+                    continue
+            clean[key] = value
+        else:
+            clean[key] = value
+    if problems:
+        raise SystemExit(f'✗ BUILD FAILED: {where} has {len(problems)} problem'
+                         f'{"" if len(problems) == 1 else "s"}:\n  - ' + '\n  - '.join(problems))
+    return {**locale, **clean}
+
+
+LOCALE = apply_locale_overrides(load_locale(LANGUAGE), SITE_CONFIG, LANGUAGE)
 
 
 def t(key, locale=None):
@@ -69,11 +141,17 @@ def t(key, locale=None):
         raise SystemExit(f'✗ BUILD FAILED: key "{key}" is missing in legible/locales/{LANGUAGE}.json')
     return data[key]
 
+# Markers whose value is a sample fallback (see sample_slots) and the ones actually found in published text.
+_SAMPLE_WATCH = set()
+_SAMPLE_HITS = set()
+
 def _apply_markers(text, table, passes=5):
     """Replace markers until stable, so a text may reference another text defined earlier or later."""
     for _ in range(passes):
         before = text
         for placeholder, value in table.items():
+            if placeholder in _SAMPLE_WATCH and placeholder in text:
+                _SAMPLE_HITS.add(placeholder)
             text = text.replace(placeholder, value)
         if text == before:
             break
@@ -115,6 +193,137 @@ def replace_placeholders_in_content(content, html_replacements, json_replacement
         pos = m.end()
     parts.append(apply(content[pos:], html_replacements))
     return ''.join(parts)
+
+def _is_unset(val):
+    """True for a value entity.json has not filled in: missing/null, or still a {{...}} marker."""
+    return val is None or (isinstance(val, str) and val.startswith('{{') and val.endswith('}}'))
+
+# Sample values for the numbered slots of entity.json (knowsAbout, areaServed, hasOfferCatalog). They are used
+# only when entity.json gives no value for a slot, so a half-filled site still builds; the build then warns
+# if the sample value is really published (sample_slots, sample_fallback_warnings).
+SAMPLE_CATEGORIES = tuple(f'Service {n}' for n in range(1, 7))
+SAMPLE_CITIES = tuple(f'City {n}' for n in range(1, 5))
+SAMPLE_OFFERS = (('Service 1', '$99', '99'), ('Service 2', '$149', '149'), ('Service 3', '$49/mo', '49'),
+                 ('Service 4', '$299/mo', '299'), ('Service 5', '$290', '290'))
+SAMPLE_FREE_OFFER = 'Free Consultation'
+
+
+def _marker(name):
+    return '{{' + name + '}}'
+
+
+def _entity_list(business, key, noun):
+    """A list field of the business node; missing or null counts as empty, any other type stops the build."""
+    value = business.get(key)
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        sys.exit(f'✗ BUILD FAILED: src/data/entity.json: {noun} must be a list (found {type(value).__name__})')
+    return value
+
+
+def _why_unset(label, noun, count, index, raw, field=None):
+    """Why the slot has no value, in words a person editing entity.json can act on."""
+    if index >= count:
+        return f'{label} has {count} {noun[0] if count == 1 else noun[1]}'
+    what = f'{noun[0]} {index + 1}' + (f' {field}' if field else '')
+    return f'{label} {what} is ' + ('empty' if raw is None else 'still a {{...}} marker')
+
+
+def sample_slots(business):
+    """Markers computed from the numbered slots of the business node in entity.json.
+
+    Returns (values, fallbacks). `values` maps every slot marker to the text to publish. `fallbacks` maps the
+    markers that had no value in entity.json (and so got a sample value) to (group, sample, why): the build
+    warns about the ones that end up in published text. A free offer found in hasOfferCatalog also yields
+    {{featured_action_name}}; without one that marker stays unresolved and the build fails as before."""
+    values, fallbacks = {}, {}
+
+    def slot(name, raw, sample, group, why):
+        marker = _marker(name)
+        if _is_unset(raw):
+            values[marker] = sample
+            fallbacks[marker] = (group, sample, why)
+        else:
+            values[marker] = raw
+
+    knows = _entity_list(business, 'knowsAbout', 'knowsAbout')
+    for i, sample in enumerate(SAMPLE_CATEGORIES):
+        raw = knows[i] if i < len(knows) else None
+        slot(f'service_category_{i + 1}', raw, sample, f'knowsAbout entry {i + 1}',
+             _why_unset('knowsAbout', ('entry', 'entries'), len(knows), i, raw))
+
+    areas = _entity_list(business, 'areaServed', 'areaServed')
+    for i, sample in enumerate(SAMPLE_CITIES):
+        raw = areas[i].get('name') if i < len(areas) and isinstance(areas[i], dict) else None
+        slot(f'city_{i + 1}', raw, sample, f'areaServed entry {i + 1}',
+             _why_unset('areaServed', ('entry', 'entries'), len(areas), i, raw))
+
+    catalog = business.get('hasOfferCatalog')
+    items = catalog.get('itemListElement') if isinstance(catalog, dict) else None
+    if items is not None and not isinstance(items, list):
+        sys.exit('✗ BUILD FAILED: src/data/entity.json: hasOfferCatalog › itemListElement must be a list')
+    offers = [o if isinstance(o, dict) else {} for o in (items or [])]
+    for i, (sample_name, sample_price, sample_number) in enumerate(SAMPLE_OFFERS):
+        offer = offers[i] if i < len(offers) else {}
+        price = offer.get('price')
+        price = None if price is None else str(price)  # an offer with no price must not publish "None"
+        n = i + 1
+        for suffix, raw, sample, field in (('name', offer.get('name'), sample_name, 'name'),
+                                           ('price', price, sample_price, 'price'),
+                                           ('price_number', price, sample_number, 'price')):
+            slot(f'service_{n}_{suffix}', raw, sample, f'offer {n}',
+                 _why_unset('hasOfferCatalog', ('offer', 'offers'), len(offers), i, raw, field))
+    for offer in offers:
+        if offer.get('price') == '0' or offer.get('price') == 0:
+            raw = offer.get('name')
+            slot('featured_action_name', raw, SAMPLE_FREE_OFFER, 'free offer',
+                 'the offer priced 0 has no name' if raw is None else 'the name of the offer priced 0 is still a {{...}} marker')
+            break
+    return values, fallbacks
+
+
+def _marker_sources(markers):
+    """Project files under src/ that mention any of `markers`, as {marker: [relative paths]}."""
+    found = {m: [] for m in markers}
+    for path in sorted((REPO / 'src').rglob('*')):
+        if not path.is_file() or path.suffix.lower() not in ('.html', '.json', '.txt', '.xml'):
+            continue
+        try:
+            text = path.read_text(encoding='utf-8')
+        except (OSError, UnicodeDecodeError):
+            continue
+        for m in markers:
+            if m in text:
+                found[m].append(path.relative_to(REPO).as_posix())
+    return found
+
+
+def sample_fallback_warnings(fallbacks, hits):
+    """One (where, message) per slot whose sample value was really published: `hits` are the markers found in
+    the text the build generated. A fallback nobody uses (a service the pages no longer mention) stays silent."""
+    used = [m for m in fallbacks if m in hits]
+    if not used:
+        return []
+    sources = _marker_sources(used)
+    groups = {}
+    for marker in used:
+        groups.setdefault(fallbacks[marker][0], []).append(marker)
+    warnings = []
+    for group, markers in groups.items():
+        why = fallbacks[markers[0]][2]
+        values = ', '.join(f"{m} → '{fallbacks[m][1]}'" for m in markers)
+        files = sorted({f for m in markers for f in sources[m]})
+        where = ''
+        if files:
+            where = ' Used in: ' + ', '.join(files[:4]) + (f' and {len(files) - 4} more.' if len(files) > 4 else '.')
+        one = len(markers) == 1
+        warnings.append(('src/data/entity.json',
+                         f'{why}, so {values} {"is" if one else "are"} published as '
+                         f'{"a sample value" if one else "sample values"}.{where} '
+                         f'Add the data to entity.json or stop using the marker.'))
+    return warnings
+
 
 def report_lines(items, width):
     """Lines of a boxed report: each message is wrapped to `width` columns (not truncated) so the whole error is readable."""
@@ -617,8 +826,14 @@ def _breadcrumb_html(label):
     return (f'<nav class="breadcrumb" aria-label="{html.escape(t("breadcrumb_label"), quote=True)}"><ol><li>{home}</li>'
             f'<li><span>{html.escape(label)}</span></li></ol></nav>')
 
-def _lead_strip_html():
-    """CTA of the collection index, configurable per site with no business data in the engine."""
+def _lead_strip_html(has_email=True, has_whatsapp=True):
+    """CTA of the collection index, configurable per site with no business data in the engine.
+
+    The contact line adapts to the contact data the site really has: email and WhatsApp, only one of
+    them (locale keys `lead_strip_contact_email_only` / `lead_strip_contact_whatsapp_only`) or, with
+    neither, no line at all, so no link with an empty href is ever generated.
+    `generated_content.lead_strip.contact_html` replaces the whole line (it may use {{markers}}; an
+    empty string removes it)."""
     cfg = SITE_CONFIG.get('generated_content', {}).get('lead_strip', {})
     action_url = str(cfg.get('action_url', '/featured-action/'))
     action_label = str(cfg.get('action_label', t('lead_strip_action_label')))
@@ -629,9 +844,15 @@ def _lead_strip_html():
         action_link = f'<a href="{html.escape(action_url, quote=True)}">{html.escape(action_label)}</a>'
         lead_html = t('lead_strip_lead_html').replace('{action_link}', action_link)
     button = str(cfg.get('button', t('lead_strip_button')))
-    email_link = '<a href="mailto:{{contact_email}}" class="link-accent">{{contact_email}}</a>'
-    whatsapp_link = '<a href="{{whatsapp_link}}" target="_blank" rel="noopener noreferrer" class="link-accent">WhatsApp</a>'
-    contact = t('lead_strip_contact').replace('{email}', email_link).replace('{whatsapp}', whatsapp_link)
+    contact = cfg.get('contact_html')
+    if contact is None:
+        key = {(True, True): 'lead_strip_contact', (True, False): 'lead_strip_contact_email_only',
+               (False, True): 'lead_strip_contact_whatsapp_only'}.get((bool(has_email), bool(has_whatsapp)))
+        email_link = '<a href="mailto:{{contact_email}}" class="link-accent">{{contact_email}}</a>'
+        whatsapp_link = '<a href="{{whatsapp_link}}" target="_blank" rel="noopener noreferrer" class="link-accent">WhatsApp</a>'
+        contact = t(key).replace('{email}', email_link).replace('{whatsapp}', whatsapp_link) if key else ''
+    contact = str(contact)
+    contact_line = (f'\n                <span class="text-muted-lg mt-15">{contact}</span>' if contact.strip() else '')
     return f'''<section class="lead-strip page-width">
             <div>
                 <p class="eyebrow">{html.escape(eyebrow)}</p>
@@ -639,8 +860,7 @@ def _lead_strip_html():
                 <p class="lead mt-18">{lead_html}</p>
             </div>
             <div class="lead-strip-inner">
-                <a class="button primary" href="{html.escape(action_url, quote=True)}">{html.escape(button)}</a>
-                <span class="text-muted-lg mt-15">{contact}</span>
+                <a class="button primary" href="{html.escape(action_url, quote=True)}">{html.escape(button)}</a>{contact_line}
             </div>
         </section>'''
 
@@ -672,6 +892,7 @@ def _index_jsonld(rel, title, description, label, last_mod, items):
     return '<script type="application/ld+json">\n' + json.dumps(data, ensure_ascii=False, indent=4) + '\n</script>'
 
 def _card_html(p, link_text, with_date):
+    link_text = html.escape(link_text, quote=True)  # it lands in text and in an aria-label; a locale override may carry `"` or `&`
     title = html.escape(p['title'].split(' | ')[0], quote=True)
     date = (f'<time class="post-meta" datetime="{p["published"]}">{format_long_date(p["published"])}</time>'
             if with_date else '')
@@ -707,7 +928,7 @@ def render_home_resources(collections):
             </div>
         </section>"""
 
-def render_guides_index(guides):
+def render_guides_index(guides, lead_strip=None):
     """Build the guides index using editorial copy configured per site."""
     cfg = SITE_CONFIG.get('generated_content', {}).get('guides_index', {})
     title = str(cfg.get('title', t('guides_index_title')))
@@ -755,12 +976,12 @@ def render_guides_index(guides):
 {chr(10).join(sections)}
 
         {extra_section}
-        {_lead_strip_html()}
+        {lead_strip if lead_strip is not None else _lead_strip_html()}
     </main>"""
     front = {'title': title, 'description': description, 'canonical': 'auto', 'geo': 'true'}
     return front, content
 
-def render_blog_index(articles, guides_exist):
+def render_blog_index(articles, guides_exist, lead_strip=None):
     """Build the blog index using editorial copy configured per site."""
     cfg = SITE_CONFIG.get('generated_content', {}).get('blog_index', {})
     title = str(cfg.get('title', t('blog_index_title')))
@@ -801,7 +1022,7 @@ def render_blog_index(articles, guides_exist):
         </section>
 
         {criteria_section}
-        {_lead_strip_html()}
+        {lead_strip if lead_strip is not None else _lead_strip_html()}
     </main>"""
     front = {'title': title, 'description': description, 'canonical': 'auto', 'geo': 'true'}
     if blog_state(articles) != 'visible':
@@ -889,10 +1110,12 @@ def render_llms_sitemap_extra(order):
     """Guide and blog URLs for the "Sitemap" section of llms.txt (the same ones that appear in sitemap.xml)."""
     return ''.join(f'- {SITE_URL}{rel}\n' for rel in order if rel.startswith((GUIDES_URL, BLOG_URL)))
 
-def render_llms(text, collections, sitemap_order=()):
+def render_llms(text, collections, sitemap_order=(), replacements=None):
     text = text.replace('{{llms_sitemap_extra}}', render_llms_sitemap_extra(sitemap_order))
     text = text.replace('{{llms_guides}}', render_llms_guides(collections['guides']))
     text = text.replace('{{llms_blog}}', render_llms_blog(collections['blog']))
+    if replacements:  # the generated blocks may carry {{markers}} (e.g. a locale override that names the business)
+        text = _apply_markers(text, replacements)
     m = re.search(r'\{\{[^}]+\}\}', text)
     if m:
         raise ValueError(f'unresolved marker {m.group(0)} in llms.txt')
@@ -1017,7 +1240,7 @@ def check_out_dir(out):
               'and would be emptied. Use a folder of its own, such as dist/.', file=sys.stderr)
         raise SystemExit(1)
 
-def build(out_dir=None, minify=None, no_validate=False):
+def build(out_dir=None, minify=None, no_validate=False, strict=False):
     git_branch, git_commit = get_git_info()
     build_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     out = Path(out_dir or OUT_DEFAULT)
@@ -1046,10 +1269,20 @@ def build(out_dir=None, minify=None, no_validate=False):
     css_dst.write_text(css_text, encoding='utf-8')
 
     def _unwrap_placeholder(val, default):
-        """If val is a {{...}} placeholder, return default; otherwise return val."""
-        if isinstance(val, str) and val.startswith('{{') and val.endswith('}}'):
-            return default
-        return val
+        """If val is a {{...}} placeholder or missing (None), return default; otherwise return val.
+        Contact data (email, telephone, address...) is optional: an absent field must fall back
+        to site.json cleanly instead of leaking a Python None into the page."""
+        return default if _is_unset(val) else val
+
+    def _get(node, *keys):
+        """Walk nested dict keys without raising when a level is missing or explicitly null
+        (e.g. entity.json has no "contactPoint", or "contactPoint": null). Returns None, which
+        _unwrap_placeholder then turns into the configured default."""
+        for key in keys:
+            if not isinstance(node, dict):
+                return None
+            node = node.get(key)
+        return node
 
     layout = read_text(REPO / 'src' / 'layout.html')
     header = read_text(REPO / 'src' / 'partials' / 'header.html')
@@ -1060,7 +1293,7 @@ def build(out_dir=None, minify=None, no_validate=False):
     site_name = _unwrap_placeholder(business.get('name'), str(SITE_CONFIG.get('site_name', '')))
     site_url = SITE_URL
     contact_email = _unwrap_placeholder(business.get('email'), str(SITE_CONFIG.get('contact_email', '')))
-    phone_value = _unwrap_placeholder(business.get('contactPoint', {}).get('telephone'), str(SITE_CONFIG.get('phone_e164', '')))
+    phone_value = _unwrap_placeholder(_get(business, 'contactPoint', 'telephone'), str(SITE_CONFIG.get('phone_e164', '')))
     whatsapp_message = str(SITE_CONFIG.get('whatsapp_message', ''))
     whatsapp_link = phone_value if phone_value.startswith('https://') else ''
     whatsapp_base = whatsapp_link  # link without text: pages with their own message append "?text=…"
@@ -1072,30 +1305,23 @@ def build(out_dir=None, minify=None, no_validate=False):
             if whatsapp_message:
                 whatsapp_link += '?text=' + quote(whatsapp_message, safe='')
     # Extra values for the footer
-    address = business.get('address', {})
-    city = _unwrap_placeholder(address.get('addressLocality'), str(SITE_CONFIG.get('city', '')))
-    region = _unwrap_placeholder(address.get('addressRegion'), str(SITE_CONFIG.get('region', '')))
+    city = _unwrap_placeholder(_get(business, 'address', 'addressLocality'), str(SITE_CONFIG.get('city', '')))
+    region = _unwrap_placeholder(_get(business, 'address', 'addressRegion'), str(SITE_CONFIG.get('region', '')))
     location = f"{city}, {region}"
-    knows_about = business.get('knowsAbout', [])
-    service_category_1 = _unwrap_placeholder(knows_about[0] if len(knows_about) > 0 else '{{service_category_1}}', 'Service 1')
-    service_category_2 = _unwrap_placeholder(knows_about[1] if len(knows_about) > 1 else '{{service_category_2}}', 'Service 2')
-    area_served = business.get('areaServed', [])
+    # Numbered slots (categories, cities, offers): entity.json value, else a sample value that the build
+    # warns about if it is published (sample_slots). Watching starts before any marker is applied.
+    slots, sample_fallbacks = sample_slots(business)
+    _SAMPLE_WATCH.clear()
+    _SAMPLE_HITS.clear()
+    _SAMPLE_WATCH.update(sample_fallbacks)
+    area_served = _entity_list(business, 'areaServed', 'areaServed')
     if not all(isinstance(c, dict) for c in area_served):
         sys.exit('✗ BUILD FAILED: src/data/entity.json: every areaServed entry must be an object such as '
                  '{"@type": "City", "name": "Your City"}')
     target_audience = 'businesses in ' + ', '.join([c.get('name', '') for c in area_served[:3]]) if area_served else '{{target_audience}}'
-    # Extract city names from areaServed for placeholders city_1, city_2, etc.
-    city_1 = _unwrap_placeholder(area_served[0].get('name') if len(area_served) > 0 else '{{city_1}}', 'City 1')
-    city_2 = _unwrap_placeholder(area_served[1].get('name') if len(area_served) > 1 else '{{city_2}}', 'City 2')
-    city_3 = _unwrap_placeholder(area_served[2].get('name') if len(area_served) > 2 else '{{city_3}}', 'City 3')
-    city_4 = _unwrap_placeholder(area_served[3].get('name') if len(area_served) > 3 else '{{city_4}}', 'City 4')
-    # Extract featured_action_name from the offers (the one with price 0)
-    featured_action_name = '{{featured_action_name}}'
-    offers = business.get('hasOfferCatalog', {}).get('itemListElement', [])
-    for offer in offers:
-        if offer.get('price') == '0' or offer.get('price') == 0:
-            featured_action_name = _unwrap_placeholder(offer.get('name'), 'Free Consultation')
-            break
+    service_category_1 = slots['{{service_category_1}}']
+    service_category_2 = slots['{{service_category_2}}']
+    featured_action_name = slots.get('{{featured_action_name}}', '{{featured_action_name}}')
     try:
         collections = load_collections(REPO / 'src' / 'pages')
     except CollectionError as e:
@@ -1118,34 +1344,10 @@ def build(out_dir=None, minify=None, no_validate=False):
         '{{city}}': city,
         '{{region}}': region,
         '{{location}}': location,
-        '{{city_1}}': city_1,
-        '{{city_2}}': city_2,
-        '{{city_3}}': city_3,
-        '{{city_4}}': city_4,
-        '{{service_category_1}}': service_category_1,
-        '{{service_category_2}}': service_category_2,
-        '{{service_category_3}}': _unwrap_placeholder(knows_about[2] if len(knows_about) > 2 else '{{service_category_3}}', 'Service 3'),
-        '{{service_category_4}}': _unwrap_placeholder(knows_about[3] if len(knows_about) > 3 else '{{service_category_4}}', 'Service 4'),
-        '{{service_category_5}}': _unwrap_placeholder(knows_about[4] if len(knows_about) > 4 else '{{service_category_5}}', 'Service 5'),
-        '{{service_category_6}}': _unwrap_placeholder(knows_about[5] if len(knows_about) > 5 else '{{service_category_6}}', 'Service 6'),
+        **slots,
         '{{price_range}}': _unwrap_placeholder(business.get('priceRange'), str(SITE_CONFIG.get('price_range', ''))),
         '{{featured_action_name}}': featured_action_name,
         '{{home_resources}}': render_home_resources(collections),
-        '{{service_1_name}}': _unwrap_placeholder(offers[0].get('name') if len(offers) > 0 else '{{service_1_name}}', 'Service 1'),
-        '{{service_1_price}}': _unwrap_placeholder(str(offers[0].get('price')) if len(offers) > 0 else '{{service_1_price}}', '$99'),
-        '{{service_1_price_number}}': _unwrap_placeholder(str(offers[0].get('price')) if len(offers) > 0 else '{{service_1_price_number}}', '99'),
-        '{{service_2_name}}': _unwrap_placeholder(offers[1].get('name') if len(offers) > 1 else '{{service_2_name}}', 'Service 2'),
-        '{{service_2_price}}': _unwrap_placeholder(str(offers[1].get('price')) if len(offers) > 1 else '{{service_2_price}}', '$149'),
-        '{{service_2_price_number}}': _unwrap_placeholder(str(offers[1].get('price')) if len(offers) > 1 else '{{service_2_price_number}}', '149'),
-        '{{service_3_name}}': _unwrap_placeholder(offers[2].get('name') if len(offers) > 2 else '{{service_3_name}}', 'Service 3'),
-        '{{service_3_price}}': _unwrap_placeholder(str(offers[2].get('price')) if len(offers) > 2 else '{{service_3_price}}', '$49/mo'),
-        '{{service_3_price_number}}': _unwrap_placeholder(str(offers[2].get('price')) if len(offers) > 2 else '{{service_3_price_number}}', '49'),
-        '{{service_4_name}}': _unwrap_placeholder(offers[3].get('name') if len(offers) > 3 else '{{service_4_name}}', 'Service 4'),
-        '{{service_4_price}}': _unwrap_placeholder(str(offers[3].get('price')) if len(offers) > 3 else '{{service_4_price}}', '$299/mo'),
-        '{{service_4_price_number}}': _unwrap_placeholder(str(offers[3].get('price')) if len(offers) > 3 else '{{service_4_price_number}}', '299'),
-        '{{service_5_name}}': _unwrap_placeholder(offers[4].get('name') if len(offers) > 4 else '{{service_5_name}}', 'Service 5'),
-        '{{service_5_price}}': _unwrap_placeholder(str(offers[4].get('price')) if len(offers) > 4 else '{{service_5_price}}', '$290'),
-        '{{service_5_price_number}}': _unwrap_placeholder(str(offers[4].get('price')) if len(offers) > 4 else '{{service_5_price_number}}', '290'),
     }
     # URL-encoded variants (for use inside "?text="): "Service 1" -> "Service%201"
     for _k in ('featured_action_name', 'service_1_name'):
@@ -1224,11 +1426,13 @@ def build(out_dir=None, minify=None, no_validate=False):
         total_bytes += out_path.stat().st_size
         pages_data.append((page_rel, front, str(out_path)))
     # Generated collection indexes (they do not exist as files in src/pages)
+    # The closing strip of the indexes only offers the contact channels the site has (email, WhatsApp).
+    lead_strip = _lead_strip_html(bool(str(contact_email).strip()), bool(whatsapp_link))
     generated_indexes = []
     if collections['guides']:
-        generated_indexes.append((GUIDES_URL,) + render_guides_index(collections['guides']))
+        generated_indexes.append((GUIDES_URL,) + render_guides_index(collections['guides'], lead_strip))
     if blog_state(collections['blog']) != 'none':
-        generated_indexes.append((BLOG_URL,) + render_blog_index(collections['blog'], bool(collections['guides'])))
+        generated_indexes.append((BLOG_URL,) + render_blog_index(collections['blog'], bool(collections['guides']), lead_strip))
     for page_rel, front, content in generated_indexes:
         # Replace global placeholders in the generated content
         content = replace_placeholders_in_content(content, html_replacements, {k: _json_str(v) for k, v in replacements.items()})
@@ -1257,10 +1461,13 @@ def build(out_dir=None, minify=None, no_validate=False):
             llms_text = read_text(llms_path)
             # Replace global placeholders in llms.txt
             llms_text = _apply_markers(llms_text, replacements)
-            llms_path.write_text(render_llms(llms_text, collections, sitemap_order), encoding='utf-8')
+            llms_path.write_text(render_llms(llms_text, collections, sitemap_order, replacements), encoding='utf-8')
     except ValueError as e:
         print(f'✗ BUILD FAILED: {e}', file=sys.stderr)
         raise SystemExit(1)
+    # Sample values that ended up in published text: a warning, or an error in strict mode (build.sh with
+    # CHECK_STRICT=TRUE), the same contract as the validator's warnings.
+    (errors if strict else warnings).extend(sample_fallback_warnings(sample_fallbacks, _SAMPLE_HITS))
     if not no_validate:
         # Intentional circular import: check_site imports shared settings/helpers from build;
         # import it only after output generation, when validation is requested.
@@ -1290,14 +1497,16 @@ def build(out_dir=None, minify=None, no_validate=False):
         raise SystemExit(1)
 
 if __name__ == '__main__':
-    USAGE = 'usage: build.py [--out FOLDER] [--minify true|false] [--no-validate]'
-    out, minify, no_validate = None, False, False
+    USAGE = 'usage: build.py [--out FOLDER] [--minify true|false] [--no-validate] [--strict]'
+    out, minify, no_validate, strict = None, False, False, False
     args = sys.argv[1:]
     i = 0
     while i < len(args):
         arg = args[i]
         if arg == '--no-validate':
             no_validate = True
+        elif arg == '--strict':
+            strict = True
         elif arg in ('--out', '--minify'):
             i += 1
             if i >= len(args):
@@ -1311,4 +1520,4 @@ if __name__ == '__main__':
         else:
             sys.exit(f'✗ unknown argument: {arg}\n{USAGE}')
         i += 1
-    build(out_dir=out, minify=minify, no_validate=no_validate)
+    build(out_dir=out, minify=minify, no_validate=no_validate, strict=strict)

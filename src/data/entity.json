@@ -48,12 +48,12 @@
             }
         ],
         "knowsAbout": [
-            "{{service_category_1}}",
-            "{{service_category_2}}",
-            "{{service_category_3}}",
-            "{{service_category_4}}",
-            "{{service_category_5}}",
-            "{{service_category_6}}"
+            "Service 1",
+            "Service 2",
+            "Service 3",
+            "Service 4",
+            "Service 5",
+            "Service 6"
         ],
         "priceRange": "{{price_range}}",
         "address": {

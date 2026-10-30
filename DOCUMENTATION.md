@@ -112,7 +112,37 @@ flowchart LR
     V -- "otherwise" --> F["Non-zero exit + report"]
 ```
 
-> `legible/locales/` holds the strings the engine generates in each language: months and date format, breadcrumb, menu and card labels, the default copy of the guides/blog indexes, the lead strip, the home resources section and the `llms.txt` labels. `site.json › generated_content` overrides the lead strip and the index copy.
+> `legible/locales/` holds the strings the engine generates in each language: months and date format, breadcrumb, menu and card labels, the default copy of the guides/blog indexes, the lead strip, the home resources section and the `llms.txt` labels. `site.json › generated_content` overrides the lead strip and the index copy, and `generated_content.locale_overrides` replaces any single locale text (see below).
+
+> **The closing strip of `/guides/` and `/blog/`** (`lead_strip`) ends with a contact line that offers only the channels the site has: email and WhatsApp when both exist; only the email when there is no telephone (locale key `lead_strip_contact_email_only`, with no WhatsApp link and no empty `href`); only WhatsApp when there is no email (`lead_strip_contact_whatsapp_only`); no line, just the button, when there is neither. To write the line yourself, set `generated_content.lead_strip.contact_html` in `site.json` (HTML; it may use `{{markers}}`, and an empty string removes the line); it replaces the automatic line whatever contact data exists. A new locale must define the three `lead_strip_contact*` keys.
+
+> **Changing the wording of the engine's texts** (`generated_content.locale_overrides`). The default copy of the home resources section, the guides and blog indexes, the closing strip and the `llms.txt` labels is generic ("your business") and lives in `legible/locales/`, which a site does not edit. To change any of it, put an object `{locale key: new text}` in `src/data/site.json`:
+>
+> ```json
+> "generated_content": {
+>   "locale_overrides": {
+>     "home_resources_heading": "Resources from {{site_name}}",
+>     "guides_index_lead": "Practical help from the {{site_name}} team.",
+>     "llms_guides_description": "Guides written by {{site_name}}."
+>   }
+> }
+> ```
+>
+> The valid keys are exactly the keys of `legible/locales/<language>.json`. The build checks every override and reports **all** the problems at once, naming the key, instead of publishing the default text by mistake: an unknown key (with a "did you mean" suggestion), an empty or blank text, a text of the wrong kind (`months` is a list of exactly 12 texts) and a `{placeholder}` that the default text does not receive (a text may leave a placeholder out, never invent one). `{{markers}}` such as `{{site_name}}` are always allowed and are resolved in every place, `llms.txt` included. Order of precedence: a per-section value (`generated_content.guides_index.heading`, `lead_strip.headline`…) beats an override, and an override beats the locale file. With no `locale_overrides` the output is byte for byte what it was.
+>
+> | Keys | Where they appear | Format | Placeholders |
+> |---|---|---|---|
+> | `months`, `long_date` | dates on cards and pages | text | `long_date`: `{day}` `{month}` `{year}` |
+> | `breadcrumb_*`, `nav_guides`, `nav_blog`, `card_read_*` | breadcrumb, menu, eyebrows, card links, JSON-LD | text, escaped by the engine | none |
+> | `lead_strip_action_label`, `lead_strip_eyebrow`, `lead_strip_headline`, `lead_strip_button` | closing strip | text, escaped | none |
+> | `lead_strip_lead_html` | closing strip, lead | **HTML** | `{action_link}` |
+> | `lead_strip_contact`, `lead_strip_contact_email_only`, `lead_strip_contact_whatsapp_only` | closing strip, contact line | **HTML** | `{email}` `{whatsapp}` |
+> | `home_resources_*` | "resources" section of the home page | **HTML** | none |
+> | `guides_index_title`, `guides_index_description`, `guides_index_heading`, `guides_index_extra_heading`; the same four for `blog_index_*` plus `blog_index_list_heading`, `blog_index_criteria_heading` | `<title>`, description, headings | text, escaped | none |
+> | `guides_index_lead`, `guides_index_intro`, `blog_index_lead`, `blog_index_intro`, `blog_lead_guides_link`, `blog_lead_guides_text` | introduction of each index | **HTML** | `blog_index_lead`: `{guides_txt}`; `blog_lead_guides_link`: `{guides_url}` |
+> | `llms_guides_description`, `llms_blog_description` | `llms.txt` | plain text | none |
+>
+> "HTML" texts are inserted as they are, so write `&amp;` for `&`; "text" is escaped for you. Titles and descriptions are still subject to the validator's length limits and to the rule that every page has its own.
 
 Mental rule: **`src/` changes per site; `legible/` is the engine and does not.**
 
@@ -159,7 +189,7 @@ Mental rule: **`src/` changes per site; `legible/` is the engine and does not.**
 
 ### 2.4 Exact flow of `build.py`
 
-1. Load `site.json`; apply `SITE_URL` (env wins; an empty `SITE_URL` counts as not set); **abort unless it starts with `https://`**. Check that `language` is supported and load its locale file.
+1. Load `site.json`; apply `SITE_URL` (env wins; an empty `SITE_URL` counts as not set); **abort unless it starts with `https://`**. Check that `language` is supported, load its locale file and apply `generated_content.locale_overrides` on top of it (validated; an invalid override stops the build and names the key).
 2. Refuse an output folder that is, or contains, the project, `src/` or `legible/`; then empty it.
 3. Copy `src/static/`; write the (optionally minified) CSS.
 4. Read `entity.json` and compute the derived values (section 3.2). Load and validate the guide/blog front matter and report **every** problem at once.
@@ -187,7 +217,7 @@ Mental rule: **`src/` changes per site; `legible/` is the engine and does not.**
 
 | File | Holds | Notes |
 |---|---|---|
-| `src/data/site.json` | Project settings: `site_url`, `site_name`, `language`, `project_stage`, `contact_email`, `phone_e164`, `whatsapp_message`, `city`, `region`, `geo_enabled`, `geo_region_code`, `price_range`, `build_banner`, `check_banner`, `generated_content`, `collection_topics`, `collection_paths` (default `{"guides": "guides", "blog": "blog"}`: folder and URL of each collection, lowercase ASCII slugs with hyphens, different from each other), `sitemap_base_order`; optionally `text`, an object of extra marker values | Empty `geo_region_code`/`price_range` are simply omitted from the output. Keys of `texts.json` win over `text`. `project_stage` (`template`, `in_progress` or `complete`) is ignored by the build and the validator; only an AI reads it (section 5.0) |
+| `src/data/site.json` | Project settings: `site_url`, `site_name`, `language`, `project_stage`, `contact_email`, `phone_e164`, `whatsapp_message`, `city`, `region`, `geo_enabled`, `geo_region_code`, `price_range`, `build_banner`, `check_banner`, `generated_content`, `collection_topics`, `collection_paths` (default `{"guides": "guides", "blog": "blog"}`: folder and URL of each collection, lowercase ASCII slugs with hyphens, different from each other), `sitemap_base_order`; optionally `text`, an object of extra marker values. `generated_content` also takes `locale_overrides`, an object that replaces engine-generated texts (section 2.1) | Empty `geo_region_code`/`price_range` are simply omitted from the output. Keys of `texts.json` win over `text`. `project_stage` (`template`, `in_progress` or `complete`) is ignored by the build and the validator; only an AI reads it (section 5.0) |
 | `src/data/entity.json` | Business identity in Schema.org: a `ProfessionalService` node and a `WebSite` node | **Keep the `ProfessionalService` type**: cities (`areaServed`), categories (`knowsAbout`) and offers (`hasOfferCatalog`) are read from it |
 | `src/data/texts.json` | Reusable copy: key `x` becomes marker `{{x}}` | Derived values override same-named keys |
 
@@ -280,6 +310,7 @@ HTML per URL · `css/site.css` · JSON-LD per page · `sitemap.xml` (indexable p
 5. Keep markers, JSON keys, front-matter keys and `type` values (`guide`, `article`) **in English**: they are the architecture.
 6. Unresolved-confirmation markers: the validator matches `[CONFIRM`, which also catches `[CONFIRMAR …]`.
 7. `{{target_audience}}` is built with an English phrase (section 3.2); leave it out of translated texts.
+8. The engine's generic copy ("your business") can be reworded for the site, in any language, with `generated_content.locale_overrides` (section 2.1); never edit `legible/locales/` for one site.
 
 **Any other language** needs two things: a file `legible/locales/<code>.json` (copy `en.json` and translate every value; a missing key stops the build) and a row `'<code>': (html lang, og:locale, inLanguage)` in the `LANGUAGES` table of `legible/build.py`. That table row is the only engine edit a new language requires. Then set `language` to the new code.
 
@@ -665,6 +696,10 @@ DOCUMENTATION.md section 5.5 is satisfied. Deliver the final report with its thr
 | `{{geo_region}}` | `site.json › geo_region_code`, only if set |
 | `{{home_resources}}` | Generated HTML: resources section when guides or a visible blog exist |
 
+A field in `entity.json` falls back to `site.json` whether it is a `{{placeholder}}`, missing entirely, or `null` (for example no `contactPoint`, no `telephone`, or no `address` at all): none of these stop the build.
+
+**Numbered slots and sample values.** `{{service_category_N}}`, `{{city_N}}` and `{{service_N_name}}`, `{{service_N_price}}`, `{{service_N_price_number}}` read the N-th entry of `knowsAbout`, `areaServed` and `hasOfferCatalog`. If that entry is missing, `null` or still a `{{placeholder}}`, the marker takes a sample value (`Service N`, `City N`, `$149`…) so a half-filled site still builds, and the build warns for every sample value that is really published, naming the marker, the reason and the files that use it. An offer with no `price` counts as empty. A sample value that nothing uses stays silent. With `CHECK_STRICT=TRUE` (the default) these warnings fail the build like the validator's, so a published site never carries them; `CHECK_STRICT=FALSE` is for phases in progress. Fix them by adding the data to `entity.json` or by removing the marker from the page or text that uses it. `build.py --strict` does the same without `build.sh`.
+
 **From the layout:** `{{title}}`, `{{description}}`, `{{robots}}`, `{{geo}}`, `{{canonical}}`, `{{og_url}}`, `{{jsonld}}`, `{{header}}`, `{{content}}`, `{{footer}}`.
 **From partials:** `{{nav_guides}}`, `{{nav_blog}}`, `{{footer_blog}}`, `{{year}}`.
 **In `llms.txt`:** `{{llms_guides}}`, `{{llms_blog}}`, `{{llms_sitemap_extra}}`.
@@ -693,6 +728,8 @@ python3 -B -m unittest discover tests
 SITE_URL=https://example.com ./legible/build.sh
 ```
 Expected: `OK` from the tests and `CHECK PASSED` with no warnings.
+
+The suite does not assume that the template's sample pages or data exist. It asks for "a page that exists" (`pick_page()`, `page_routes()` and `related_page()` in `tests/test_legible.py`) and reads the domain, city and email from `src/data/site.json`, so it loads and passes in an adapted site: pages renamed, replaced or removed, own domain, no `services/` or `pricing/`. Tests that really read the template's sample data carry `@ONLY_TEMPLATE` and are skipped there (`site_url` no longer starts with `https://YOUR-DOMAIN`). A new test follows the same rule: `TestSuiteIsIndependentOfTheSamplePages` fails if a test names a sample page or sample data (unless its line says `# template-only`), and it runs the page-editing tests against a copy of the template whose pages were renamed.
 
 **V2 — Technical audit**
 ```bash
@@ -736,8 +773,8 @@ The sweep is a review aid, not a pass/fail test. Replace every hit, or justify i
 | Tests only | `python3 -B -m unittest discover tests` |
 | Strict build + validation | `SITE_URL=https://example.com ./legible/build.sh` |
 | Unminified build | `CSS_MINIFY=FALSE ./legible/build.sh` |
-| Warnings do not fail | `CHECK_STRICT=FALSE ./legible/build.sh` |
-| Build only | `python3 legible/build.py [--out FOLDER] [--minify true\|false] [--no-validate]` |
+| Warnings do not fail (validator and sample-value warnings of the build) | `CHECK_STRICT=FALSE ./legible/build.sh` |
+| Build only | `python3 legible/build.py [--out FOLDER] [--minify true\|false] [--no-validate] [--strict]` |
 | Local server (port 3001) | `python3 legible/dev.py [--port N] [--minify]` |
 | Validate an existing build | `python3 legible/check_site.py --dir dist --strict --site-url https://example.com` |
 

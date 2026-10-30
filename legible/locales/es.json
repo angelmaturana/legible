@@ -13,6 +13,8 @@
   "lead_strip_lead_html": "Pide tu {action_link}: te decimos qué tiene sentido para tu negocio.",
   "lead_strip_button": "Solicitar consulta",
   "lead_strip_contact": "o escríbenos a {email} o por {whatsapp}.",
+  "lead_strip_contact_email_only": "o escríbenos a {email}.",
+  "lead_strip_contact_whatsapp_only": "o escríbenos por {whatsapp}.",
   "home_resources_heading": "Recursos para tu negocio",
   "home_resources_guides_title": "Guías paso a paso",
   "home_resources_guides_text": "Explicaciones para resolver una duda concreta de tu negocio, con la fecha de su última revisión.",

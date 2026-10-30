@@ -369,7 +369,7 @@ SITE_URL=https://example.com ./legible/build.sh
 
 Expect `OK` from the tests and `CHECK PASSED` from the validator. Report the real output and inspect `dist/`, not only the sources.
 
-- **Every phase except the last:** the strict build may fail on `[CONFIRM` markers and pages not yet adapted. Errors must be fixed. Warnings that come only from facts still pending may be reviewed with `CHECK_STRICT=FALSE ./legible/build.sh`; list each one in the plan as expected, with its reason.
+- **Every phase except the last:** the strict build may fail on `[CONFIRM` markers, pages not yet adapted and sample values that `entity.json` does not yet replace (for example `Service 2` or `City 3` while it has fewer offers or cities than the pages use). Errors must be fixed. Warnings that come only from facts still pending may be reviewed with `CHECK_STRICT=FALSE ./legible/build.sh`; list each one in the plan as expected, with its reason.
 - **Last phase (close):** run the strict build with no override. The plan is not `complete` until it passes, or until every remaining warning is a pending fact listed in the plan and the user has been told.
 - **If you cannot run commands** (a chat without a shell), say so plainly, do not claim that anything passed, and list the exact commands the user must run.
 
@@ -377,6 +377,6 @@ Expect `OK` from the tests and `CHECK PASSED` from the validator. Report the rea
 
 - `SITE_PLAN.md` (project root): the short plan, its status and, once finished, the final state. Present in execution and maintenance mode.
 - `src/pages/`: one folder per page. `src/data/*.json`: business facts and texts. `src/layout.html` and `src/partials/`: shared shell. `src/css/site.css`: design tokens and styles.
-- `legible/`: build, validator, dev server. `legible/locales/`: engine strings per language. Do not edit.
+- `legible/`: build, validator, dev server. `legible/locales/`: engine strings per language. Do not edit; to reword them for a site use `generated_content.locale_overrides` in `src/data/site.json` (`DOCUMENTATION.md` section 2.1).
 - `tests/`: regression suite. Do not edit.
 - `DOCUMENTATION.md`: section 5.0 (methodology), 3 (content model), 4.2 (other languages), 5 (guide for AIs), 7 (markers, validator, commands). It explains and references; if it ever differs from this file on a procedure, a number, a limit or a command, follow this file.

@@ -9,13 +9,18 @@ fi
 python3 --version
 upper() { printf '%s' "$1" | tr '[:lower:]' '[:upper:]'; }
 
-# 1) Build (validation is done by check_site.py right after)
+# 1) Build (validation is done by check_site.py right after). With CHECK_STRICT=TRUE (the default) the
+#    build's own warnings, such as sample values that would be published, also fail.
+STRICT_FLAG=""
+if [ "$(upper "${CHECK_STRICT:-TRUE}")" = "TRUE" ]; then
+  STRICT_FLAG="--strict"
+fi
 if [ "$(upper "${CSS_MINIFY:-TRUE}")" = "FALSE" ]; then
   echo "CSS_MINIFY=FALSE: building without minifying"
-  python3 legible/build.py --minify false --no-validate
+  python3 legible/build.py --minify false --no-validate $STRICT_FLAG
 else
   echo "Building and minifying"
-  python3 legible/build.py --minify true --no-validate
+  python3 legible/build.py --minify true --no-validate $STRICT_FLAG
 fi
 
 # 2) Validate: with CHECK_STRICT=TRUE (the default) warnings also fail

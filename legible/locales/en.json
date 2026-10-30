@@ -13,6 +13,8 @@
   "lead_strip_lead_html": "Request your {action_link}: we will tell you what makes sense for your business.",
   "lead_strip_button": "Request a consultation",
   "lead_strip_contact": "or write to us at {email} or on {whatsapp}.",
+  "lead_strip_contact_email_only": "or write to us at {email}.",
+  "lead_strip_contact_whatsapp_only": "or write to us on {whatsapp}.",
   "home_resources_heading": "Resources for your business",
   "home_resources_guides_title": "Step-by-step guides",
   "home_resources_guides_text": "Explanations for solving a specific question about your business, with the date of their last review.",

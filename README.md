@@ -27,7 +27,7 @@ Figures below are from the included template and the checks run for this release
 | Feature | Verified result |
 | --- | --- |
 | Generated HTML pages | 11, including the 404 page |
-| Automated tests | 132 `unittest` tests in `tests/test_legible.py` |
+| Automated tests | 187 `unittest` tests in `tests/test_legible.py` |
 | Python runtime dependencies | None; the engine uses the standard library |
 | Client-side JavaScript | None; script elements carry JSON-LD data only |
 | Build validation | Strict by default; errors and warnings fail the build |
