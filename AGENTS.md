@@ -229,6 +229,15 @@ grep -cE '^[|] [0-9]+ [|]' SITE_PLAN.md   # phases in the table: expect 10 or fe
 
 **Where the plan goes.**
 - Create `SITE_PLAN.md` in the **root of the project** and **return the complete project as a zip with the plan inside it**, under the same file name the user attached (normally `legible.zip`). Exclude `dist/`, `.dev-dist/`, `__pycache__/` and `.git/`.
+- **Verify the zip before you return it.** An incomplete zip breaks the next session, and the usual cause is a truncated file list (for example `unzip -l … | head`) or a copy that skipped folders. Compare the file list of the zip you built with the one you received, minus the excluded folders, and read the whole output:
+
+  ```bash
+  unzip -Z1 ORIGINAL.zip | grep -vE '^(dist/|\.dev-dist/|\.git/)|__pycache__/' | sort > before.txt
+  unzip -Z1 RETURNED.zip | sort > after.txt
+  diff before.txt after.txt
+  ```
+
+  Expected: only added lines (`>`), namely `SITE_PLAN.md`, `LECCIONES_APRENDIDAS.md` if the lessons log applies, and files the phase created in `src/`. A missing line (`<`) is a lost file: add it and compare again, unless the phase deleted it on purpose and the plan log says so. `tests/`, `legible/`, `src/static/` and the images must all be present. Do not list the verification output in the plan, only that it matched. If you cannot run commands, say so and do not claim the zip is complete.
 - Say plainly that the plan is already inside the zip and that the user does not need to add it anywhere. The zip is what carries the project between sessions: when it is attached to a new session with the plan inside, the work continues from there.
 - You may also give the plan as a separate file or as text, but only as a convenience. The copy inside the zip is the one that counts.
 - If you cannot create a zip, output `SITE_PLAN.md` in full and tell the user to place it in the root of the project.
@@ -308,7 +317,7 @@ Allowed phase statuses: `pending`, `in_progress`, `done`, `blocked` (with the re
    - Run the plan checks of section 5 on the updated file and shrink it if it is over a limit.
    - When phase 1 starts, set `project_stage` in `src/data/site.json` to `in_progress`.
    - If the phase failed or stopped halfway, set `blocked` or `in_progress` and write where it stopped.
-5. **Return the complete project as a zip** (same name, same exclusions as in section 5) with your changes and the updated `SITE_PLAN.md` inside it. If you cannot create files, output every changed file in full, including `SITE_PLAN.md`.
+5. **Return the complete project as a zip** (same name, same exclusions as in section 5) with your changes and the updated `SITE_PLAN.md` inside it. **Verify it first** by comparing its file list with the original's, as described under "Where the plan goes" in section 5. If you cannot create files, output every changed file in full, including `SITE_PLAN.md`.
 6. Finish with two or three lines: what was done and which phase is next.
 
 **Completion.** When the last phase is `done`:
@@ -368,6 +377,10 @@ SITE_URL=https://example.com ./legible/build.sh
 ```
 
 Expect `OK` from the tests and `CHECK PASSED` from the validator. Report the real output and inspect `dist/`, not only the sources.
+
+**The baseline also applies to an adapted site.** The suite does not depend on the sample pages or data: it picks pages that exist and reads the domain, city and email from `src/data/site.json`, so it loads and passes with renamed or removed pages, your own domain and no `services/` or `pricing/` (`DOCUMENTATION.md` section 7.3). Only the tests marked `@ONLY_TEMPLATE`, which read the template's own sample data, are skipped. So in every phase and in every mode (execution, recovery, refinement, maintenance), run `unittest` and the strict build as above, and do not replace them with a lighter check.
+
+**If a test fails on an adapted site,** first decide whether your change caused it (a page you edited or removed, a broken data file) and fix that. If the failure comes from content that belongs to the site and the test is right to complain, fix the content. If the test itself seems wrong for this site, **do not edit, relax or skip it** (rule 3 of section 8): record the test name and the real output in the plan's log (and in **Engine notes** if the engine is involved), tell the user in your final message and let them decide. Never report the baseline as green while a test fails.
 
 - **Every phase except the last:** the strict build may fail on `[CONFIRM` markers, pages not yet adapted and sample values that `entity.json` does not yet replace (for example `Service 2` or `City 3` while it has fewer offers or cities than the pages use). Errors must be fixed. Warnings that come only from facts still pending may be reviewed with `CHECK_STRICT=FALSE ./legible/build.sh`; list each one in the plan as expected, with its reason.
 - **Last phase (close):** run the strict build with no override. The plan is not `complete` until it passes, or until every remaining warning is a pending fact listed in the plan and the user has been told.

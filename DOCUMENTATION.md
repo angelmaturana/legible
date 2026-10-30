@@ -430,7 +430,7 @@ After round 3 the AI shows what it understood and proposes the URL map, the desi
 
 **Delivering the plan**
 
-The AI creates `SITE_PLAN.md` in the root of the project and returns the complete project as a zip with the plan inside. That is deliberate: the zip is the only thing that travels between sessions, so a plan that is not inside it is lost (principle 7). The exact procedure, including what to do when a zip cannot be created, is in `AGENTS.md` section 5.
+The AI creates `SITE_PLAN.md` in the root of the project and returns the complete project as a zip with the plan inside. That is deliberate: the zip is the only thing that travels between sessions, so a plan that is not inside it is lost (principle 7). A zip that lost files (a truncated listing, a skipped folder) breaks the next session, so the AI compares the file list of the zip it returns with the original's before handing it over. The exact procedure, including that comparison and what to do when a zip cannot be created, is in `AGENTS.md` section 5.
 
 **Keeping the plan small.** The interview must not produce a big plan: a new session reads the whole plan every time, and a long plan uses context that the work itself needs. The limits (length of the file, lines per phase, the URL map, the Later list, the execution log, and what does not belong in the plan) and the commands that measure them are in `AGENTS.md` section 5. They are measured, not estimated, because an estimate of length is unreliable.
 
@@ -730,6 +730,8 @@ SITE_URL=https://example.com ./legible/build.sh
 Expected: `OK` from the tests and `CHECK PASSED` with no warnings.
 
 The suite does not assume that the template's sample pages or data exist. It asks for "a page that exists" (`pick_page()`, `page_routes()` and `related_page()` in `tests/test_legible.py`) and reads the domain, city and email from `src/data/site.json`, so it loads and passes in an adapted site: pages renamed, replaced or removed, own domain, no `services/` or `pricing/`. Tests that really read the template's sample data carry `@ONLY_TEMPLATE` and are skipped there (`site_url` no longer starts with `https://YOUR-DOMAIN`). A new test follows the same rule: `TestSuiteIsIndependentOfTheSamplePages` fails if a test names a sample page or sample data (unless its line says `# template-only`), and it runs the page-editing tests against a copy of the template whose pages were renamed.
+
+Because of this, V1 is the baseline of an adapted site too, not only of the template. If a test fails there for a reason that comes from the site's own content, the AI does not relax or skip the test: it fixes the content, or records the failure and tells the user (`AGENTS.md` section 9).
 
 **V2 — Technical audit**
 ```bash
