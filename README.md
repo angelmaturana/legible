@@ -50,7 +50,7 @@ Run these commands from the project root:
 python3 -B -m unittest discover tests
 
 # Build and validate in strict mode
-SITE_URL=https://example.com ./legible/build.sh
+./legible/build.sh
 
 # Start the local development server
 python3 legible/dev.py --port 3001
@@ -58,7 +58,7 @@ python3 legible/dev.py --port 3001
 
 Open `http://localhost:3001` while the development server is running. Stop it with `Ctrl+C`. The server rebuilds when files under `src/` change; changes to files under `legible/` require a restart.
 
-`SITE_URL` is a placeholder in the commands above. Set it to the site's real canonical HTTPS origin before deploying. If `SITE_URL` is missing or empty, `site_url` from `src/data/site.json` is used; if that is still the sample domain, `build.sh` prints a warning.
+Set `site_url` in `src/data/site.json` to the site's real canonical HTTPS origin before deploying. `SITE_URL` is an optional override for CI and previews; if it is missing or empty, `site_url` is used, and if that is still the sample domain, `build.sh` prints a warning.
 
 ## Build a site with an AI
 
@@ -69,7 +69,7 @@ The zip is a generic base. Attach it to an AI assistant and say `legible start`.
 3. **Execute, one phase per session.** Attach the zip that contains the plan and say `legible continue` (or anything similar in your language, or nothing specific): the assistant finds the plan and carries on. It executes the next pending phase, verifies it, updates the plan and returns the zip.
 4. **Finish and maintain.** When the last phase is done, the plan records the final state of everything. Later, attach the zip again and ask for any part to be fixed or extended.
 
-If the zip holds a site in progress but the plan is missing, the assistant does not start from zero: it audits the project, rebuilds a short `SITE_PLAN.md` from what it finds and asks you to confirm it. If the site is already marked complete (`project_stage` in `site.json`), no plan is needed: the assistant simply works on the part you name.
+If the zip holds a site in progress but the plan is missing, the assistant does not start from zero: it audits the project, rebuilds a short `SITE_PLAN.md` from what it finds and asks you to confirm it. If the site is already marked complete (`project_stage` in `site.json`), no plan is needed: the assistant simply works on the part you name. If a phase could not be checked (for example, the assistant cannot run commands), it stays in progress and the next session resumes it instead of repeating it.
 
 The assistant changes only `src/`. It does not improve or refactor the engine, the tests or the architecture, and it does not deal with deployment. Anything beyond the base (blog, guides, interactive features) goes to the plan's **Later** list.
 
@@ -93,11 +93,11 @@ Examples:
 ```text
 legible start
 legible start https://example-style-site.com/
-legible start name: Bodega La Esquina; activity: wine shop with tastings; city: Valdemoro; phone: 600 000 000
+legible start name: Bodega La Esquina; activity: wine shop with tastings; city: Valdemoro; phone: +34 600 000 000
 legible start style: design.png; data: card.jpg
 ```
 
-With inputs, the AI runs a **fast start**: it asks only for the business name and the theme if they are missing, writes the plan with no confirmation round and leaves everything else as `[CONFIRM …]` for later. Descriptive example text it writes is marked `<!-- SAMPLE COPY -->` and the [pre-launch sweep](#before-launch) finds it; facts (phone, address, hours, prices, reviews) are never invented. From a reference website or image it takes the palette, structure and proportions, never the name, logo, images or text, and it is limited by what `legible` allows (system fonts, no scripts, no external resources). Fields, rules and details: [`DOCUMENTATION.md` section 6.1.1](DOCUMENTATION.md#611-the-commands-and-the-fast-start).
+With inputs, the AI runs a **fast start**: it asks only for the business name and the theme if they are missing, writes the plan with no confirmation round and keeps the template's sample values for everything else and lists them as pending. Descriptive example text it writes is marked `<!-- SAMPLE COPY -->` and the [pre-launch sweep](#before-launch) finds it; facts (phone, address, hours, prices, reviews) are never invented. From a reference website or image it takes the palette, structure and proportions, never the name, logo, images or text, and it is limited by what `legible` allows (system fonts, no scripts, no external resources). If the zip already holds a plan, `legible start` with data does not run: the assistant says the plan exists and asks whether to continue it or redo the site from zero. Fields, rules and details: [`DOCUMENTATION.md` section 6.1.1](DOCUMENTATION.md#611-the-commands-and-the-fast-start).
 
 `FLOW_OFF.lock` is a local switch: it is ignored by git and the test suite fails while it exists, so run `legible flow on` before packaging a zip. Every signal the AI reads (the lock, `SITE_PLAN.md`, `project_stage`, your message), who sets it and in what order it wins are in the control-surface table of [section 5.0](DOCUMENTATION.md#50-the-methodology-start-interview-plan-phases-completion). Engine mode is not a file: the AI announces `Engine mode on` and `Engine mode off` in the conversation.
 

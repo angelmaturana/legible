@@ -12,6 +12,7 @@ What it covers (and nothing more; check_site.py already validates each page's HT
   6. Geo tags and home links to guides and blog.
   7. FLOW_OFF.lock (the maintainer's local switch) is absent and gitignored.
   8. The suite does not depend on the template's sample pages or data (see "Page lookup" below).
+  9. AGENTS.md: structure, router rows, limits, statuses and agreement with the other documents.
 """
 import contextlib
 import io
@@ -2014,6 +2015,129 @@ class TestSuiteIsIndependentOfTheSamplePages(unittest.TestCase):
             r = subprocess.run([sys.executable, '-B', '-m', 'unittest', *(f'test_legible.{c}' for c in _PAGE_EDITING_TESTS)],
                                capture_output=True, text=True, env=env, cwd=project / 'tests')
             self.assertEqual(r.returncode, 0, f'the suite fails in an adapted site:\n{r.stderr[-3000:]}')
+
+
+# --------------------------------------------------------------------------- 9. AGENTS.md guards
+
+def _agents_text():
+    return (REPO / 'AGENTS.md').read_text(encoding='utf-8')
+
+
+def _agents_section(text, n):
+    """The text of `## n. ...` up to the next `## ` header ('' if it does not exist)."""
+    m = re.search(r'^## %d\. .*?(?=^## \d+\. |\Z)' % n, text, re.S | re.M)
+    return m.group(0) if m else ''
+
+
+def _table_rows(block):
+    return [line for line in block.splitlines() if line.startswith('|')]
+
+
+class TestAgentsGuards(unittest.TestCase):
+    """AGENTS.md is the entry point for AI agents (the router, the states, the limits). No other test reads it, so
+    these static guards keep its structure, its figures and its agreement with DOCUMENTATION.md and the README.
+    They check stable fragments, not whole paragraphs: rewording a sentence must not fail them."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.agents = _agents_text()
+        cls.docs = {name: (REPO / name).read_text(encoding='utf-8')
+                    for name in ('AGENTS.md', 'DOCUMENTATION.md', 'README.md')}
+
+    def test_the_ten_sections_exist_in_order(self):
+        numbers = [int(n) for n in re.findall(r'^## (\d+)\. ', self.agents, re.M)]
+        self.assertEqual(numbers, list(range(1, 11)))
+
+    def test_section_references_point_to_existing_sections(self):
+        bad = []
+        for name, text in self.docs.items():
+            if name == 'AGENTS.md':
+                refs = re.findall(r'\bsections? ((?:\d+(?:\.\d+)?(?:, | and | to )?)+)', text)
+            else:
+                refs = re.findall(r'`?AGENTS\.md`?,? sections? ((?:\d+(?:\.\d+)?(?:, | and | to )?)+)', text)
+            for group in refs:
+                for number in re.findall(r'\d+(?:\.\d+)?', group):
+                    if '.' not in number and not 1 <= int(number) <= 10:
+                        bad.append(f'{name}: section {number}')
+        self.assertEqual(bad, [], 'a reference points to a section AGENTS.md does not have')
+
+    def test_every_mode_is_chosen_by_the_router_and_listed_in_the_modes_section(self):
+        router = _agents_section(self.agents, 1)
+        modes = _agents_section(self.agents, 3)
+        for mode in ('Interview', 'Execution', 'Recovery', 'Refinement', 'Maintenance', 'Engine', 'One-session'):
+            self.assertIn(f'**{mode} mode**', router, f'section 1 never routes to {mode} mode')
+            self.assertIn(mode, modes, f'section 3 does not list {mode} mode')
+
+    def test_the_router_rows_are_well_formed_and_keep_the_rows_added_for_the_edge_cases(self):
+        router = _agents_section(self.agents, 1)
+        start = router.index('| Plan | `project_stage` |')
+        table = []
+        for line in router[start:].splitlines():
+            if not line.startswith('|'):
+                break
+            table.append(line)
+        self.assertGreaterEqual(len(table), 14, 'the router table lost rows')
+        for line in table:
+            self.assertEqual(line.count('|'), 6, f'a router row must have 5 cells: {line[:70]}')
+        joined = '\n'.join(table)
+        for fragment in ('`legible help`', 'one session', '`engine mode`', '`legible start` with inputs',
+                         'any other value', 'Recovery mode', 'Refinement mode', 'Interview mode'):
+            self.assertIn(fragment, joined, f'the router table lost its row for: {fragment}')
+
+    def test_the_commands_are_in_agents_the_readme_and_the_documentation(self):
+        commands = ('legible start', 'legible continue', 'legible help', 'legible flow off', 'legible flow on')
+        top = self.agents.split('## 1. ')[0]
+        for name, text in self.docs.items():
+            scope = top if name == 'AGENTS.md' else text
+            for command in commands:
+                self.assertIn(f'`{command}`', scope, f'{name} does not list `{command}`')
+
+    def test_the_plan_limits_are_stated_and_agree_with_each_other(self):
+        plan = _agents_section(self.agents, 5)
+        for fragment in ('120 lines or fewer', 'wc -l SITE_PLAN.md', "grep -cE '^\\| *[0-9]+ *\\|' SITE_PLAN.md",
+                         'ten phases', 'twelve', 'three pages or three large files'):
+            self.assertIn(fragment, plan, f'section 5 lost: {fragment}')
+        budget5 = set(re.findall(r'\b(\d{2},?\d{3}) bytes', plan))
+        budget6 = set(re.findall(r'\b(\d{2},?\d{3}) bytes', _agents_section(self.agents, 6)))
+        self.assertEqual({b.replace(',', '') for b in budget5}, {'50000'}, 'the session budget changed in section 5')
+        self.assertEqual({b.replace(',', '') for b in budget6}, {'50000'}, 'sections 5 and 6 disagree on the budget')
+
+    def test_the_plan_template_respects_its_own_limits(self):
+        template = re.search(r'````markdown\n(.*?)\n````', self.agents, re.S).group(1)
+        self.assertLessEqual(len(template.splitlines()), 120)
+        phases = [line for line in template.splitlines() if re.match(r'^\| *[0-9]+ *\|', line)]
+        self.assertEqual(len(phases), 10, 'the default catalogue is ten phases')
+        self.assertEqual([re.match(r'^\| *(\d+)', p).group(1) for p in phases], [str(i) for i in range(1, 11)])
+
+    def test_the_statuses_are_in_the_template_and_in_the_plan_validation(self):
+        plan = _agents_section(self.agents, 5)
+        validation = re.search(r'\*\*Validate the plan first\*\*.*?\*\*Without a shell\*\*', self.agents, re.S)
+        self.assertIsNotNone(validation, 'section 6 lost "Validate the plan first" or "Without a shell"')
+        for status in ('pending', 'in_progress', 'done', 'blocked'):
+            self.assertIn(f'`{status}`', plan.split('Allowed phase statuses:')[1].splitlines()[0])
+            self.assertIn(f'`{status}`', validation.group(0))
+        status_line = next(l for l in plan.splitlines() if l.startswith('**Status:**'))
+        for status in ('not started', 'in progress', 'complete', 'complete (example data: N)'):
+            self.assertIn(status, status_line)
+            self.assertIn(status, validation.group(0))
+
+    def test_no_document_runs_the_build_with_the_example_domain(self):
+        for name, text in self.docs.items():
+            blocks = re.findall(r'```.*?```', text, re.S)
+            self.assertFalse([b for b in blocks if 'SITE_URL=https://example.com' in b],
+                             f'{name}: a code block sets SITE_URL=https://example.com (it fills dist/ with that domain)')
+
+    def test_nothing_asks_to_write_a_confirm_marker(self):
+        """The marker is only described (the validator and the sweep detect it); facts that are missing keep the sample value."""
+        allowed = ('validator', 'sweep', 'grep', 'hits', 'Leftovers', 'no `[CONFIRM', 'No `[CONFIRM')
+        offenders = [f'{name}: {line.strip()[:90]}' for name, text in self.docs.items()
+                     for line in text.splitlines()
+                     if '[CONFIRM' in line and not any(a in line for a in allowed)]
+        self.assertEqual(offenders, [], 'a document mentions `[CONFIRM` in a way that may ask the AI to write it')
+
+    def test_the_lessons_log_does_not_come_back(self):
+        for name, text in self.docs.items():
+            self.assertNotIn('lessons-log', text.lower(), f'{name} mentions a LESSONS-LOG')
 
 
 if __name__ == '__main__':
