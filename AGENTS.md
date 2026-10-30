@@ -27,31 +27,6 @@
 
 `run legible`, `ejecuta legible`, `start site` and similar phrases are **not** commands. They get the explanation. "Run" and "ejecuta" never mean "run the tests, the build or the server" unless the user asks for those explicitly.
 
-<!-- LESSONS-LOG:START
-TEMPORARY (testing phase). To remove this feature, delete everything from this comment down to the closing comment of this block. Nothing else in the project refers to it. -->
-## Temporary rule: lessons log
-
-While the method is being tested, keep a log of what could be improved, for the user to analyze later. This rule **overrides** any other instruction that says to change only `src/`, to add only `SITE_PLAN.md`, or to change nothing (including read-only reviews and audits). It is the only exception.
-
-- **File:** `LECCIONES_APRENDIDAS.md` in the root of the project. If it exists in the zip, append to it: do not rewrite or reorder it, and do not read it in full, just add your entry at the end. If it does not exist, create it with a one-line title. It is not `SITE_PLAN.md`: the plan size checks do not apply to it.
-- **When:** once per session, before your final reply, in every mode. If nothing is worth recording, add one line: `<date> · <mode and phase> · no observations`.
-- **What to record:** instructions that were ambiguous, contradictory or missing; things you had to guess; steps that wasted effort or context (for example a file read that was not needed); commands or checks that failed or were hard to run; places where the plan, the phases or their size did not fit the session; corrections the user had to make; and ideas to improve the method or the architecture.
-- **Format:** one entry per observation, at most five per session (keep the most important), at most ten lines each, in the language the user writes in:
-
-```
-### <YYYY-MM-DD> · <mode and phase>
-- Type: process | architecture | documentation | tests | other
-- Where: file and section (for example `AGENTS.md` section 5)
-- What happened: facts only, with the real command output or the exact instruction involved
-- Proposal: the smallest change that would help
-- Impact: low | medium | high
-```
-
-- **Record, do not act.** Do not change the engine, the tests, `AGENTS.md` or `DOCUMENTATION.md` because of a lesson, and do not start working on a proposal. The log is for analysis; the decision to change anything is the user's.
-- **Facts only.** Record what actually happened, never what you assume. Do not put business data in the log (names, phones, addresses, prices): refer to the file and the section instead.
-- **Delivery.** The file travels inside the zip you return, like the plan. If you cannot create files, put the entry in your final message.
-<!-- LESSONS-LOG:END -->
-
 ## 1. First step: look for the plan, then read the request
 
 **Always start by checking for `FLOW_OFF.lock`, then for `SITE_PLAN.md`, in the root of the project.** If only some `.md` files are attached and not the zip, ask for the zip before doing anything else.
