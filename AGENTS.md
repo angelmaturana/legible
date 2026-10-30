@@ -7,7 +7,7 @@
 - **Not your job:** the engine (`legible/`), the tests (`tests/`), the architecture and deployment.
 - **First step:** check whether `FLOW_OFF.lock` exists in the project root (if it does, the flows are off), then look for `SITE_PLAN.md`. Section 1 tells you what to do next.
 - **Commands:** the user drives the process with the exact commands below. Anything else gets an explanation first, never the interview.
-- **Always:** keep missing facts as `[CONFIRM …]` markers and report only checks you really ran (sections 8 and 9).
+- **Always:** a fact the user did not give keeps the template's sample value and gets a row in the plan (section 8); never replace it with a plausible invention. Report only checks you really ran (sections 8 and 9).
 - **If a case is not covered:** stop and ask one question (end of section 8).
 
 **Commands** (always in English, whatever language the user writes in; details in sections 1 and 4)
@@ -111,7 +111,7 @@ Open with one line, in the user's language: you will ask twelve short questions 
 
 - Ask the **minimum**: only what you cannot derive. Ask in **three short rounds**, not all at once. Skip anything the user has already told you. Speak the user's language.
 - **Propose, do not ask**, what you can derive: page list, URLs, menu, design direction and phases. The user confirms or corrects.
-- Anything the user does not know becomes a visible `[CONFIRM …]` marker in the plan. **Never invent** hours, reviews, awards, certifications, years in business or figures.
+- Anything the user does not know keeps the template's sample value on the site and gets a row in the plan's **Pending confirmation**. **Never invent** hours, reviews, awards, certifications, years in business or figures.
 - Anything the user wants beyond the base goes into the plan's **Later** list, not into the phases.
 
 **Round 1: the site**
@@ -154,9 +154,9 @@ Used when `legible start` comes with inputs. The inputs may be combined freely:
 | A style source only (URL, image or `style:` description), no data of any kind | One message with two questions: the business name, and whether to keep the same theme as the reference (yes or no; if no, what the business does) |
 | Any data (typed or read from an image), with or without a style source | Nothing, except the name or the theme if either is missing |
 
-The **minimum to start** is the business name and the theme. The theme comes from `activity`, from the style reference or from a data image. Everything else is derived or left as `[CONFIRM …]`, and you do not ask about it: domain (`site_url` stays the sample, with a `[CONFIRM …]` row), address, hours, legal data, email, service area (the city, otherwise `[CONFIRM …]`), language (the user's), tone (friendly), services (propose three, as sample copy) and the name of the featured offer (a sample, with a `[CONFIRM …]` row).
+The **minimum to start** is the business name and the theme. The theme comes from `activity`, from the style reference or from a data image. Everything else is derived or keeps the template's sample value (a row in **Pending confirmation**), and you do not ask about it: domain (`site_url` stays the sample, with a pending row), address, hours, legal data, email, service area (the city, otherwise the sample), language (the user's), tone (friendly), services (propose three, as sample copy) and the name of the featured offer (a sample, with a pending row).
 
-**Facts and copy.** Never invent facts: phone, email, address, hours, prices, years in business, awards, certifications, reviews, figures or legal data. They come from the user or stay `[CONFIRM …]`. You may write short descriptive copy (headlines, introductions, service blurbs, calls to action) on the theme: generic, with no claim that could be checked. Put `<!-- SAMPLE COPY -->` at the top of the body of every page that carries it, and list "sample copy" in **Pending confirmation**.
+**Facts and copy.** Never invent facts: phone, email, address, hours, prices, years in business, awards, certifications, reviews, figures or legal data. They come from the user; otherwise they keep the template's sample value, never a plausible invented one. You may write short descriptive copy (headlines, introductions, service blurbs, calls to action) on the theme: generic, with no claim that could be checked. Put `<!-- SAMPLE COPY -->` at the top of the body of every page that carries it, and list "sample copy" in **Pending confirmation**.
 
 **Reading the style.** Use what you can: fetch the page, look at the images. Take only the palette, the feel of the typography (mapped to system fonts), the order of the sections, the proportions and the shape of buttons and cards. Never copy the reference's name, logo, images or text, and never build a page that could be mistaken for it. The base limits apply (one stylesheet, system fonts, no external resources, no client-side JavaScript), so do not try to imitate fonts, carousels, animations or menus that need them. Record in the briefing what you could really read ("text only, palette estimated", "from a screenshot"). If you cannot read the URL or see the image, say so in one line and ask for the other source (a screenshot or a short `style:` description). Do not invent a style.
 
@@ -224,7 +224,7 @@ Write headings, table columns and status values in English. Free text may use th
 
 > Build this site with `legible`. Change only `src/`. Do not improve or refactor the engine, the tests or the architecture. Do not deal with deployment. Read AGENTS.md first. Execute one phase per session.
 
-**Status:** not started | in progress | complete · **Language:** <en|es|…> · **Domain:** <https://…>
+**Status:** not started | in progress | complete | complete (example data: N) · **Language:** <en|es|…> · **Domain:** <https://…>
 
 ## Briefing
 - **Site:** business, one-line description, kind of business, fit notes, language, tone.
@@ -232,7 +232,7 @@ Write headings, table columns and status values in English. Free text may use th
 - **Offer:** service area, service categories, priced offers, currency, featured offer.
 - **Design:** assets available, colours, reference site, or "base look".
 - **Sources:** style reference and how it was really read; data source; sample copy yes or no (fast start only).
-- **Gaps:** hours, legal data, existing URLs to keep, everything unknown as [CONFIRM …].
+- **Gaps:** hours, legal data, existing URLs to keep, everything unknown, listed as pending (the site keeps the template sample value).
 
 ## URL map
 | Page | URL | Purpose |
@@ -279,7 +279,7 @@ Allowed phase statuses: `pending`, `in_progress`, `done`, `blocked` (with the re
 - With a style source (fast start), phases 3 to 5 are needed: the look comes from the reference. Do not mark them "not needed".
 - Phase 6 is never skipped silently. The AI can write SVG (`logo.svg`, `favicon.svg`) but should not fake binary images: `og-image.png` (1200×630), `apple-touch-icon.png` and `favicon.ico` stay as the sample files, with a row in **Pending confirmation**, until the user supplies them. The SVG files are replaced, or listed as pending if the user has no logo.
 - Phase 8 repeats for each further three service pages (see the size limits), and its pages are named in the phase details.
-- Phase 10 combines the three legal pages, the 404 page and the close. If the legal data is mostly `[CONFIRM …]` this is light; if it is not, split it into legal (before) and close (after), using a slot freed by a skipped phase.
+- Phase 10 combines the three legal pages, the 404 page and the close. If the legal data is mostly example values this is light; if it is not, split it into legal (before) and close (after), using a slot freed by a skipped phase.
 
 ## 6. Execution, completion, maintenance, recovery and refinement
 
@@ -297,7 +297,7 @@ Allowed phase statuses: `pending`, `in_progress`, `done`, `blocked` (with the re
 
 **Completion.** When the last phase is `done`:
 
-1. Set the overall status to `complete`, set `project_stage` in `src/data/site.json` to `complete`, and fill **Final state** (at most 20 lines): a short table of area, state and notes (pages, data, design, legal, validator result), the facts still pending, the warnings that remain and why, and the Later list.
+1. Set the overall status to `complete` (or `complete (example data: N)`, section 9), set `project_stage` in `src/data/site.json` to `complete`, and fill **Final state** (at most 20 lines): a short table of area, state and notes (pages, data, design, legal, validator result), the facts still pending, the warnings that remain and why, and the Later list.
 2. Shrink the phase details and the execution log to one line each, so the file stays small.
 3. Tell the user, in a few lines, that the plan is finished, that the state of everything is recorded in `SITE_PLAN.md` inside the zip, and that they can attach the zip at any time and ask for one part to be fixed or extended. Say nothing about deployment.
 
@@ -335,10 +335,10 @@ With `FLOW_OFF.lock` present (section 1) the maintainer is working on the projec
 ## 8. Rules that never bend
 
 1. No new dependencies, frameworks, client-side JavaScript or external resources.
-2. Never invent business facts. Missing data stays as a visible `[CONFIRM …]` marker, or you ask. The only invented text allowed is short descriptive sample copy in a fast start (section 4), marked `<!-- SAMPLE COPY -->`.
+2. Never invent business facts. A fact the user did not give keeps the sample value that the template already has in `src/data/` or in its pages (`Your Business`, `hello@example.com`, `Your legal name`…): well-formed, obviously not real, and found by the pre-launch sweep. Never replace it with a plausible invention. No `[CONFIRM …]` marker goes into `src/` (the validator turns it into a warning); every sample value kept gets a row in the plan's **Pending confirmation** ("example value: <field>"). The only invented text allowed is short descriptive sample copy in a fast start (section 4), marked `<!-- SAMPLE COPY -->`.
 3. Never weaken tests or validator rules to get a green result; fix the content instead.
 4. Every page must pass the strict validator (rules in `DOCUMENTATION.md` section 7.2).
-5. Replace every sample value and every `SAMPLE COPY` page, and run the pre-launch sweep (`DOCUMENTATION.md` section 7.4) before the plan is closed.
+5. Replace every sample value and every `SAMPLE COPY` page for which the user gave the real fact or wording. The rest stays listed in **Pending confirmation**. Run the pre-launch sweep (`DOCUMENTATION.md` section 7.4) before the plan is closed and report its hits; hits for the listed example values are expected.
 6. Do not run Git commands (commit, tag, push) unless the user asks.
 7. Do not deal with deployment: no hosting, DNS, CI, publishing or host-level redirects. It is outside this process. If asked, say so.
 
@@ -357,8 +357,8 @@ Expect `OK` from the tests and `CHECK PASSED` from the validator. Report the rea
 
 **If a test fails on an adapted site,** first decide whether your change caused it (a page you edited or removed, a broken data file) and fix that. If the failure comes from content that belongs to the site and the test is right to complain, fix the content. If the test itself seems wrong for this site, **do not edit, relax or skip it** (rule 3 of section 8): record the test name and the real output in the plan's log (and in **Engine notes** if the engine is involved), tell the user in your final message and let them decide. Never report the baseline as green while a test fails.
 
-- **Every phase except the last:** the strict build may fail on `[CONFIRM` markers, pages not yet adapted and sample values that `entity.json` does not yet replace (for example `Service 2` or `City 3` while it has fewer offers or cities than the pages use). Errors must be fixed. Warnings that come only from facts still pending may be reviewed with `CHECK_STRICT=FALSE ./legible/build.sh`; list each one in the plan as expected, with its reason.
-- **Last phase (close):** run the strict build with no override. The plan is not `complete` until it passes, or until every remaining warning is a pending fact listed in the plan and the user has been told.
+- **Every phase except the last:** the strict build may fail on pages not yet adapted and sample values that `entity.json` does not yet replace (for example `Service 2` or `City 3` while it has fewer offers or cities than the pages use). Errors must be fixed. Warnings that come only from facts still pending may be reviewed with `CHECK_STRICT=FALSE ./legible/build.sh`; list each one in the plan as expected, with its reason.
+- **Last phase (close):** run the strict build with no override and the sweep. The plan is `complete` only if the build ends in `CHECK PASSED`. If example values or `SAMPLE COPY` pages remain, the status is `complete (example data: N)`, N being the rows left in **Pending confirmation**: the site builds clean but is **not ready to publish** until N is 0, and you tell the user so in one line. Any error blocks `complete`.
 - **If you cannot run commands** (a chat without a shell), say so plainly, do not claim that anything passed, and list the exact commands the user must run.
 
 ## 10. Map
