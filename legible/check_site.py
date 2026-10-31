@@ -195,11 +195,72 @@ class PageParser(HTMLParser):
             self.main_text.append(data)
 
 
+_TAG_OPEN = re.compile(r'<([A-Za-z][A-Za-z0-9-]*)')
+_INNER_TAG = re.compile(r'<[A-Za-z/!?]')
+
+
+def find_broken_markup(text: str):
+    """Describe the first broken tag of a page's raw HTML, or return None.
+
+    A missing quote or `>` makes the parser swallow the rest of the page, and the validator then reports symptoms
+    ("0 <h1>", "no JSON-LD", "anchor #main not found", "0 words") that never name the cause. Two kinds of fault
+    are looked for: a start tag whose attribute quote is not closed (read respecting quotes, it reaches the end
+    of the file or runs into another tag) and a `<script>` or `<style>` with no closing tag. Comments and the
+    bodies of scripts and styles are skipped. Line numbers refer to the file as built (a minified file has one)."""
+    pos, n = 0, len(text)
+    while True:
+        m = _TAG_OPEN.search(text, pos)
+        if not m:
+            return None
+        comment = text.rfind('<!--', 0, m.start())
+        if comment != -1 and text.find('-->', comment, m.start()) == -1:
+            end = text.find('-->', m.start())
+            if end == -1:
+                return None
+            pos = end + 3
+            continue
+        name, i, quote = m.group(1).lower(), m.end(), None
+        while i < n:
+            c = text[i]
+            if quote:
+                if c == quote:
+                    quote = None
+            elif c in '"\'':
+                quote = c
+            elif c == '>':
+                break
+            if i > m.end() and c == '<' and _INNER_TAG.match(text, i):
+                i = n
+                break
+            i += 1
+        line = text.count('\n', 0, m.start()) + 1
+        snippet = re.sub(r'\s+', ' ', text[m.start():m.start() + 60]).strip()
+        if i >= n:
+            return (f'broken markup at line {line}: the tag <{name}> never closes (an attribute quote or the ">" '
+                    f'is missing): {snippet}')
+        if name in ('script', 'style'):
+            close = re.compile(r'</' + name + r'\s*>', re.I).search(text, i)
+            if not close:
+                return f'broken markup at line {line}: <{name}> has no closing </{name}>'
+            pos = close.end()
+        else:
+            pos = i + 1
+
+
 def parse_page(path: Path) -> PageParser:
     p = PageParser()
     p.feed(path.read_text(encoding='utf-8'))
     p.close()
     return p
+
+
+def _get(node, *keys):
+    """Walk nested dict keys; None when a level is missing or explicitly null (same behaviour as build._get)."""
+    for key in keys:
+        if not isinstance(node, dict):
+            return None
+        node = node.get(key)
+    return node
 
 
 def norm(text: str) -> str:
@@ -240,6 +301,41 @@ def resolve_internal(url: str, out: Path, site_url: str):
 
 
 # --------------------------------------------------------------------------- per-page rules
+
+SAMPLE_DOMAINS = ('example.com', 'example.org', 'example.net')
+
+
+def _is_sample_url(url, own_host):
+    try:
+        parts = urlsplit(str(url).strip())
+        host = (parts.hostname or '').lower()
+    except ValueError:
+        return False
+    if parts.scheme not in ('http', 'https') or not host or host == own_host:
+        return False
+    return any(host == d or host.endswith('.' + d) for d in SAMPLE_DOMAINS)
+
+
+def sample_domain_urls(p: PageParser, site_url: str):
+    """URLs of the page that point to example.com, example.org or example.net (or a subdomain): in links,
+    resources, canonical, og:url, og:image and the `url` and `@id` of the JSON-LD. Never the visible text, never
+    `mailto:` or `tel:` (not http), and never the site's own domain."""
+    own = (urlsplit(site_url).hostname or '').lower()
+    candidates = [h for h, _, _ in p.links] + [u for u, _ in p.resources]
+    candidates += [p.canonical or '', p.metas.get('og:url', ''), p.metas.get('og:image', '')]
+    for raw in p.ld_raw:
+        try:
+            data = json.loads(raw)
+        except ValueError:
+            continue
+        for node in walk_nodes(data):
+            candidates += [v for k, v in node.items() if k in ('url', '@id') and isinstance(v, str)]
+    found = []
+    for url in candidates:
+        if _is_sample_url(url, own) and url not in found:
+            found.append(url)
+    return found
+
 
 def check_page(rel_file, p: PageParser, out: Path, site_url: str, errors, warnings):
     E = lambda msg: errors.append((rel_file, msg))
@@ -355,6 +451,13 @@ def check_page(rel_file, p: PageParser, out: Path, site_url: str, errors, warnin
             if 'noopener' not in rel and 'noreferrer' not in rel:
                 W(f'<a target="_blank"> without rel="noopener"/"noreferrer": {meta["href"][:60]}')
 
+    # URLs on a sample domain (a copied example that was never replaced)
+    sample_urls = sample_domain_urls(p, site_url)
+    if sample_urls:
+        more = f' and {len(sample_urls) - 3} more' if len(sample_urls) > 3 else ''
+        W('URL on a sample domain (example.com, example.org or example.net): ' + ', '.join(sample_urls[:3]) + more +
+          '; use the real address or remove the link')
+
     # aria-current
     if p.aria_current > 1:
         E(f'{p.aria_current} elements with aria-current')
@@ -372,7 +475,7 @@ def check_page(rel_file, p: PageParser, out: Path, site_url: str, errors, warnin
         if words < MIN_WORDS_INDEXABLE:
             W(f'thin content: {words} words in <main> (< {MIN_WORDS_INDEXABLE})')
 
-    check_jsonld(rel_file, p, url, title, indexable, is404, errors, warnings)
+    check_jsonld(rel_file, p, url, title, indexable, is404, errors, warnings, site_url)
     check_faq_matches_schema(rel_file, p, warnings, errors)
 
 
@@ -387,7 +490,7 @@ def walk_nodes(obj):
             yield from walk_nodes(v)
 
 
-def check_jsonld(rel_file, p, url, title, indexable, is404, errors, warnings):
+def check_jsonld(rel_file, p, url, title, indexable, is404, errors, warnings, site_url=None):
     E = lambda msg: errors.append((rel_file, msg))
     W = lambda msg: warnings.append((rel_file, msg))
     if not p.ld_raw:
@@ -419,10 +522,17 @@ def check_jsonld(rel_file, p, url, title, indexable, is404, errors, warnings):
         if r not in defined:
             E(f'undefined @id reference on the page: {r}')
     if indexable:
-        types = {n.get('@type') for n in graph_nodes}
-        for needed in ('ProfessionalService', 'WebSite'):
-            if needed not in types:
-                E(f'missing {needed} node in the JSON-LD')
+        # @type is a text or a list of texts (["Restaurant", "LocalBusiness"]): normalise before comparing
+        types = set()
+        for n in graph_nodes:
+            t = n.get('@type')
+            types.update(x for x in (t if isinstance(t, list) else [t]) if isinstance(x, str))
+        main_id = (site_url + '/#business') if site_url is not None else None
+        if not any(isinstance(n.get('@id'), str) and
+                   (n['@id'] == main_id if main_id else n['@id'].endswith('/#business')) for n in graph_nodes):
+            E(f'missing main node (@id {main_id or "<site_url>/#business"}) in the JSON-LD')
+        if 'WebSite' not in types:
+            E('missing WebSite node in the JSON-LD')
     for n in graph_nodes:
         t = n.get('@type')
         if t in ('WebPage', 'CollectionPage', 'AboutPage', 'ContactPage'):
@@ -457,7 +567,7 @@ def check_faq_matches_schema(rel_file, p, warnings, errors):
             if n.get('@type') == 'FAQPage':
                 for q in n.get('mainEntity', []):
                     schema_faq.append((norm(q.get('name', '')),
-                                       norm(q.get('acceptedAnswer', {}).get('text', ''))))
+                                       norm(_get(q, 'acceptedAnswer', 'text') or '')))
     if not schema_faq:
         return
     visible = {q: a for q, a in p.faq}
@@ -644,7 +754,18 @@ def run_checks(out_dir, site_url: str = SITE_URL):
         except (OSError, UnicodeError, ValueError) as e:
             errors.append((rel, f'could not read/parse: {e}'))
     for rel, p in pages.items():
-        check_page(rel, p, out, site_url, errors, warnings)
+        page_errors = []
+        check_page(rel, p, out, site_url, page_errors, warnings)
+        if page_errors:
+            # Only a page that already fails gets the cause (the other messages stay): this never changes which
+            # sites build, and a tag that merely looks odd but breaks nothing is not reported.
+            try:
+                cause = find_broken_markup((out / rel).read_text(encoding='utf-8'))
+            except (OSError, UnicodeError):
+                cause = None
+            if cause:
+                errors.append((rel, cause))
+        errors.extend(page_errors)
     check_duplicates(pages, errors)
     check_links(pages, out, site_url, errors, warnings)
     check_sitemap(pages, out, site_url, errors, warnings)

@@ -1,6 +1,6 @@
 # AGENTS.md
 
-`legible` is a lightweight static-site generator for local service businesses. It uses only the Python standard library and ships no client-side JavaScript. This file is the entry point for AI agents and the source of truth for procedures, numbers, limits and commands. The reasoning behind them and the reference tables are in [`DOCUMENTATION.md`](DOCUMENTATION.md), section 5.0 (the methodology).
+`legible` is a lightweight static-site generator for small sites with one main entity (a business, a project or a person). It uses only the Python standard library and ships no client-side JavaScript. This file is the entry point for AI agents and the source of truth for procedures, numbers, limits and commands. The reasoning behind them and the reference tables are in [`DOCUMENTATION.md`](DOCUMENTATION.md), section 5.0 (the methodology).
 
 **At a glance**
 - **Your job:** adapt the sample base into a website for one business, changing only `src/` (plus `SITE_PLAN.md` in the root).
@@ -23,7 +23,7 @@
 | `legible help` | A simple explanation of what `legible` is, plus this list | Nothing |
 | `legible flow off` / `legible flow on` | Turns the flows off or on by creating or deleting `FLOW_OFF.lock` (for the maintainer) | Nothing |
 
-**Input contract** for the one-line data. Fields are `key: value` separated by `;`, in any order: `name`, `activity`, `city`, `phone`, `email`, `address`, `hours`, `services`, `style` (a URL, an image file name or a short description), `data` (an image file name) and `site` (the domain). The Spanish names work too: `nombre`, `actividad`, `ciudad`, `tel`, `dir`, `horario`, `servicios`, `estilo`, `datos`, `web`. A bare URL before the first field is the style source. Only `name` is required; the theme is not a key: it comes from `activity`, the style reference or a data image. Only the first `:` of a field splits key and value. A literal `;` inside a value is written `\;`; for lists (hours, services) prefer `,` or `/`. Typed values beat values read from a website or an image. Report unknown and duplicate keys; never drop them silently. **Phone** (here and in the interview): keep it as typed; convert it to E.164 only if the country is stated or the number starts with `+`; otherwise keep the sample value in the data, never infer the country from the city, and record the typed number in **Pending confirmation** ("phone typed as <number>: country code?").
+**Input contract** for the one-line data. Fields are `key: value` separated by `;`, in any order: `name`, `activity`, `city`, `phone`, `email`, `address`, `hours`, `services`, `style` (a URL, an image file name or a short description), `data` (an image file name), `logo` (an image file name, or `create` to have the AI design one) and `site` (the domain). The Spanish names work too: `nombre`, `actividad`, `ciudad`, `tel`, `dir`, `horario`, `servicios`, `estilo`, `datos`, `web`; `logo` is the same in both languages. A bare URL before the first field is the style source. Only `name` is required; the theme is not a key: it comes from `activity`, the style reference or a data image. Only the first `:` of a field splits key and value. A literal `;` inside a value is written `\;`; for lists (hours, services) prefer `,` or `/`. Typed values beat values read from a website or an image. Report unknown and duplicate keys; never drop them silently. **Phone** (here and in the interview): keep it as typed; convert it to E.164 only if the country is stated or the number starts with `+`; otherwise keep the sample value in the data, never infer the country from the city, and record the typed number in **Pending confirmation** ("phone typed as <number>: country code?").
 
 `run legible`, `ejecuta legible`, `start site` and similar phrases are **not** commands. They get the explanation. "Run" and "ejecuta" never mean "run the tests, the build or the server" unless the user asks for those explicitly.
 
@@ -74,9 +74,9 @@ In this table `complete` also covers `complete (example data: N)`.
 
 **Explaining `legible`** (the base is untouched and the request is not `legible start`, or the user typed `legible help`). Keep it simple: at most six short lines, plain words and no jargon, in the user's language.
 
-- What it is: a tool that turns a few text files into a fast, static website for one local business (a clinic, a workshop, a shop) and checks it.
+- What it is: a tool that turns a few text files into a fast, static website for one main entity (a clinic, a workshop, a shop, a software project or a portfolio) and checks it.
 - What you get: the site's pages with titles, structured data, a sitemap and the files that search engines and AIs read, plus automatic checks. It promises no rankings and no traffic.
-- What it fits: one business, one language. No online shop, no booking or forms with a backend, no scripts and no external widgets.
+- What it fits: one main entity, one language. No online shop, no booking or forms with a backend, no scripts and no external widgets.
 - How it works: you say `legible start` (optionally with a style website, your data or images), the AI writes a short plan inside your zip and executes it one phase per session.
 - Deployment is not part of it.
 
@@ -120,7 +120,7 @@ Open with one line, in the user's language: you will ask twelve short questions 
 - Anything the user wants beyond the base goes into the plan's **Later** list, not into the phases.
 
 **Round 1: the site**
-1. Business name, one line on what it does, and what kind of business it is. This is where you check the fit (section 1). If it fits only partly, say so now.
+1. Name, one line on what it does, and what kind of site it is: a local business of a class in `DOCUMENTATION.md` section 5.7, a software project, a portfolio, a store with no cart, a static directory or a blog. Ask for its Schema.org type, or deduce it and ask the user to confirm, and write it in `entity.json` (the `@type` of the node `#business`). This is where you check the fit (section 1). If it fits only partly, say so now. If the kind needs no address, cities or priced offers (a project, a portfolio), skip questions 4, 6 and 8 and say so in the plan.
 2. Site language (one per site) and tone (formal or friendly; tú or usted for Spanish). Only `en` and `es` are built in. Any other language needs an engine change (`DOCUMENTATION.md` section 4.2): say so now, offer `en` or `es`, and if the user insists, record an **Engine notes** exception (section 7) before phase 1.
 3. Domain (HTTPS), or "not yet". Is there an existing site whose URLs must be kept? `legible` generates no redirects; note any such URLs in the plan and do nothing more about them.
 4. City, region, country, and whether customers visit a street address.
@@ -129,11 +129,11 @@ Open with one line, in the user's language: you will ask twelve short questions 
 5. Email, phone in E.164 format, and whether the phone is confirmed for WhatsApp.
 6. Service area: up to 4 cities with shortcuts; others as a plain list.
 7. Services, grouped into at most 6 categories. You propose one page per real service and its URL.
-8. Priced offers (at most 5) and currency, and the featured offer, priced 0: name, what it includes and excludes.
+8. Priced offers (at most 5) and currency, and the featured offer, priced 0: name, what it includes and excludes. If the business publishes no prices or has no menu, do not ask for any: follow `DOCUMENTATION.md` section 5.6.
 
 **Round 3: design and gaps**
-9. Design: logo, favicon and a 1200×630 social image if available (otherwise placeholders), brand colours, or "keep the base look". A reference site is welcome. Say plainly what the base allows: one stylesheet with design tokens, system fonts, no external resources, no client-side JavaScript.
-10. Opening hours, or "no hours". Legal data (legal name, tax or registration ID, registered address, governing law), or "pending".
+9. Design: logo, favicon and a 1200×630 social image if the user has them, brand colours, or "keep the base look". Ask once whether the user will supply the brand files and any images or wants you to create them (`DOCUMENTATION.md` section 5.0, "Brand files and images"), and record the answer in the briefing: phase 6 follows it. A reference site is welcome. Say plainly what the base allows: one stylesheet with design tokens, system fonts, no external resources, no client-side JavaScript.
+10. Opening hours, or "no hours". Legal data, asked as a level and not field by field: **full** (legal name, tax or registration ID, registered address, governing law), **minimal** (who is responsible, a person or a company, and a contact email) or **pending** (nothing yet). What is missing keeps the sample placeholder and gets a row in the plan. If there is no business behind the site (an open-source tool, a personal or community project), ask only who is responsible and the contact email: the user says whether a tax ID or a registered address exists, and the ones that do not exist are removed from the legal pages, not left as placeholders (`DOCUMENTATION.md` section 5.0, "Legal data").
 11. Anything wanted **later**: blog, guides, extra pages, interactive features (calculators, booking, forms with a backend, maps).
 12. Anything unknown that must not be invented.
 
@@ -150,7 +150,7 @@ Open with one line, in the user's language: you will ask twelve short questions 
 Used when `legible start` comes with inputs. The inputs may be combined freely (a bare URL is the style source, as in the input contract):
 
 - **Fields** as in the input contract at the top. Free text with the same facts is also accepted.
-- **Attached images**, at most two of each kind. `style: <file>` and `data: <file>` say which is which. When they do not, decide by content: a screenshot or mock-up of a site is style; a business card, flyer, menu or listing screenshot is data. If it is ambiguous, ask one question.
+- **Attached images**, at most two of each kind. `style: <file>` and `data: <file>` say which is which. When they do not, decide by content: a screenshot or mock-up of a site is style; a business card, flyer, menu or listing screenshot is data. If it is ambiguous, ask one question. `logo: <file>` marks the user's own logo: it goes into `src/static/images/` as it is and is never redrawn.
 
 **What to ask**, and nothing more:
 
@@ -198,13 +198,13 @@ grep -cE '^\| *[0-9]+ *\|' SITE_PLAN.md   # phases in the table: expect 10 or fe
 
 | Phase | Read | Verify |
 |---|---|---|
-| 1 Data | DOC 3.1, 3.2, 7.1; the three data files | Build |
+| 1 Data | DOC 3.1, 3.2, 7.1 (and 5.6 when there are no prices); the three data files | Build |
 | 2 Structure and URLs | DOC 3.3, 3.4, 5.3 rules 4 and 7; the page tree, `header.html`, `sitemap_base_order` | Build; every menu link resolves |
 | 3 Brand tokens | `site.css` up to the line before `/* ---- 2.` (`grep -n '^/\* ---- 2\.' src/css/site.css`) and nothing else | Build |
 | 4 Component styles | `site.css` from `/* ---- 2.`, one numbered section at a time, only those needed; DOC 5.3 rule 12 | Build |
 | 5 Layout and partials | DOC 5.3 rules 8 and 9; `layout.html`, `header.html`, `footer.html` | Build |
-| 6 Brand assets | DOC 3.7; the icon and image lines in the head of `layout.html` | Build; the files exist |
-| 7, 8, 9 Content | DOC 5.3 rules 6 and 13 (rule 7 and `services/sample-service/` for phase 8); the briefing in the plan; only the pages of that phase | Build; no validator errors on those pages |
+| 6 Brand assets | DOC 3.7 and 7.3 (V4, PNG size); the icon and image lines in the head of `layout.html` | Build; the files exist; the PNG sizes read from their headers |
+| 7, 8, 9 Content | DOC 5.3 rules 6 and 13 and its patterns for rule 6 (rule 7 and `services/sample-service/` for phase 8); the briefing in the plan; only the pages of that phase | Build; no validator errors on those pages |
 | 10 Legal and close | DOC 5.3 rule 10, then DOC 7.2 and 7.4 | Tests, strict build with no override, sweep |
 
 **Where the plan goes.**
@@ -282,8 +282,14 @@ Allowed phase statuses: `pending`, `in_progress`, `done`, `blocked` (with the re
 **Adapt the catalogue to the site.** The ten rows above are the default catalogue, sized for one session each. When the plan is written:
 - If the user keeps the base look (interview question 9), mark phases 3 and 4 `done` with "not needed: base look kept". Mark phase 5 the same way only when `layout.html` and the partials need no change beyond what phase 2 already did.
 - With a style source (fast start), phases 3 to 5 are needed: the look comes from the reference. Do not mark them "not needed".
-- Phase 6 is never skipped silently. The AI can write SVG (`logo.svg`, `favicon.svg`) but should not fake binary images: `og-image.png` (1200×630), `apple-touch-icon.png` and `favicon.ico` stay as the sample files, with a row in **Pending confirmation**, until the user supplies them. The SVG files are replaced, or listed as pending if the user has no logo.
+- Phase 6 is never skipped silently. It follows the answer to interview question 9 (or the `logo:` field):
+  - **The user supplies the files:** use them as they are. What is missing stays as the sample file, with a row in **Pending confirmation**.
+  - **The user wants you to create them:** write `logo.svg` and `favicon.svg` as SVG, and render `og-image.png` (1200×630), `apple-touch-icon.png` (180×180) and `favicon.ico` (16, 32 and 48 px) from them with the tools your environment really has. Read the size of each PNG back from its header (`DOCUMENTATION.md` section 7.3, V4) and add a row "AI-generated: <file>, replace if the user has a real brand" to **Pending confirmation**.
+  - **You cannot render a format** (no tool for PNG or ICO): do not fake it. Keep the sample file, say so in one line and list it as pending.
+  - **Images for the pages** (illustrations, backgrounds, and photo-style images when the user asks for them and you have a real way to make them): create them whenever the user asks, put them in `src/static/images/`, and give each an accurate `alt` and explicit `width` and `height`, plus a row "AI-generated image: <file>". What the image claims is still governed by section 8, rule 2: do not caption an invented image as a named real person, place, dish or product, and do not use one as evidence (a testimonial, a certification, a result).
+  - A logo or image that the user attached is theirs: never redraw or replace it.
 - In phases 1 and 2, `Touch:` says: one page per real service; update `hasOfferCatalog`, `knowsAbout` and the `{{service_N_*}}` markers to the real count (the build warns for each `Service N` left unreplaced).
+- A business with no published prices or no menu keeps the ten phases. Phase 1 and phases 7 to 9 follow `DOCUMENTATION.md` section 5.6: the offers keep their names and lose their prices, and the sample prices in pages, texts and `llms.txt` are removed, never replaced by invented figures.
 - Phase 8 repeats for each further three service pages (see the size limits), and its pages are named in the phase details.
 - Phase 10 combines the three legal pages, the 404 page and the close. If the legal data is mostly example values this is light; if it is not, split it into legal (before) and close (after), using a slot freed by a skipped phase.
 
@@ -306,7 +312,7 @@ Allowed phase statuses: `pending`, `in_progress`, `done`, `blocked` (with the re
 **Execution mode**
 
 1. Read `SITE_PLAN.md`, validate it (above) and take the first phase that is not `done`. Read only what that phase's `Read:` line lists; do not load `DOCUMENTATION.md` in full. Before you start, measure what the phase loads (section 5, session budget); if it is more than about 50000 bytes, split the phase first (section 5, size limits). Execute **only that phase**, unless the user asks for more.
-2. Work only in `src/`. Respect anything the user changed by hand since the last session; note it in the log instead of reverting it. Read each file fresh before editing it; if it differs from what the log says, keep the user's version and note it. A specific request about the site is extra work: do it in `src/`, verify it, log it, and leave the next phase unchanged. If a new instruction from the user contradicts the plan, say so and ask which one wins. If `project_stage` disagrees with the plan, trust the plan, fix the field and note it in the log.
+2. Work only in `src/`. Respect anything the user changed by hand since the last session; note it in the log instead of reverting it. Read each file fresh before editing it; if it differs from what the log says, keep the user's version and note it. A specific request about the site is extra work: do it in `src/`, verify it, log it, and leave the next phase unchanged. If a new instruction from the user contradicts the plan, say so and ask which one wins. If `project_stage` disagrees with the plan, trust the plan, fix the field and note it in the log. **Stay inside the phase:** change only what that phase owns (`DOCUMENTATION.md` section 5.0, "Who owns what"). A defect that belongs to another phase is fixed only when your own `Verify:` fails because of it; otherwise write one line in the log for the phase that owns it. Before you finish, search with `grep -rn` for every fact you changed that appears in several files (hours, phone, prices, the featured-action URL), and either update the places that belong to this phase or log the ones that belong to later phases.
 3. Verify the phase (section 9) and run the baseline when the phase says so. Do not mark a phase `done` without a real check.
 4. Update `SITE_PLAN.md`: phase status and date, verification result, the execution log with the decisions taken, the pending-confirmation table, the Later list and the overall status (`in progress`).
    - Run the plan checks of section 5 on the updated file and shrink it if it is over a limit.
@@ -360,7 +366,7 @@ With `FLOW_OFF.lock` present (section 1) step 1 and the stop-and-ask line do not
 2. Never invent business facts. A fact the user did not give keeps the sample value that the template already has in `src/data/` or in its pages (`Your Business`, `hello@example.com`, `Your legal name`…): well-formed, obviously not real, and found by the pre-launch sweep. Never replace it with a plausible invention. No `[CONFIRM …]` marker goes into `src/` (the validator turns it into a warning); every sample value kept gets a row in the plan's **Pending confirmation** ("example value: <field>"). The only invented text allowed is short descriptive sample copy (section 4, "Facts and copy"), marked `<!-- SAMPLE COPY -->`.
 3. Never weaken tests or validator rules to get a green result; fix the content instead.
 4. Every page must pass the strict validator (rules in `DOCUMENTATION.md` section 7.2).
-5. Replace every sample value and every `SAMPLE COPY` page for which the user gave the real fact or wording. The rest stays listed in **Pending confirmation**. Run the pre-launch sweep (`DOCUMENTATION.md` section 7.4) before the plan is closed and report its hits; hits for the listed example values are expected.
+5. Replace every sample value and every `SAMPLE COPY` page for which the user gave the real fact or wording. The rest stays listed in **Pending confirmation**. Run the pre-launch sweep (`DOCUMENTATION.md` section 7.4) before the plan is closed and report its hits; hits for the listed example values are expected, and every hit is read as in section 9.
 6. Do not run Git commands (commit, tag, push) unless the user asks.
 7. Do not deal with deployment: no hosting, DNS, CI, publishing or host-level redirects. It is outside this process. If asked, say so.
 8. An audit, review or diagnostic only reads: it creates or changes no file unless the user asks for one.
@@ -376,18 +382,21 @@ python3 -B -m unittest discover tests
 
 Expect `OK` from the tests and `CHECK PASSED` from the validator. Do not set `SITE_URL`: while `site_url` is still the sample domain the strict build passes and only prints a warning, whereas `SITE_URL=https://example.com` floods `dist/` with `example.com` and hides the real hits of the sweep. Report the real output and inspect `dist/`, not only the sources. Report each check as PASS, FAIL, NOT RUN or BLOCKED; "verified" without a command that ran does not exist.
 
+**Look at the site, not only the sources** (phases 3 to 6, and any change that is visual). Run `python3 legible/dev.py` and open `http://localhost:3001/`: it builds into `.dev-dist/`, rebuilds when a file in `src/` changes and does not reload the browser, so refresh it by hand. It keeps running, so start it in the background and stop it when you finish. Never open the built files with `file://`: the links and the stylesheet start with `/` and resolve against the root of the disk. `.faq`, `.lead-strip` and `.site-footer` use `content-visibility: auto`, so a screenshot or a measurement taken before scrolling to them may show them empty. If you cannot open a browser, mark the visual check `NOT RUN` and say so; the build, the validator and `dist/` are still checked. Details: `DOCUMENTATION.md` section 7.5.
+
 **The baseline also applies to an adapted site.** The suite picks pages that exist and reads the domain, city and email from `src/data/site.json`, so it passes with renamed or removed pages and your own domain; only the tests marked `@ONLY_TEMPLATE`, which read the template's own sample data, are skipped (`DOCUMENTATION.md` section 7.3). So in every phase and every mode (execution, recovery, refinement, maintenance), run `unittest` and the strict build as above, and do not replace them with a lighter check.
 
 **If a test fails on an adapted site,** first decide whether your change caused it (a page you edited or removed, a broken data file) and fix that. If the failure comes from content that belongs to the site and the test is right to complain, fix the content. If the test itself seems wrong for this site, **do not edit, relax or skip it** (rule 3 of section 8): record the test name and the real output in the plan's log (and in **Engine notes** if the engine is involved), tell the user in your final message and let them decide. Never report the baseline as green while a test fails.
 
 - **Every phase except the last:** the strict build may fail on pages not yet adapted and sample values that `entity.json` does not yet replace (for example `Service 2` or `City 3` while it has fewer offers or cities than the pages use). Errors must be fixed. Warnings that come only from facts still pending may be reviewed with `CHECK_STRICT=FALSE ./legible/build.sh`; list each one in the plan as expected, with its reason.
 - **Last phase (close):** run the strict build with no override (neither `CHECK_STRICT` nor `SITE_URL`) and the sweep. The plan is `complete` only if the build ends in `CHECK PASSED`. If example values or `SAMPLE COPY` pages remain, the status is `complete (example data: N)`, N being the rows left in **Pending confirmation**: the site builds clean but is **not ready to publish** until N is 0, and you tell the user so in one line. Any error blocks `complete`.
+- **Read the sweep against **Pending confirmation**, hit by hit** (`DOCUMENTATION.md` section 7.4). Start from the hits in `src/`: a hit in `dist/` usually comes from a value in `src/data/`, so fix it there. Each hit is one of three things: a listed example value or a `SAMPLE COPY` page (expected, no line needed); real data that happens to match a pattern, such as a real price of `$99` or a phone number that contains `555` (justify it in one line in **Final state**); or a sample value that is not listed (replace it if the user gave the fact, otherwise add the row now). Then read the other way: an `example value:` or `sample copy` row that no longer matches anything was replaced, so close it. Rows of other kinds (`phone typed as …`, `read from image, verify`) have no pattern: check them by hand. N is the number of rows still open after this reading. `addressCountry` and `priceCurrency` always match: check their values (country and currency), not their presence.
 - **If you cannot run commands** (a chat without a shell), follow "Without a shell" in section 6: claim nothing passed, mark the checks `NOT RUN` and list the exact commands the user must run.
 
 ## 10. Map
 
 - `SITE_PLAN.md` (project root): the short plan, its status and, once finished, the final state. Present in execution and maintenance mode.
 - `src/pages/`: one folder per page. `src/data/*.json`: business facts and texts. `src/layout.html` and `src/partials/`: shared shell. `src/css/site.css`: design tokens and styles.
-- `legible/`: build, validator, dev server. `legible/locales/`: engine strings per language. Do not edit; to reword them for a site use `generated_content.locale_overrides` in `src/data/site.json` (`DOCUMENTATION.md` section 2.1).
+- `legible/`: build, validator, dev server. `DEFAULT_TEXTS` in `legible/build.py` holds the engine strings, in English. Do not edit; to reword them for a site use `generated_content.locale_overrides` in `src/data/site.json` (`DOCUMENTATION.md` section 2.1).
 - `tests/`: regression suite. Do not edit.
 - `DOCUMENTATION.md`: section 5.0 (methodology), 3 (content model), 4.2 (other languages), 5 (guide for AIs), 7 (markers, validator, commands). It explains and references; if it ever differs from this file on a procedure, a number, a limit or a command, follow this file.

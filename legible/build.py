@@ -11,6 +11,7 @@ import textwrap
 sys.dont_write_bytecode = True  # the late import of check_site must not leave legible/__pycache__/
 from pathlib import Path
 from datetime import datetime
+from types import SimpleNamespace
 from urllib.parse import quote
 
 REPO = Path(__file__).resolve().parent.parent
@@ -35,29 +36,60 @@ if not re.fullmatch(r'https://[^\s/]+(?::\d+)?(?:/[^\s]*)?', SITE_URL):
     sys.exit(f'✗ SITE_URL must start with https:// (current value: {SITE_URL!r}); check src/data/site.json')
 OUT_DEFAULT = REPO / 'dist'
 
-# language -> (html lang, og:locale, inLanguage); add a row to support another language.
+# language -> (html lang, og:locale, inLanguage); add a row to support another language. It only sets the
+# language attributes of the pages: the engine texts stay as they are until the site overrides them.
 LANGUAGES = {'en': ('en', 'en_US', 'en-US'), 'es': ('es', 'es_ES', 'es-ES')}
 LANGUAGE = str(SITE_CONFIG.get('language', 'en')).strip()
 if LANGUAGE not in LANGUAGES:
     sys.exit(f'✗ BUILD FAILED: unsupported language {LANGUAGE!r} in src/data/site.json; '
              f'supported: {", ".join(sorted(LANGUAGES))}')
 LANG, OG_LOCALE, IN_LANGUAGE = LANGUAGES[LANGUAGE]
-LOCALES_DIR = REPO / 'legible' / 'locales'
-
-
-def load_locale(language):
-    """Read legible/locales/<language>.json (strings the engine generates in that language)."""
-    path = LOCALES_DIR / f'{language}.json'
-    if not path.is_file():
-        available = ', '.join(sorted(p.stem for p in LOCALES_DIR.glob('*.json'))) or 'none'
-        raise SystemExit(f'✗ BUILD FAILED: no locale file legible/locales/{language}.json (available: {available})')
-    try:
-        data = json.loads(path.read_text(encoding='utf-8'))
-    except (OSError, ValueError) as exc:
-        raise SystemExit(f'✗ BUILD FAILED: could not read legible/locales/{language}.json: {exc}')
-    if not isinstance(data, dict):
-        raise SystemExit(f'✗ BUILD FAILED: legible/locales/{language}.json must contain a JSON object')
-    return data
+# Texts the engine generates (months, breadcrumb and menu labels, guides and blog indexes, closing strip,
+# home resources, llms.txt labels). They are generic and in English; a site rewords any of them, in any
+# language, with `generated_content.locale_overrides` in src/data/site.json (DOCUMENTATION.md section 2.1).
+DEFAULT_TEXTS = {
+    "months": ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+    "long_date": "{month} {day}, {year}",
+    "breadcrumb_home": "Home",
+    "breadcrumb_label": "Breadcrumb",
+    "nav_guides": "Guides",
+    "nav_blog": "Blog",
+    "card_read_guide": "Read the guide",
+    "card_read_article": "Read the article",
+    "lead_strip_action_label": "initial consultation",
+    "lead_strip_eyebrow": "Next step",
+    "lead_strip_headline": "Not sure where to start?",
+    "lead_strip_lead_html": "Request your {action_link}: we will tell you what makes sense for your business.",
+    "lead_strip_button": "Request a consultation",
+    "lead_strip_contact": "or write to us at {email} or on {whatsapp}.",
+    "lead_strip_contact_email_only": "or write to us at {email}.",
+    "lead_strip_contact_whatsapp_only": "or write to us on {whatsapp}.",
+    "home_resources_heading": "Resources for your business",
+    "home_resources_guides_title": "Step-by-step guides",
+    "home_resources_guides_text": "Explanations for solving a specific question about your business, with the date of their last review.",
+    "home_resources_guides_link": "See the guides",
+    "home_resources_blog_title": "Articles and news",
+    "home_resources_blog_text": "Dated analysis of questions relevant to your business, with no promises.",
+    "home_resources_blog_link": "See the articles",
+    "guides_index_title": "Guides for your business",
+    "guides_index_description": "Step-by-step guides to solve specific questions about your business. No tricks and no promises.",
+    "guides_index_heading": "Guides to solve questions about your business",
+    "guides_index_lead": "Step-by-step explanations for solving one specific question. You can apply them yourself; if you would rather we did it for you, each guide leads to the service that solves it.",
+    "guides_index_intro": "Each guide explains what to do, in what order and what does not work. None of them promises guaranteed results: that depends on many factors. They carry the date of their last review so you know whether they are still current.",
+    "guides_index_extra_heading": "How to get the most out of them",
+    "blog_index_title": "Articles and news for your business",
+    "blog_index_description": "Dated articles on topics relevant to your business: analysis and opinion, with no promises.",
+    "blog_index_heading": "Articles and news",
+    "blog_index_lead": "Dated articles in which we look at specific questions for your business. They are analysis and opinion; if you are looking for the steps to do something, {guides_txt}.",
+    "blog_lead_guides_link": "see the <a href=\"{guides_url}\">guides</a>",
+    "blog_lead_guides_text": "see the guides",
+    "blog_index_intro": "Articles carry their date because what they say can go out of date. Trust the publication date, and keep in mind that tools and platforms change often. You will not find press releases or promises here. If something you read does not fit your case, write to us and we will take a look.",
+    "blog_index_list_heading": "Latest articles",
+    "blog_index_criteria_heading": "What you will find here",
+    "llms_guides_description": "Step-by-step guides for your business, grouped by topic.",
+    "llms_blog_description": "Dated articles on topics for your business.",
+    "target_audience": "businesses in {areas}",
+}
 
 
 # `{name}` placeholders of a locale text (the engine fills them in); `{{marker}}` is not one of them.
@@ -68,14 +100,14 @@ def _locale_placeholders(text):
     return sorted(set(_LOCALE_PLACEHOLDER.findall(text)))
 
 
-def apply_locale_overrides(locale, config, language):
+def apply_locale_overrides(locale, config):
     """Return `locale` with `generated_content.locale_overrides` of site.json applied on top.
 
     The texts the engine generates (home resources, guides and blog indexes, closing strip, llms.txt) come
-    from legible/locales/<language>.json and speak of "your business". A site changes them from src/ with
+    from `DEFAULT_TEXTS` above and speak of "your business". A site changes them from src/ with
     `generated_content.locale_overrides`: an object `{locale key: new text}`. Everything is validated and
     reported at once, so a typo cannot silently leave the default text published:
-      - the key must exist in the locale file;
+      - the key must exist in `DEFAULT_TEXTS`;
       - the text must be non-empty and of the same kind as the default (`months` is a list of 12 texts);
       - it may use only the `{placeholders}` the default has (a subset is fine, `{{markers}}` are free).
     Per-section values (`generated_content.guides_index.title`, ...) still win over an override.
@@ -95,7 +127,7 @@ def apply_locale_overrides(locale, config, language):
         if key not in locale:
             near = difflib.get_close_matches(str(key), list(locale), n=1)
             hint = f' (did you mean "{near[0]}"?)' if near else ''
-            problems.append(f'"{key}": no such key{hint}; the valid keys are in legible/locales/{language}.json')
+            problems.append(f'"{key}": no such key{hint}; the valid keys are those of DEFAULT_TEXTS in legible/build.py')
         elif isinstance(default, list):
             if (not isinstance(value, list) or len(value) != len(default)
                     or not all(isinstance(v, str) and v.strip() for v in value)):
@@ -131,14 +163,14 @@ def apply_locale_overrides(locale, config, language):
     return {**locale, **clean}
 
 
-LOCALE = apply_locale_overrides(load_locale(LANGUAGE), SITE_CONFIG, LANGUAGE)
+LOCALE = apply_locale_overrides(DEFAULT_TEXTS, SITE_CONFIG)
 
 
 def t(key, locale=None):
-    """Locale string for `key` (current language unless `locale` is given); a missing key stops the build."""
+    """Engine text for `key` (with the site's overrides unless `locale` is given); a missing key stops the build."""
     data = LOCALE if locale is None else locale
     if key not in data:
-        raise SystemExit(f'✗ BUILD FAILED: key "{key}" is missing in legible/locales/{LANGUAGE}.json')
+        raise SystemExit(f'✗ BUILD FAILED: key "{key}" is missing in DEFAULT_TEXTS (legible/build.py)')
     return data[key]
 
 # Markers whose value is a sample fallback (see sample_slots) and the ones actually found in published text.
@@ -197,6 +229,17 @@ def replace_placeholders_in_content(content, html_replacements, json_replacement
 def _is_unset(val):
     """True for a value entity.json has not filled in: missing/null, or still a {{...}} marker."""
     return val is None or (isinstance(val, str) and val.startswith('{{') and val.endswith('}}'))
+
+def _get(node, *keys):
+    """Walk nested dict keys without raising when a level is missing or explicitly null
+    (e.g. entity.json has no "contactPoint", or "contactPoint": null; site.json has
+    "generated_content": null). Returns None, which callers turn into a default
+    (`_unwrap_placeholder`, `or {}` for optional settings)."""
+    for key in keys:
+        if not isinstance(node, dict):
+            return None
+        node = node.get(key)
+    return node
 
 # Sample values for the numbered slots of entity.json (knowsAbout, areaServed, hasOfferCatalog). They are used
 # only when entity.json gives no value for a slot, so a half-filled site still builds; the build then warns
@@ -281,6 +324,25 @@ def sample_slots(business):
                  'the offer priced 0 has no name' if raw is None else 'the name of the offer priced 0 is still a {{...}} marker')
             break
     return values, fallbacks
+
+
+def free_offer_warnings(business):
+    """One (where, message) when `hasOfferCatalog` has more than one offer priced 0. Only the first becomes the
+    featured action (sample_slots), and DOCUMENTATION.md section 5.3 rule 4 asks for exactly one, so the others
+    would silently be ordinary offers with no price. Same contract as the sample-value warnings: a warning, or an
+    error in strict mode. The criterion is the one of sample_slots (price '0' or 0), nothing broader."""
+    catalog = business.get('hasOfferCatalog')
+    items = catalog.get('itemListElement') if isinstance(catalog, dict) else None
+    if not isinstance(items, list):
+        return []
+    free = [o for o in items if isinstance(o, dict) and (o.get('price') == '0' or o.get('price') == 0)]
+    if len(free) < 2:
+        return []
+    names = ', '.join(f"'{o.get('name')}'" for o in free)
+    return [('src/data/entity.json',
+             f"hasOfferCatalog has {len(free)} offers priced 0 ({names}): only the first, '{free[0].get('name')}', "
+             f"is the featured action ({{{{featured_action_name}}}}). Keep exactly one offer priced 0 "
+             f"(DOCUMENTATION.md section 5.3, rule 4).")]
 
 
 def _marker_sources(markers):
@@ -476,14 +538,19 @@ def compose_page(front, content, layout_text, header_text, footer_text, entity_n
     if m:
         jsonld_str = m.group(1).strip()
         # Replace placeholders in the page JSON-LD before parsing
-        if jsonld_replacements:
-            jsonld_str = _apply_markers(jsonld_str, {k: _json_str(v) for k, v in jsonld_replacements.items()})
+        # {{page_title}} and {{page_description}}: the page's own title and description (already resolved above),
+        # so the JSON-LD does not repeat them by hand.
+        jsonld_table = {k: _json_str(v) for k, v in (jsonld_replacements or {}).items()}
+        jsonld_table.update({'{{page_title}}': _json_str(title_raw), '{{page_description}}': _json_str(description_raw)})
+        jsonld_str = _apply_markers(jsonld_str, jsonld_table)
         try:
             page_json = json.loads(jsonld_str)
         except ValueError as e:
             raise ValueError(f'JSON-LD parse error: {e}')
         content = content[:m.start()] + content[m.end():]
         content = content.strip()
+    content = content.replace('{{page_title}}', html.escape(title_raw, quote=True))
+    content = content.replace('{{page_description}}', html.escape(description_raw, quote=True))
     try:
         jsonld = render_jsonld(page_json, entity_nodes)
     except ValueError as e:
@@ -834,7 +901,7 @@ def _lead_strip_html(has_email=True, has_whatsapp=True):
     neither, no line at all, so no link with an empty href is ever generated.
     `generated_content.lead_strip.contact_html` replaces the whole line (it may use {{markers}}; an
     empty string removes it)."""
-    cfg = SITE_CONFIG.get('generated_content', {}).get('lead_strip', {})
+    cfg = _get(SITE_CONFIG, 'generated_content', 'lead_strip') or {}
     action_url = str(cfg.get('action_url', '/featured-action/'))
     action_label = str(cfg.get('action_label', t('lead_strip_action_label')))
     eyebrow = str(cfg.get('eyebrow', t('lead_strip_eyebrow')))
@@ -930,7 +997,7 @@ def render_home_resources(collections):
 
 def render_guides_index(guides, lead_strip=None):
     """Build the guides index using editorial copy configured per site."""
-    cfg = SITE_CONFIG.get('generated_content', {}).get('guides_index', {})
+    cfg = _get(SITE_CONFIG, 'generated_content', 'guides_index') or {}
     title = str(cfg.get('title', t('guides_index_title')))
     description = str(cfg.get('description', t('guides_index_description')))
     heading = str(cfg.get('heading', t('guides_index_heading')))
@@ -983,7 +1050,7 @@ def render_guides_index(guides, lead_strip=None):
 
 def render_blog_index(articles, guides_exist, lead_strip=None):
     """Build the blog index using editorial copy configured per site."""
-    cfg = SITE_CONFIG.get('generated_content', {}).get('blog_index', {})
+    cfg = _get(SITE_CONFIG, 'generated_content', 'blog_index') or {}
     title = str(cfg.get('title', t('blog_index_title')))
     description = str(cfg.get('description', t('blog_index_description')))
     heading = str(cfg.get('heading', t('blog_index_heading')))
@@ -1240,10 +1307,16 @@ def check_out_dir(out):
               'and would be emptied. Use a folder of its own, such as dist/.', file=sys.stderr)
         raise SystemExit(1)
 
-def build(out_dir=None, minify=None, no_validate=False, strict=False):
-    git_branch, git_commit = get_git_info()
-    build_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    out = Path(out_dir or OUT_DEFAULT)
+def _unwrap_placeholder(val, default):
+    """If val is a {{...}} placeholder or missing (None), return default; otherwise return val.
+    Contact data (email, telephone, address...) is optional: an absent field must fall back
+    to site.json cleanly instead of leaking a Python None into the page."""
+    return default if _is_unset(val) else val
+
+
+def _prepare_output(out, minify):
+    """Empty the output folder, copy src/static/ and write the (optionally minified) CSS.
+    Returns the size of the CSS before and after minifying."""
     check_out_dir(out)
     if out.exists():
         for p in out.iterdir():
@@ -1267,31 +1340,33 @@ def build(out_dir=None, minify=None, no_validate=False, strict=False):
         css_text = minify_css(css_text)
     css_size_after = len(css_text.encode('utf-8'))
     css_dst.write_text(css_text, encoding='utf-8')
+    return css_size_before, css_size_after
 
-    def _unwrap_placeholder(val, default):
-        """If val is a {{...}} placeholder or missing (None), return default; otherwise return val.
-        Contact data (email, telephone, address...) is optional: an absent field must fall back
-        to site.json cleanly instead of leaking a Python None into the page."""
-        return default if _is_unset(val) else val
 
-    def _get(node, *keys):
-        """Walk nested dict keys without raising when a level is missing or explicitly null
-        (e.g. entity.json has no "contactPoint", or "contactPoint": null). Returns None, which
-        _unwrap_placeholder then turns into the configured default."""
-        for key in keys:
-            if not isinstance(node, dict):
-                return None
-            node = node.get(key)
-        return node
+def _main_node(entity):
+    """The main entity node of entity.json: the one whose @id ends in /#business, whatever its @type
+    (a Restaurant, a Dentist, a SoftwareApplication, a Person...). Older sites whose node has no such @id
+    still work through the first ProfessionalService. With neither, the build stops and names the @id."""
+    nodes = [n for n in entity if isinstance(n, dict)]
+    for n in nodes:
+        if str(n.get('@id', '')).endswith('/#business'):
+            return n
+    for n in nodes:
+        if n.get('@type') == 'ProfessionalService':
+            return n
+    sys.exit('✗ BUILD FAILED: src/data/entity.json: no main node. Add a node with "@id": "{{site_url}}/#business" '
+             '(its "@type" can be any Schema.org type): the business facts are read from it.')
 
-    layout = read_text(REPO / 'src' / 'layout.html')
-    header = read_text(REPO / 'src' / 'partials' / 'header.html')
-    footer = read_text(REPO / 'src' / 'partials' / 'footer.html')
+
+def _site_values():
+    """Read entity.json and site.json and compute the derived values (DOCUMENTATION.md section 3.2).
+
+    Returns a namespace with the entity nodes, the business node, the values the pages receive, the sample
+    fallbacks to watch, the guide/blog collections and `derived`, the table of derived markers."""
     entity = json.loads(read_text(REPO / 'src' / 'data' / 'entity.json'))
     # Read values from entity.json for global placeholders
-    business = next((n for n in entity if n.get('@type') == 'ProfessionalService'), {})
+    business = _main_node(entity)
     site_name = _unwrap_placeholder(business.get('name'), str(SITE_CONFIG.get('site_name', '')))
-    site_url = SITE_URL
     contact_email = _unwrap_placeholder(business.get('email'), str(SITE_CONFIG.get('contact_email', '')))
     phone_value = _unwrap_placeholder(_get(business, 'contactPoint', 'telephone'), str(SITE_CONFIG.get('phone_e164', '')))
     whatsapp_message = str(SITE_CONFIG.get('whatsapp_message', ''))
@@ -1318,9 +1393,8 @@ def build(out_dir=None, minify=None, no_validate=False, strict=False):
     if not all(isinstance(c, dict) for c in area_served):
         sys.exit('✗ BUILD FAILED: src/data/entity.json: every areaServed entry must be an object such as '
                  '{"@type": "City", "name": "Your City"}')
-    target_audience = 'businesses in ' + ', '.join([c.get('name', '') for c in area_served[:3]]) if area_served else '{{target_audience}}'
-    service_category_1 = slots['{{service_category_1}}']
-    service_category_2 = slots['{{service_category_2}}']
+    target_audience = (t('target_audience').format(areas=', '.join([c.get('name', '') for c in area_served[:3]]))
+                       if area_served else '{{target_audience}}')
     featured_action_name = slots.get('{{featured_action_name}}', '{{featured_action_name}}')
     try:
         collections = load_collections(REPO / 'src' / 'pages')
@@ -1328,11 +1402,10 @@ def build(out_dir=None, minify=None, no_validate=False, strict=False):
         print('✗ BUILD FAILED: invalid Guides/Blog front matter\n' + str(e), file=sys.stderr)
         raise SystemExit(1)
 
-    # Process entity nodes to replace placeholders
     derived = {
         '{{target_audience}}': target_audience,
         '{{site_name}}': site_name,
-        '{{site_url}}': site_url,
+        '{{site_url}}': SITE_URL,
         '{{lang}}': LANG,
         '{{og_locale}}': OG_LOCALE,
         '{{in_language}}': IN_LANGUAGE,
@@ -1352,6 +1425,18 @@ def build(out_dir=None, minify=None, no_validate=False, strict=False):
     # URL-encoded variants (for use inside "?text="): "Service 1" -> "Service%201"
     for _k in ('featured_action_name', 'service_1_name'):
         derived['{{' + _k + '_url}}'] = quote(derived['{{' + _k + '}}'], safe='')
+    return SimpleNamespace(
+        entity=entity, business=business, site_name=site_name, contact_email=contact_email,
+        whatsapp_link=whatsapp_link, location=location,
+        service_category_1=slots['{{service_category_1}}'], service_category_2=slots['{{service_category_2}}'],
+        featured_action_name=featured_action_name, sample_fallbacks=sample_fallbacks,
+        collections=collections, derived=derived)
+
+
+def _marker_tables(derived):
+    """Build the marker table (DOCUMENTATION.md section 2.4, step 5). Returns `(replacements, html_replacements)`:
+    the first has the plain values (texts.json under the derived values, which win), the second the same values
+    escaped for HTML where they are computed."""
     # Business texts: src/data/texts.json (key without braces -> text). Whatever is computed from entity.json wins.
     texts_path = REPO / 'src' / 'data' / 'texts.json'
     try:
@@ -1364,6 +1449,7 @@ def build(out_dir=None, minify=None, no_validate=False, strict=False):
     if isinstance(config_text, dict):
         texts = {**config_text, **texts}
     replacements = {'{{' + k + '}}': str(v) for k, v in texts.items()}
+    derived = dict(derived)
     if SITE_CONFIG.get('geo_region_code'):
         derived['{{geo_region}}'] = str(SITE_CONFIG['geo_region_code'])
     replacements.update(derived)
@@ -1373,37 +1459,67 @@ def build(out_dir=None, minify=None, no_validate=False, strict=False):
     for _k, _v in derived.items():
         if _k != '{{home_resources}}':
             html_replacements[_k] = html.escape(str(_v), quote=True)
-    # Resolve all configured values in shared layout/partials as well as page bodies.
+    return replacements, html_replacements
+
+
+def _shared_parts(layout, header, footer, entity, collections, replacements, html_replacements):
+    """Resolve the markers in the layout, the partials and the entity nodes, and fill the navigation, footer-blog
+    and year markers. Returns `(layout, header, footer, entity_nodes)`."""
     layout = replace_placeholders_in_content(layout, html_replacements, replacements)
     header = replace_placeholders_in_content(header, html_replacements, replacements)
     footer = replace_placeholders_in_content(footer, html_replacements, replacements)
     entity_nodes = [_replace_placeholders_in_json(node, replacements) for node in entity]
-
     # Conditional Blog markers (before menu_hrefs, so the active state works)
     nav_blog = f'<li><a href="{BLOG_URL}">{html.escape(t("nav_blog"))}</a></li>' if blog_visible(collections['blog']) else ''
     nav_guides = f'<li><a href="{GUIDES_URL}">{html.escape(t("nav_guides"))}</a></li>' if collections['guides'] else ''
     header = header.replace('{{nav_blog}}', nav_blog).replace('{{nav_guides}}', nav_guides)
     footer = footer.replace('{{footer_blog}}', nav_blog).replace('{{nav_guides}}', nav_guides)
     footer = footer.replace('{{year}}', str(datetime.now().year))
-    pages = []
-    for p in sorted((REPO / 'src' / 'pages').rglob('*.html')):
-        pages.append(p)
-    generated = 0
-    errors = []
-    warnings = []
-    total_bytes = 0
-    total_html_before = 0
-    total_html_after = 0
-    pages_data = []
-    for page_path in pages:
-        text = read_text(page_path)
-        front, content = parse_front_matter(text)
+    return layout, header, footer, entity_nodes
+
+
+class _PageWriter:
+    """Compose, minify and write one page, and keep the running totals the report needs.
+
+    `shared` holds the arguments every page passes to compose_page (layout, header, footer, entity nodes and
+    the resolved values), so a page only adds its own front matter, content and URL."""
+
+    def __init__(self, out, minify, shared, html_replacements, json_replacements):
+        self.out = out
+        self.minify = minify
+        self.shared = shared
+        self.html_replacements = html_replacements
+        self.json_replacements = json_replacements
+        self.generated = 0
+        self.total_bytes = 0
+        self.html_before = 0
+        self.html_after = 0
+        self.pages_data = []
+
+    def emit(self, out_path, page_rel, front, content):
+        # Global markers: HTML body as HTML, JSON-LD with JSON escaping
+        content = replace_placeholders_in_content(content, self.html_replacements, self.json_replacements)
+        composed = compose_page(front, content, page_rel=page_rel, **self.shared)
+        self.html_before += len(composed.encode('utf-8'))
+        if self.minify:
+            composed = minify_html(composed)
+        self.html_after += len(composed.encode('utf-8'))
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        write_text(out_path, composed)
+        self.generated += 1
+        self.total_bytes += out_path.stat().st_size
+        self.pages_data.append((page_rel, front, str(out_path)))
+
+
+def _write_pages(writer, errors):
+    """Write every page of src/pages/. A page with no title or description is an error and is skipped."""
+    pages_dir = REPO / 'src' / 'pages'
+    for page_path in sorted(pages_dir.rglob('*.html')):
+        front, content = parse_front_matter(read_text(page_path))
         if 'title' not in front or 'description' not in front:
             errors.append((str(page_path.relative_to(REPO)), 'missing title or description'))
             continue
-        # Replace global placeholders in the page content (HTML body; JSON-LD with JSON escaping)
-        content = replace_placeholders_in_content(content, html_replacements, {k: _json_str(v) for k, v in replacements.items()})
-        rel_parts = list(page_path.relative_to(REPO / 'src' / 'pages').parts)
+        rel_parts = list(page_path.relative_to(pages_dir).parts)
         if rel_parts == ['404.html']:
             page_rel = '/404.html'
         else:
@@ -1412,43 +1528,25 @@ def build(out_dir=None, minify=None, no_validate=False, strict=False):
             page_rel = '/' + '/'.join(rel_parts)
             if page_rel != '/':
                 page_rel += '/'
-        composed = compose_page(front, content, layout, header, footer, entity_nodes, page_rel, site_name, site_url, contact_email, whatsapp_link, service_category_1, service_category_2, location, featured_action_name, jsonld_replacements=replacements)
-        html_before = len(composed.encode('utf-8'))
-        if minify:
-            composed = minify_html(composed)
-        html_after = len(composed.encode('utf-8'))
-        total_html_before += html_before
-        total_html_after += html_after
-        out_path = out / page_path.relative_to(REPO / 'src' / 'pages')
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        write_text(out_path, composed)
-        generated += 1
-        total_bytes += out_path.stat().st_size
-        pages_data.append((page_rel, front, str(out_path)))
-    # Generated collection indexes (they do not exist as files in src/pages)
+        writer.emit(writer.out / page_path.relative_to(pages_dir), page_rel, front, content)
+
+
+def _write_indexes(writer, site):
+    """Write the generated collection indexes (they do not exist as files in src/pages)."""
+    collections = site.collections
     # The closing strip of the indexes only offers the contact channels the site has (email, WhatsApp).
-    lead_strip = _lead_strip_html(bool(str(contact_email).strip()), bool(whatsapp_link))
+    lead_strip = _lead_strip_html(bool(str(site.contact_email).strip()), bool(site.whatsapp_link))
     generated_indexes = []
     if collections['guides']:
         generated_indexes.append((GUIDES_URL,) + render_guides_index(collections['guides'], lead_strip))
     if blog_state(collections['blog']) != 'none':
         generated_indexes.append((BLOG_URL,) + render_blog_index(collections['blog'], bool(collections['guides']), lead_strip))
     for page_rel, front, content in generated_indexes:
-        # Replace global placeholders in the generated content
-        content = replace_placeholders_in_content(content, html_replacements, {k: _json_str(v) for k, v in replacements.items()})
-        composed = compose_page(front, content, layout, header, footer, entity_nodes, page_rel, site_name, site_url, contact_email, whatsapp_link, service_category_1, service_category_2, location, featured_action_name, jsonld_replacements=replacements)
-        html_before = len(composed.encode('utf-8'))
-        if minify:
-            composed = minify_html(composed)
-        html_after = len(composed.encode('utf-8'))
-        total_html_before += html_before
-        total_html_after += html_after
-        out_path = out / page_rel.strip('/') / 'index.html'
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        write_text(out_path, composed)
-        generated += 1
-        total_bytes += out_path.stat().st_size
-        pages_data.append((page_rel, front, str(out_path)))
+        writer.emit(writer.out / page_rel.strip('/') / 'index.html', page_rel, front, content)
+
+
+def _write_site_files(out, collections, pages_data, replacements):
+    """Write sitemap.xml and resolve the markers of robots.txt and llms.txt."""
     try:
         sitemap_order = build_sitemap(pages_data, collections, out)
         robots_path = out / 'robots.txt'
@@ -1465,9 +1563,14 @@ def build(out_dir=None, minify=None, no_validate=False, strict=False):
     except ValueError as e:
         print(f'✗ BUILD FAILED: {e}', file=sys.stderr)
         raise SystemExit(1)
+
+
+def _final_checks(out, strict, no_validate, site, errors, warnings):
+    """Add the build's own warnings and the validator's findings to `errors` and `warnings`."""
     # Sample values that ended up in published text: a warning, or an error in strict mode (build.sh with
     # CHECK_STRICT=TRUE), the same contract as the validator's warnings.
-    (errors if strict else warnings).extend(sample_fallback_warnings(sample_fallbacks, _SAMPLE_HITS))
+    (errors if strict else warnings).extend(sample_fallback_warnings(site.sample_fallbacks, _SAMPLE_HITS))
+    (errors if strict else warnings).extend(free_offer_warnings(site.business))
     if not no_validate:
         # Intentional circular import: check_site imports shared settings/helpers from build;
         # import it only after output generation, when validation is requested.
@@ -1475,20 +1578,48 @@ def build(out_dir=None, minify=None, no_validate=False, strict=False):
         val_errors, val_warnings = check_site.run_checks(out, SITE_URL)
         errors.extend(val_errors)
         warnings.extend(val_warnings)
+
+
+def build(out_dir=None, minify=None, no_validate=False, strict=False):
+    git_branch, git_commit = get_git_info()
+    build_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    out = Path(out_dir or OUT_DEFAULT)
+    css_size_before, css_size_after = _prepare_output(out, minify)
+
+    layout = read_text(REPO / 'src' / 'layout.html')
+    header = read_text(REPO / 'src' / 'partials' / 'header.html')
+    footer = read_text(REPO / 'src' / 'partials' / 'footer.html')
+    site = _site_values()
+    replacements, html_replacements = _marker_tables(site.derived)
+    layout, header, footer, entity_nodes = _shared_parts(
+        layout, header, footer, site.entity, site.collections, replacements, html_replacements)
+
+    shared = dict(layout_text=layout, header_text=header, footer_text=footer, entity_nodes=entity_nodes,
+                  site_name=site.site_name, site_url=SITE_URL, contact_email=site.contact_email,
+                  whatsapp_link=site.whatsapp_link, service_category_1=site.service_category_1,
+                  service_category_2=site.service_category_2, location=site.location,
+                  featured_action_name=site.featured_action_name, jsonld_replacements=replacements)
+    writer = _PageWriter(out, minify, shared, html_replacements, {k: _json_str(v) for k, v in replacements.items()})
+    errors = []
+    warnings = []
+    _write_pages(writer, errors)
+    _write_indexes(writer, site)
+    _write_site_files(out, site.collections, writer.pages_data, replacements)
+    _final_checks(out, strict, no_validate, site, errors, warnings)
     success = len(errors) == 0
     print_report(
         success=success,
         errors=errors,
         warnings=warnings,
-        generated=generated,
-        total_bytes=total_bytes,
+        generated=writer.generated,
+        total_bytes=writer.total_bytes,
         out=out,
         minify=minify,
         git_branch=git_branch,
         git_commit=git_commit,
         build_time=build_time,
-        total_html_before=total_html_before,
-        total_html_after=total_html_after,
+        total_html_before=writer.html_before,
+        total_html_after=writer.html_after,
         css_size_before=css_size_before,
         css_size_after=css_size_after,
     )

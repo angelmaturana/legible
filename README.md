@@ -2,7 +2,7 @@
 
 <img src="readme-logo.svg" alt="legible" width="380">
 
-**A lightweight static-site generator for local service businesses, built with Python's standard library.**
+**A lightweight static-site generator for small sites with one main entity (a business, a project or a person), built with Python's standard library.**
 
 [![Python 3.8+](https://img.shields.io/badge/Python-3.8%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Runtime dependencies: none](https://img.shields.io/badge/runtime%20dependencies-none-2ea44f)](#features-at-a-glance)
@@ -14,7 +14,7 @@
 
 ## Overview
 
-`legible` turns editable HTML templates and shared JSON data into a static website for a local service business. It generates page metadata, Schema.org JSON-LD, a sitemap, `robots.txt` and `llms.txt`, then validates the compiled output.
+`legible` turns editable HTML templates and shared JSON data into a static website for a small site with one main entity: a business, a project or a person (the Schema.org type of each kind is in `DOCUMENTATION.md` section 5.7). It generates page metadata, Schema.org JSON-LD, a sitemap, `robots.txt` and `llms.txt`, then validates the compiled output.
 
 The aim is predictable, inspectable output—not guaranteed rankings, indexing, rich results, traffic or AI citations. The included site is generic sample content; replace it with verified business information before publishing.
 
@@ -83,7 +83,7 @@ If there is no plan and you ask for anything other than `legible start`, the ass
 | `legible start <url>` | Style from a website | The business name, and whether to keep the same theme |
 | `legible start name: …; activity: …` | Your data in one line; the design is proposed from the theme | Nothing |
 | `legible start <url> name: …; activity: …` | Style from a website plus your data | Nothing |
-| `legible start` + attached images | A design image (style) and/or a data image (card, flyer, menu); `style: design.png; data: card.jpg` says which is which | Nothing if there are data |
+| `legible start` + attached images | A design image (style) and/or a data image (card, flyer, menu); `style: design.png; data: card.jpg` says which is which, and `logo: logo.png` marks your own logo | Nothing if there are data |
 | `legible continue` | Continues the plan | Nothing |
 | `legible help` | A simple explanation of what `legible` is, plus this list | Nothing |
 | `legible flow off` / `legible flow on` | For maintainers: turns the AI flows off or on by creating or deleting `FLOW_OFF.lock` | Nothing |
@@ -144,7 +144,6 @@ Set `"language": "en"` or `"language": "es"` in `src/data/site.json`. This confi
 │   ├── build.sh           build followed by strict validation
 │   ├── dev.py             local development server
 │   ├── run_all.py         tests, build and optional server
-│   └── locales/           engine-generated English and Spanish strings
 ├── tests/test_legible.py  regression suite
 ├── README.md
 ├── DOCUMENTATION.md      full reference and AI-agent guide

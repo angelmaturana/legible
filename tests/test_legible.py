@@ -36,6 +36,7 @@ sys.path.insert(0, str(LEGIBLE))
 import build  # noqa: E402
 
 PAGES = REPO / 'src' / 'pages'
+from html import escape as html_escape  # noqa: E402
 
 
 # --------------------------------------------------------------------------- page lookup
@@ -298,12 +299,27 @@ class TestSmoke(unittest.TestCase):
         self.assertEqual((REPO / 'dist').exists(), existed)
 
 
-# --------------------------------------------------------------------------- locales
+# --------------------------------------------------------------------------- engine texts
+
+def spanish_overrides():
+    """The `locale_overrides` object of the Spanish block in DOCUMENTATION.md section 4.2."""
+    docs = (REPO / 'DOCUMENTATION.md').read_text(encoding='utf-8')
+    match = re.search(r'\*\*Spanish engine texts, ready to paste\.\*\*.*?```json\n(.*?)\n```', docs, re.S)
+    assert match, 'DOCUMENTATION.md has no Spanish block'
+    return json.loads(match.group(1))['locale_overrides']
+
 
 class TestLocale(unittest.TestCase):
-    def test_format_long_date_in_both_languages(self):
-        self.assertEqual(build.format_long_date('2026-03-05', build.load_locale('en')), 'March 5, 2026')
-        self.assertEqual(build.format_long_date('2026-03-05', build.load_locale('es')), '5 de marzo de 2026')
+    def test_format_long_date_in_english_and_with_the_spanish_block(self):
+        self.assertEqual(build.format_long_date('2026-03-05', build.DEFAULT_TEXTS), 'March 5, 2026')
+        spanish = {**build.DEFAULT_TEXTS, **spanish_overrides()}
+        self.assertEqual(build.format_long_date('2026-03-05', spanish), '5 de marzo de 2026')
+
+    def test_the_spanish_block_is_a_valid_override_with_every_key(self):
+        block = spanish_overrides()
+        self.assertEqual(sorted(block), sorted(build.DEFAULT_TEXTS), 'the block must define every engine text')
+        merged = build.apply_locale_overrides(build.DEFAULT_TEXTS, {'generated_content': {'locale_overrides': block}})
+        self.assertEqual(merged, block)
 
 
 # --------------------------------------------------------------------------- 2. minify_css
@@ -835,8 +851,12 @@ class TestLanguageRegression(TempProject):
         self.assertIn('<html lang="en"', index_html)
         self.assertIn('content="en_US"', index_html)
 
-    def test_language_es_builds_and_validates_with_spanish_months_and_breadcrumb(self):
+    def test_language_es_builds_and_validates_with_the_spanish_block(self):
         self._set_language('es')
+        site = self.project / 'src' / 'data' / 'site.json'
+        cfg = json.loads(site.read_text(encoding='utf-8'))
+        cfg.setdefault('generated_content', {})['locale_overrides'] = spanish_overrides()
+        site.write_text(json.dumps(cfg, ensure_ascii=False), encoding='utf-8')
         add_piece(self.project, 'blog', 'one', published='2026-03-05', updated='2026-03-05')
         add_piece(self.project, 'blog', 'two')
         add_piece(self.project, 'blog', 'three')
@@ -849,6 +869,15 @@ class TestLanguageRegression(TempProject):
         self.assertIn('5 de marzo de 2026', blog_index, 'month name must be in Spanish')
         self.assertIn('Migas de pan', blog_index, 'breadcrumb aria-label must be in Spanish')
         self.assertIn('>Inicio<', blog_index, 'breadcrumb Home link must say Inicio')
+
+    def test_language_es_alone_changes_only_the_language_attributes(self):
+        self._set_language('es')
+        self.build_ok()
+        index_html = (self.out / 'index.html').read_text(encoding='utf-8')
+        self.assertIn('<html lang="es"', index_html)
+        built = read_all(self.out)
+        self.assertTrue(any('aria-label="Breadcrumb"' in text for text in built.values()),
+                        'the engine texts stay in English until they are overridden')
 
     def test_unknown_language_fails_with_a_clear_message(self):
         self._set_language('fr')
@@ -1333,10 +1362,8 @@ class TestLeadStripContact(TempProject):
     def test_default_call_is_unchanged_for_other_callers(self):
         self.assertEqual(build._lead_strip_html(), build._lead_strip_html(True, True))
 
-    def test_every_locale_has_the_three_contact_lines(self):
-        en, es = build.load_locale('en'), build.load_locale('es')
-        self.assertEqual(sorted(en), sorted(es), 'en.json and es.json must define the same keys')
-        for data in (en, es):
+    def test_every_set_of_texts_has_the_three_contact_lines(self):
+        for data in (build.DEFAULT_TEXTS, spanish_overrides()):
             self.assertIn('{email}', data['lead_strip_contact_email_only'])
             self.assertNotIn('{whatsapp}', data['lead_strip_contact_email_only'])
             self.assertIn('{whatsapp}', data['lead_strip_contact_whatsapp_only'])
@@ -1396,12 +1423,12 @@ class TestLocaleOverrides(TempProject):
     def _cfg(overrides):
         return {'generated_content': {'locale_overrides': overrides}}
 
-    def _apply(self, overrides, language='en'):
-        return build.apply_locale_overrides(build.load_locale(language), self._cfg(overrides), language)
+    def _apply(self, overrides):
+        return build.apply_locale_overrides(build.DEFAULT_TEXTS, self._cfg(overrides))
 
-    def _fails(self, overrides, *needles, language='en'):
+    def _fails(self, overrides, *needles):
         with self.assertRaises(SystemExit) as ctx:
-            self._apply(overrides, language)
+            self._apply(overrides)
         message = str(ctx.exception)
         self.assertIn('locale_overrides', message)
         for needle in needles:
@@ -1422,28 +1449,27 @@ class TestLocaleOverrides(TempProject):
     # -- the function
 
     def test_without_overrides_the_locale_is_returned_as_it_is(self):
-        locale = build.load_locale('en')
+        locale = build.DEFAULT_TEXTS
         for config in ({}, {'generated_content': {}}, {'generated_content': None},
                        {'generated_content': []}, {'generated_content': {'locale_overrides': None}}):
-            self.assertIs(build.apply_locale_overrides(locale, config, 'en'), locale, config)
+            self.assertIs(build.apply_locale_overrides(locale, config), locale, config)
 
     def test_an_override_replaces_the_text_and_leaves_the_original_untouched(self):
-        locale = build.load_locale('en')
-        merged = build.apply_locale_overrides(locale, self._cfg({'nav_guides': 'Library'}), 'en')
+        locale = build.DEFAULT_TEXTS
+        merged = build.apply_locale_overrides(locale, self._cfg({'nav_guides': 'Library'}))
         self.assertEqual(merged['nav_guides'], 'Library')
         self.assertEqual(locale['nav_guides'], 'Guides')
         self.assertEqual({k: v for k, v in merged.items() if k != 'nav_guides'},
                          {k: v for k, v in locale.items() if k != 'nav_guides'})
 
     def test_every_default_text_is_a_valid_override_of_itself(self):
-        for language in ('en', 'es'):
-            locale = build.load_locale(language)
-            self.assertEqual(build.apply_locale_overrides(locale, self._cfg(dict(locale)), language), locale, language)
+        locale = build.DEFAULT_TEXTS
+        self.assertEqual(build.apply_locale_overrides(locale, self._cfg(dict(locale))), locale)
 
     def test_an_unknown_key_is_named_with_a_suggestion(self):
         self._fails({'home_resource_heading': 'x'}, '"home_resource_heading"', 'did you mean "home_resources_heading"',
-                    'legible/locales/en.json')
-        self._fails({'zzz': 'x'}, '"zzz"', 'no such key', language='es')
+                    'DEFAULT_TEXTS')
+        self._fails({'zzz': 'x'}, '"zzz"', 'no such key')
 
     def test_an_empty_or_wrong_typed_text_is_rejected(self):
         self._fails({'blog_index_lead': ''}, '"blog_index_lead"', 'non-empty')
@@ -1482,16 +1508,16 @@ class TestLocaleOverrides(TempProject):
         self._fails({'long_date': '{day} of {mes}'}, '"long_date"', '{mes}')
 
     def test_it_works_in_spanish_too(self):
-        merged = self._apply({'nav_blog': 'Novedades'}, 'es')
+        merged = self._apply({**spanish_overrides(), 'nav_blog': 'Novedades'})
         self.assertEqual(merged['nav_blog'], 'Novedades')
-        self.assertEqual(merged['nav_guides'], build.load_locale('es')['nav_guides'])
+        self.assertEqual(merged['nav_guides'], spanish_overrides()['nav_guides'])
 
     # -- the whole build
 
     def test_the_default_texts_are_published_when_nothing_is_overridden(self):
         self._with_collections()
         self.build_ok()
-        locale = build.load_locale(SITE.get('language', 'en'))
+        locale = build.DEFAULT_TEXTS
         self.assertIn(locale['home_resources_heading'], (self.out / 'index.html').read_text(encoding='utf-8'))
         self.assertIn(locale['guides_index_lead'], (self.out / 'guides' / 'index.html').read_text(encoding='utf-8'))
 
@@ -1782,6 +1808,411 @@ class TestSpecialCharactersAndWarnings(TempProject):
         self.assertIn('http instead of https', r.stdout)
 
 
+class TestBrokenMarkupDiagnosis(TempProject):
+    """Regression: a missing quote in `<script type="application/ld+json>` produced "0 h1", "no JSON-LD", "anchor
+    #main not found" and "0 words", and none of them named the cause. A page that already fails now also gets
+    an error that names the broken tag (first, the others stay). A page that does not fail gets nothing."""
+
+    def setUp(self):
+        super().setUp()
+        import check_site
+        self.check_site = check_site
+        self.build_ok()
+        self.home = self.out / 'index.html'
+        self.original = self.home.read_text(encoding='utf-8')
+
+    def _home_errors(self):
+        errors, _ = self.check_site.run_checks(self.out, build.SITE_URL)
+        return [msg for rel, msg in errors if rel == 'index.html']
+
+    def _break(self, old, new):
+        self.assertIn(old, self.original)
+        self.home.write_text(self.original.replace(old, new, 1), encoding='utf-8')
+
+    def test_a_clean_page_gets_no_diagnosis(self):
+        self.assertEqual(self._home_errors(), [])
+
+    def test_a_quote_left_open_is_named_first_and_the_other_errors_stay(self):
+        self._break('<script type="application/ld+json">', '<script type="application/ld+json>')
+        errors = self._home_errors()
+        self.assertGreater(len(errors), 1, 'the usual symptoms are still reported')
+        self.assertIn('broken markup', errors[0])
+        self.assertIn('<script>', errors[0])
+        self.assertIn('application/ld+json', errors[0], 'the message shows the tag')
+        self.assertEqual(sum('broken markup' in e for e in errors), 1)
+
+    def test_a_script_with_no_closing_tag_is_named(self):
+        self._break('<main', '<script>var b = 2;\n<main')
+        errors = self._home_errors()
+        self.assertIn('broken markup', errors[0])
+        self.assertIn('no closing </script>', errors[0])
+
+    def test_a_style_with_no_closing_tag_is_named(self):
+        self._break('<main', '<style>p { color: red }\n<main')
+        errors = self._home_errors()
+        self.assertIn('broken markup', errors[0])
+        self.assertIn('no closing </style>', errors[0])
+
+    def test_a_page_with_no_other_error_is_never_given_the_diagnosis(self):
+        """A `<` inside an attribute value looks like a broken tag but breaks nothing: the page must still pass."""
+        self._break('</main>', '<p title="a <b c">x</p></main>')
+        self.assertEqual(self._home_errors(), [])
+
+    def test_the_finder_ignores_comments_and_script_bodies(self):
+        find = self.check_site.find_broken_markup
+        self.assertIsNone(find('<p>a</p><!-- <div class="x --><script>if (a<b && c>d) {}</script><p>b</p>'))
+        self.assertIsNone(find('<a href="x" title="a > b">t</a>'))
+        self.assertIn('never closes', find('<p>x</p><a href="x>link</a>'))
+
+
+class TestSampleDomainUrls(TempProject):
+    """A link, image, canonical or JSON-LD URL that points to example.com, example.org or example.net is a copied
+    example that was never replaced: a warning. Never the visible text, `mailto:` or `tel:`, nor the site's own
+    domain (the tests build sites at example.org)."""
+
+    def setUp(self):
+        super().setUp()
+        import check_site
+        self.check_site = check_site
+
+    def _urls(self, html, site='https://my-site.test'):
+        page = self.check_site.PageParser()
+        page.feed(html)
+        page.close()
+        return self.check_site.sample_domain_urls(page, site)
+
+    def test_a_link_to_a_sample_domain_is_found(self):
+        self.assertEqual(self._urls('<main><a href="https://example.com/x">x</a></main>'), ['https://example.com/x'])
+
+    def test_every_place_a_url_can_live_is_looked_at(self):
+        html = ('<head><link rel="canonical" href="https://example.org/"><meta property="og:url" content="https://www.example.net/a">'
+                '<meta property="og:image" content="http://example.com/i.png"></head>'
+                '<main><img src="https://example.com/p.png" alt="a"></main>'
+                '<script type="application/ld+json">{"@graph": [{"@id": "https://example.org/#x", "url": "https://sub.example.com/u", '
+                '"sameAs": "https://example.com/not-checked"}]}</script>')
+        found = self._urls(html)
+        for url in ('https://example.org/', 'https://www.example.net/a', 'http://example.com/i.png',
+                    'https://example.com/p.png', 'https://example.org/#x', 'https://sub.example.com/u'):
+            self.assertIn(url, found)
+        self.assertNotIn('https://example.com/not-checked', found)
+
+    def test_text_mailto_tel_and_look_alike_domains_are_ignored(self):
+        html = ('<main><p>Write to https://example.com/x or info@example.com</p>'
+                '<a href="mailto:info@example.com">m</a><a href="tel:+15550100">t</a>'
+                '<a href="https://notexample.com/">n</a><a href="https://example.com.evil.test/">e</a></main>')
+        self.assertEqual(self._urls(html), [])
+
+    def test_the_sites_own_domain_is_not_a_sample(self):
+        html = '<main><a href="https://example.org/about/">a</a></main>'
+        self.assertEqual(self._urls(html, site='https://example.org'), [])
+        self.assertEqual(self._urls(html, site='https://other.test'), ['https://example.org/about/'])
+
+    def test_the_validator_warns_once_per_page_and_the_template_is_clean(self):
+        self.build_ok()
+        warnings = self.check_site.run_checks(self.out, build.SITE_URL)[1]
+        self.assertFalse([w for w in warnings if 'sample domain' in w[1]])
+        home = self.out / 'index.html'
+        text = home.read_text(encoding='utf-8')
+        self.assertIn('</main>', text)
+        home.write_text(text.replace('</main>', '<a href="https://example.com/x">x</a></main>', 1), encoding='utf-8')
+        warnings = self.check_site.run_checks(self.out, build.SITE_URL)[1]
+        mine = [w for w in warnings if 'sample domain' in w[1]]
+        self.assertEqual([w[0] for w in mine], ['index.html'])
+        self.assertIn('https://example.com/x', mine[0][1])
+
+
+class TestPageTitleMarkers(TempProject):
+    """`{{page_title}}` and `{{page_description}}` are the page's own title and description, so the JSON-LD (whose
+    `name` must equal the `<title>`) does not repeat them by hand. They work in the JSON-LD and in the content."""
+
+    TITLE = 'Tom "the Cat" & Co: a page with careful quotes'
+    DESCRIPTION = 'A description with "quotes", an ampersand & and an <angle> that must stay escaped in every place.'
+
+    def _page(self):
+        route = '/zz-title-markers/'
+        text = piece_html('guides', 'x', title=self.TITLE, description=self.DESCRIPTION, type=None, topic=None,
+                          published=None, summary=None, service=None)
+        text = text.replace(json.dumps(self.TITLE, ensure_ascii=False), '"{{page_title}}"')
+        text = text.replace(json.dumps(self.DESCRIPTION, ensure_ascii=False), '"{{page_description}}"')
+        text = text.replace('<h1>', '<p class="m">{{page_title}} | {{page_description}}</p><h1>', 1)
+        d = self.project / 'src' / 'pages' / 'zz-title-markers'
+        d.mkdir(parents=True)
+        (d / 'index.html').write_text(text, encoding='utf-8')
+        self.build_ok()
+        return built_page(self.out, route).read_text(encoding='utf-8')
+
+    def test_the_json_ld_name_and_description_equal_the_head(self):
+        built = self._page()
+        blocks = re.findall(r'<script type="application/ld\+json">(.*?)</script>', built, re.S)
+        page = next(n for b in blocks for n in json.loads(b).get('@graph', []) if n.get('@type') == 'WebPage'
+                    and n.get('name') == self.TITLE)
+        self.assertEqual(page['description'], self.DESCRIPTION)
+        self.assertIn('<title>' + html_escape(self.TITLE) + '</title>', built)
+
+    def test_the_content_gets_the_escaped_text(self):
+        built = self._page()
+        self.assertIn(html_escape(self.TITLE) + ' | ' + html_escape(self.DESCRIPTION), built)
+        self.assertNotIn('{{page_', built)
+
+
+class TestMainNodeType(TempProject):
+    """The main entity node is the one with @id ".../#business", whatever its @type. A bar, a dentist or a
+    restaurant uses its real Schema.org type; a missing main node stops the build and names the @id."""
+
+    def _edit_main(self, edit):
+        path = self.project / 'src' / 'data' / 'entity.json'
+        nodes = json.loads(path.read_text(encoding='utf-8'))
+        edit(nodes)
+        path.write_text(json.dumps(nodes, ensure_ascii=False, indent=2), encoding='utf-8')
+
+    def _set_type(self, new_type):
+        def edit(nodes):
+            next(n for n in nodes if str(n.get('@id', '')).endswith('/#business'))['@type'] = new_type
+        self._edit_main(edit)
+
+    def test_a_single_real_type_builds_and_passes_the_strict_validator(self):
+        for new_type in ('Restaurant', 'Dentist', 'HairSalon'):
+            with self.subTest(type=new_type):
+                self._set_type(new_type)
+                self.build_ok()
+                self.check_ok()
+
+    def test_a_list_of_types_builds_and_passes_the_strict_validator(self):
+        self._set_type(['Restaurant', 'LocalBusiness'])
+        self.build_ok()
+        self.check_ok()
+
+    def test_without_a_main_node_the_build_fails_and_names_the_id(self):
+        self._edit_main(lambda nodes: nodes.__setitem__(slice(None), [n for n in nodes if n.get('@type') == 'WebSite']))
+        r = run_build(self.project, self.out)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn('BUILD FAILED', r.stderr)
+        self.assertIn('no main node', r.stderr)
+        self.assertIn('/#business', r.stderr)
+        self.assertNotIn('Traceback', r.stderr)
+        self.assertNotIn('featured_action_name', r.stderr)
+
+    def test_a_node_without_the_business_id_still_works_through_professional_service(self):
+        """Older sites: the first ProfessionalService is still the main node when no node has the @id."""
+        def edit(nodes):
+            for n in nodes:
+                if n.get('@type') == 'ProfessionalService':
+                    n['@id'] = '{{site_url}}/#company'
+        self._edit_main(edit)
+        r = run_build(self.project, self.out)
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_the_validator_names_a_missing_main_node(self):
+        self.build_ok()
+        pages = [p for p in self.out.rglob('index.html') if '/#business' in p.read_text(encoding='utf-8')]
+        self.assertTrue(pages)
+        page = pages[0]
+        text = page.read_text(encoding='utf-8')
+        page.write_text(text.replace('/#business"', '/#other"'), encoding='utf-8')
+        r = run_check(self.project, self.out)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn('missing main node', r.stdout)
+        self.assertNotIn('Traceback', r.stdout + r.stderr)
+
+
+class TestTypeByKindTable(TempProject):
+    """DOCUMENTATION.md section 5.7, table A, must not drift from the engine: the template builds and passes the
+    strict validator with the first type of every class of the table, and with a list of types."""
+
+    @staticmethod
+    def _first_types():
+        docs = (REPO / 'DOCUMENTATION.md').read_text(encoding='utf-8')
+        block = docs.split('### 5.7 ', 1)[1].split('**A. Local business**', 1)[1].split('**B. ', 1)[0]
+        types = []
+        for line in block.splitlines():
+            cells = [c.strip() for c in line.strip().strip('|').split('|')]
+            if line.startswith('|') and len(cells) == 3 and not set(cells[0]) <= set('-: '):
+                found = re.findall(r'`([A-Za-z]+)`', cells[1])
+                if found and cells[0] != 'Class':
+                    types.append(found[0])
+        return types
+
+    def _build_with_type(self, new_type):
+        path = self.project / 'src' / 'data' / 'entity.json'
+        nodes = json.loads(path.read_text(encoding='utf-8'))
+        next(n for n in nodes if str(n.get('@id', '')).endswith('/#business'))['@type'] = new_type
+        path.write_text(json.dumps(nodes, ensure_ascii=False, indent=2), encoding='utf-8')
+        self.build_ok()
+        self.check_ok()
+
+    def test_the_table_has_ten_classes(self):
+        self.assertEqual(len(self._first_types()), 10)
+
+    def test_the_first_type_of_every_class_builds_and_passes_the_strict_validator(self):
+        for t in self._first_types():
+            with self.subTest(type=t):
+                self._build_with_type(t)
+
+    def test_a_type_that_is_not_a_local_business_builds_as_a_list_with_local_business(self):
+        self._build_with_type(['VeterinaryCare', 'LocalBusiness'])
+
+
+class TestFreeOfferWarning(TempProject):
+    """More than one offer priced 0: only the first is the featured action, and DOCUMENTATION.md section 5.3
+    rule 4 asks for exactly one. A warning, or an error in strict mode, like the sample-value warnings."""
+
+    @staticmethod
+    def _business(items):
+        return {'hasOfferCatalog': {'itemListElement': items}}
+
+    def test_two_free_offers_warn_with_count_names_and_the_one_used(self):
+        warnings = build.free_offer_warnings(self._business([
+            {'name': 'First free', 'price': '0'}, {'name': 'Paid', 'price': '9'}, {'name': 'Second free', 'price': 0}]))
+        self.assertEqual(len(warnings), 1)
+        where, message = warnings[0]
+        self.assertEqual(where, 'src/data/entity.json')
+        for needle in ('2 offers priced 0', "'First free'", "'Second free'", 'section 5.3, rule 4'):
+            self.assertIn(needle, message)
+
+    def test_one_none_and_odd_data_are_silent(self):
+        for business in (self._business([{'name': 'Free', 'price': '0'}, {'name': 'Paid', 'price': '9'}]),
+                         self._business([{'name': 'Paid', 'price': '9'}]),
+                         self._business([{'name': 'A', 'price': '0.00'}, {'name': 'B', 'price': '0.00'}]),
+                         self._business(['not an offer', {'price': '0'}]),
+                         {'hasOfferCatalog': None}, {'hasOfferCatalog': {'itemListElement': 'x'}}, {}):
+            self.assertEqual(build.free_offer_warnings(business), [], business)
+
+    def _add_second_free_offer(self):
+        path = self.project / 'src' / 'data' / 'entity.json'
+        data = json.loads(path.read_text(encoding='utf-8'))
+        nodes = data if isinstance(data, list) else data.get('@graph', [data])
+        items = next(n for n in nodes if 'hasOfferCatalog' in n)['hasOfferCatalog']['itemListElement']
+        items.append({'@type': 'Offer', 'name': 'Another free thing', 'price': '0'})
+        path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8')
+
+    @ONLY_TEMPLATE
+    def test_the_template_has_exactly_one_free_offer(self):
+        r = run_build(self.project, self.out, strict=True)
+        self.assertEqual(r.returncode, 0, f'{r.stdout}\n{r.stderr}')
+        self.assertNotIn('priced 0', r.stdout)
+
+    def test_the_build_warns_and_strict_mode_fails(self):
+        self._add_second_free_offer()
+        relaxed = run_build(self.project, self.out)
+        self.assertEqual(relaxed.returncode, 0, 'without --strict it is only a warning')
+        self.assertIn('2 offers priced 0', ' '.join(relaxed.stdout.split()))
+        strict = run_build(self.project, self.out, strict=True)
+        self.assertNotEqual(strict.returncode, 0)
+        self.assertIn('2 offers priced 0', ' '.join(strict.stdout.split()))
+        self.assertNotIn('Traceback', strict.stderr)
+
+
+class TestExplicitNullSettings(TempProject):
+    """Regression: an explicit `null` in site.json (`"generated_content": null`, `"lead_strip": null`...) stopped
+    the build with `AttributeError: 'NoneType' object has no attribute 'get'`. A null is the same as absent."""
+
+    def _build_with(self, generated_content):
+        path = self.project / 'src' / 'data' / 'site.json'
+        cfg = json.loads(path.read_text(encoding='utf-8'))
+        cfg['generated_content'] = generated_content
+        path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding='utf-8')
+        add_piece(self.project, 'guides', 'a')
+        for slug in ('one', 'two', 'three'):
+            add_piece(self.project, 'blog', slug)
+        self.build_ok()
+        self.assertTrue((self.out / 'guides' / 'index.html').is_file())
+        self.assertTrue((self.out / 'blog' / 'index.html').is_file())
+
+    def test_generated_content_null(self):
+        self._build_with(None)
+
+    def test_lead_strip_null(self):
+        self._build_with({'lead_strip': None})
+
+    def test_guides_index_null(self):
+        self._build_with({'guides_index': None})
+
+    def test_blog_index_null(self):
+        self._build_with({'blog_index': None})
+
+    def test_a_null_setting_gives_the_same_pages_as_an_absent_one(self):
+        """The default texts are used, so the output is the one of a site with no `generated_content` at all."""
+        self._build_with({})
+        absent = read_all(self.out)
+        shutil.rmtree(self.out)
+        self._build_with({'lead_strip': None, 'guides_index': None, 'blog_index': None})
+        self.assertEqual(read_all(self.out), absent)
+
+    def test_check_site_get_walks_nulls(self):
+        import check_site
+        self.assertIsNone(check_site._get({'a': None}, 'a', 'b'))
+        self.assertIsNone(check_site._get(None, 'a'))
+        self.assertEqual(check_site._get({'a': {'b': 'x'}}, 'a', 'b'), 'x')
+        self.assertEqual(check_site._get({'a': {'b': 'x'}}, 'a', 'c'), None)
+
+    def test_faq_with_a_null_accepted_answer_is_reported_not_a_crash(self):
+        import check_site
+
+        def errors_for(accepted):
+            html = ('<main><details><summary>Q?</summary><p>Cats and dogs.</p></details></main>'
+                    '<script type="application/ld+json">%s</script>' % json.dumps(
+                        {'@type': 'FAQPage', 'mainEntity': [{'@type': 'Question', 'name': 'Q?',
+                                                              'acceptedAnswer': accepted}]}))
+            page = check_site.PageParser()
+            page.feed(html)
+            page.close()
+            errors = []
+            check_site.check_faq_matches_schema('x.html', page, [], errors)
+            return errors
+
+        self.assertEqual(errors_for({'@type': 'Answer', 'text': 'Cats and dogs.'}), [])
+        for accepted in (None, {'@type': 'Answer', 'text': None}, {}):
+            errors = errors_for(accepted)
+            self.assertEqual(len(errors), 1, accepted)
+            self.assertIn('differs', errors[0][1])
+
+
+class TestTargetAudienceLocale(TempProject):
+    """Regression: `{{target_audience}}` was built with a fixed English phrase, so a Spanish site showed
+    "businesses in". The phrase is now the locale text `target_audience` (hole `{areas}`)."""
+
+    ZONE = 'Rock & Roll <City>'
+
+    def _prepare(self, language=None, overrides=None):
+        path = self.project / 'src' / 'data' / 'site.json'
+        cfg = json.loads(path.read_text(encoding='utf-8'))
+        if language:
+            cfg['language'] = language
+        if overrides:
+            cfg['generated_content'] = {'locale_overrides': overrides}
+        path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding='utf-8')
+        path = self.project / 'src' / 'data' / 'entity.json'
+        data = json.loads(path.read_text(encoding='utf-8'))
+        nodes = data if isinstance(data, list) else data.get('@graph', [data])
+        next(n for n in nodes if 'areaServed' in n)['areaServed'][0]['name'] = self.ZONE
+        path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8')
+        self.build_ok()
+        return (self.out / 'index.html').read_text(encoding='utf-8')
+
+    def test_english_keeps_the_same_phrase(self):
+        self.assertIn('We help businesses in Rock &amp; Roll &lt;City&gt;', self._prepare())
+
+    def test_spanish_site_gets_a_spanish_phrase(self):
+        home = self._prepare(language='es', overrides=spanish_overrides())
+        self.assertIn('We help negocios en Rock &amp; Roll &lt;City&gt;', home)
+        self.assertNotIn('We help businesses in', home)
+
+    def test_the_phrase_can_be_overridden_per_site(self):
+        home = self._prepare(overrides={'target_audience': 'clients near {areas}'})
+        self.assertIn('We help clients near Rock &amp; Roll &lt;City&gt;', home)
+
+    def test_the_override_cannot_use_a_hole_the_text_does_not_receive(self):
+        with self.assertRaises(SystemExit) as ctx:
+            build.apply_locale_overrides(
+                build.DEFAULT_TEXTS,
+                {'generated_content': {'locale_overrides': {'target_audience': 'clients near {zone}'}}})
+        self.assertIn('{zone}', str(ctx.exception))
+
+    def test_both_sets_of_texts_have_the_hole(self):
+        for text in (build.DEFAULT_TEXTS['target_audience'], spanish_overrides()['target_audience']):
+            self.assertEqual(build._locale_placeholders(text), ['areas'], text)
+
+
 class TestCommandLine(unittest.TestCase):
     def build_py(self, *args):
         return subprocess.run([sys.executable, str(LEGIBLE / 'build.py'), *args],
@@ -2048,6 +2479,21 @@ class TestAgentsGuards(unittest.TestCase):
         numbers = [int(n) for n in re.findall(r'^## (\d+)\. ', self.agents, re.M)]
         self.assertEqual(numbers, list(range(1, 11)))
 
+    def test_no_document_calls_professional_service_mandatory(self):
+        """The main node is the one with @id /#business and its @type is free (DOCUMENTATION.md section 5.7)."""
+        bad = []
+        for name, text in self.docs.items():
+            for n, line in enumerate(text.splitlines(), 1):
+                if 'ProfessionalService' in line and re.search(r'required|mandatory|obligatory|must|keep the `ProfessionalService`', line, re.I):
+                    bad.append(f'{name}:{n}')
+        self.assertEqual(bad, [], 'a document still makes ProfessionalService mandatory')
+
+    def test_the_type_by_kind_section_exists_and_both_entry_documents_cite_it(self):
+        docs = self.docs['DOCUMENTATION.md']
+        self.assertIsNotNone(re.search(r'^### 5\.7 Type by kind of site$', docs, re.M), 'DOCUMENTATION.md has no section 5.7')
+        for name in ('AGENTS.md', 'README.md'):
+            self.assertRegex(self.docs[name], r'DOCUMENTATION\.md`? section 5\.7', f'{name} does not cite section 5.7')
+
     def test_section_references_point_to_existing_sections(self):
         bad = []
         for name, text in self.docs.items():
@@ -2134,6 +2580,60 @@ class TestAgentsGuards(unittest.TestCase):
                      for line in text.splitlines()
                      if '[CONFIRM' in line and not any(a in line for a in allowed)]
         self.assertEqual(offenders, [], 'a document mentions `[CONFIRM` in a way that may ask the AI to write it')
+
+    def test_the_phase_one_guidance_is_in_place(self):
+        """The guidance added from the improvements inventory (looking at the site, reading the sweep, the owner of
+        each kind of work, the legal levels, the no-prices recipe, the content patterns) keeps its anchors."""
+        docs = self.docs['DOCUMENTATION.md']
+        verify = _agents_section(self.agents, 9)
+        for fragment in ('python3 legible/dev.py', 'file://', 'content-visibility', 'hit by hit', 'Pending confirmation'):
+            self.assertIn(fragment, verify, f'section 9 lost: {fragment}')
+        interview = _agents_section(self.agents, 4)
+        for fragment in ('**full**', '**minimal**', '**pending**', 'section 5.6'):
+            self.assertIn(fragment, interview, f'the interview lost: {fragment}')
+        self.assertIn('### 5.6 Recipes for sites that do not fit the sample offer', docs)
+        for fragment in ('**Who owns what.**', '**Legal data.**', '**How to read the result.**', '**Looking at the site.**',
+                         '**Patterns for rule 6: content that passes the validator**'):
+            self.assertIn(fragment, docs, f'DOCUMENTATION.md lost: {fragment}')
+        self.assertIn('Who owns what', _agents_section(self.agents, 6))
+        self.assertIn('Brand files and images', _agents_section(self.agents, 4))
+        phases = _agents_section(self.agents, 5)
+        for fragment in ('AI-generated', 'do not fake it', 'never redraw or replace it'):
+            self.assertIn(fragment, phases, f'the brand-assets rule lost: {fragment}')
+        self.assertIn('`logo` (an image file name, or `create`', self.agents)
+        self.assertIn('**Brand files and images.**', docs)
+        self.assertIn('**V4 ', docs)
+        self.assertIn('patterns for rule 6', _agents_section(self.agents, 5))
+
+    def test_the_owner_table_covers_the_catalogue_phases(self):
+        """Every phase of the default catalogue in AGENTS.md has a row in the owner table of DOCUMENTATION.md."""
+        template = re.search(r'````markdown\n(.*?)\n````', self.agents, re.S).group(1)
+        names = [re.match(r'^\| *\d+ *\| *([^:|]+)', line).group(1).strip()
+                 for line in template.splitlines() if re.match(r'^\| *[0-9]+ *\|', line)]
+        block = self.docs['DOCUMENTATION.md'].split('**Who owns what.**')[1].split('Three consequences.')[0]
+        owners = [row.split('|')[1].strip() for row in _table_rows(block)[2:]]
+        self.assertEqual(len(owners), 8, 'the owner table has one row per kind of phase (7 to 9 share a row)')
+        for name in names:
+            self.assertTrue(any(name.lower() in owner.lower() for owner in owners), f'no owner row for phase: {name}')
+
+    def test_the_faq_pattern_in_the_documentation_is_what_the_validator_does(self):
+        """DOCUMENTATION.md section 5.3 says the FAQ text must match word for word, ignoring only whitespace,
+        and that an escaped ampersand in the JSON-LD does not match the one the reader sees."""
+        import check_site
+
+        def errors_for(ld_text):
+            html = ('<main><details><summary>Q?</summary><p>Cats &amp;  dogs.</p></details></main>'
+                    '<script type="application/ld+json">{"@type":"FAQPage","mainEntity":[{"@type":"Question",'
+                    '"name":"Q?","acceptedAnswer":{"@type":"Answer","text":"%s"}}]}</script>' % ld_text)
+            page = check_site.PageParser()
+            page.feed(html)
+            page.close()
+            errors = []
+            check_site.check_faq_matches_schema('x.html', page, [], errors)
+            return errors
+
+        self.assertEqual(errors_for('Cats & dogs.'), [], 'a plain ampersand and other whitespace must match')
+        self.assertEqual(len(errors_for('Cats &amp; dogs.')), 1, 'an escaped ampersand must not match')
 
     def test_the_lessons_log_does_not_come_back(self):
         for name, text in self.docs.items():
