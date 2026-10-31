@@ -1,16 +1,16 @@
 {
-  "site_url": "https://YOUR-DOMAIN.com",
-  "site_name": "Your Business",
-  "language": "en",
-  "project_stage": "template",
-  "contact_email": "hello@example.com",
-  "phone_e164": "+15550100",
-  "whatsapp_message": "Hello, I am interested in your services. My business is:",
+  "site_url": "https://bar-colon-valdemoro.onrender.com",
+  "site_name": "Bar Colon",
+  "language": "es",
+  "project_stage": "in_progress",
+  "contact_email": "barcolon@seovaldemoro.com",
+  "phone_e164": "+34652148546",
+  "whatsapp_message": "Hola, me interesa sus servicios. Mi negocio es:",
   "geo_enabled": true,
-  "geo_region_code": "",
+  "geo_region_code": "ES-M",
   "build_banner": "Legible • Static site generator",
-  "city": "Your City",
-  "region": "Your Region",
+  "city": "Valdemoro",
+  "region": "Comunidad de Madrid",
   "price_range": "",
   "generated_content": {
     "lead_strip": {
@@ -40,11 +40,11 @@
   ],
   "sitemap_base_order": [
     "/",
-    "/services/",
-    "/services/sample-service/",
-    "/pricing/",
-    "/about/",
-    "/contact/",
+    "/servicios/",
+    "/servicios/sample-service/",
+    "/precios/",
+    "/sobre/",
+    "/contacto/",
     "/featured-action/"
   ]
 }

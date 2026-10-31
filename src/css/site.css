@@ -10,42 +10,42 @@
 :root {
   color-scheme: dark;
 
-  /* Surfaces (slate of the social image): from deepest to most elevated */
-  --bg: #0E131A;
-  --s1: #121820;
-  --s2: #151C25;
-  --s3: #1C2430;
-  --term: #0B1017;        /* "terminal" body: hero window */
-  --deep: #0A1D45;        /* solid deep blue: CTA bands and highlights */
-  --deep-line: #17408F;
+  /* Surfaces (warm tones for bar theme): from deepest to most elevated */
+  --bg: #1A140E;
+  --s1: #201812;
+  --s2: #251510;
+  --s3: #301C18;
+  --term: #170B0A;        /* "terminal" body: hero window */
+  --deep: #45120A;        /* solid deep brown: CTA bands and highlights */
+  --deep-line: #8F1710;
 
   /* Lines and control borders (>= 3:1 against the background) */
-  --line: #232C38;
-  --line-2: #364254;
-  --edge: #5E6F8A;
+  --line: #38231C;
+  --line-2: #422C24;
+  --edge: #8A5E4A;
 
   /* Text */
   --ink: #FFFFFF;
-  --soft: #CBD5E1;
-  --muted: #A3B0C2;
+  --soft: #D5C2A5;
+  --muted: #B09A7A;
 
-  /* Brand (exact logo colours): cyan = actions and key data;
-     blue = depth and labels; green = "prompt" and checks;
+  /* Brand (bar theme colours): amber = actions and key data;
+     brown = depth and labels; green = "prompt" and checks;
      amber = brackets and occasional highlights. */
-  --accent: #00E5FF;
-  --accent-hi: #8CF3FF;
-  --accent-ink: #001018;
+  --accent: #FF9E22;
+  --accent-hi: #FFB545;
+  --accent-ink: #100800;
   --blue: #0066FF;
   --blue-2: #5B9DFF;
   --green: #39E75F;
   --amber: #FF9E22;
 
-  /* Background glows (teal top-left, amber top-centre) */
-  --glow-teal: #0F3D49;
-  --glow-amber: #2B2417;
+  /* Background glows (warm top-left, amber top-centre) */
+  --glow-teal: #3D2410;
+  --glow-amber: #2B1A0A;
 
   /* Header / menu */
-  --bg-alt: #111A25;
+  --bg-alt: #1A100A;
   --nav-line: rgba(190,210,240,.14);
 
   /* Typography: only fonts installed by default on Windows, macOS, Linux,

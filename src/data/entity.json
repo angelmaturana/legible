@@ -1,13 +1,13 @@
 [
     {
-        "@type": "ProfessionalService",
-        "@id": "{{site_url}}/#business",
-        "name": "{{site_name}}",
-        "description": "{{site_description}}",
-        "url": "{{site_url}}",
-        "email": "{{contact_email}}",
-        "logo": "{{site_url}}/images/logo.svg",
-        "image": "{{site_url}}/images/og-image.png",
+        "@type": "FoodEstablishment",
+        "@id": "https://bar-colon-valdemoro.onrender.com/#business",
+        "name": "Bar Colon",
+        "description": "Bar de tapas y aperitivos en Valdemoro con frituras recién hechas y tapas gratis",
+        "url": "https://bar-colon-valdemoro.onrender.com",
+        "email": "barcolon@seovaldemoro.com",
+        "logo": "https://bar-colon-valdemoro.onrender.com/images/logo.svg",
+        "image": "https://bar-colon-valdemoro.onrender.com/images/og-image.png",
         "openingHoursSpecification": [
             {
                 "@type": "OpeningHoursSpecification",
@@ -16,166 +16,73 @@
                     "Tuesday",
                     "Wednesday",
                     "Thursday",
-                    "Friday"
+                    "Friday",
+                    "Saturday",
+                    "Sunday"
                 ],
-                "opens": "09:00",
-                "closes": "19:00"
+                "opens": "08:00",
+                "closes": "16:00"
             }
         ],
         "contactPoint": {
             "@type": "ContactPoint",
             "contactType": "customer service",
-            "email": "{{contact_email}}",
-            "availableLanguage": "{{lang}}",
-            "telephone": "{{phone_e164}}"
+            "email": "barcolon@seovaldemoro.com",
+            "availableLanguage": "es",
+            "telephone": "+34652148546"
         },
         "areaServed": [
             {
                 "@type": "City",
-                "name": "City 1"
+                "name": "Valdemoro"
             },
             {
                 "@type": "City",
-                "name": "City 2"
+                "name": "Pinto"
             },
             {
                 "@type": "City",
-                "name": "City 3"
+                "name": "Ciempozuelos"
             },
             {
                 "@type": "City",
-                "name": "City 4"
+                "name": "San Martín de la Vega"
             }
         ],
         "knowsAbout": [
-            "Service 1",
-            "Service 2",
-            "Service 3",
-            "Service 4",
-            "Service 5",
-            "Service 6"
+            "Tapas",
+            "Aperitivos",
+            "Frituras",
+            "Bebidas",
+            "Raciones"
         ],
-        "priceRange": "{{price_range}}",
+        "priceRange": "",
         "address": {
             "@type": "PostalAddress",
-            "addressLocality": "{{city}}",
-            "addressRegion": "{{region}}",
-            "addressCountry": "US"
+            "addressLocality": "Valdemoro",
+            "addressRegion": "Comunidad de Madrid",
+            "addressCountry": "ES"
         },
         "hasOfferCatalog": {
             "@type": "OfferCatalog",
-            "name": "{{site_name}} services",
+            "name": "Bar Colon services",
             "itemListElement": [
                 {
                     "@type": "Offer",
-                    "name": "Service 1",
-                    "url": "{{site_url}}/services/sample-service/",
-                    "priceCurrency": "USD",
-                    "price": "99",
-                    "priceSpecification": {
-                        "@type": "UnitPriceSpecification",
-                        "price": "99",
-                        "priceCurrency": "USD"
-                    },
-                    "itemOffered": {
-                        "@type": "Service",
-                        "name": "Service 1",
-                        "serviceType": "{{service_category_1}}",
-                        "url": "{{site_url}}/services/sample-service/"
-                    }
-                },
-                {
-                    "@type": "Offer",
-                    "name": "Service 2",
-                    "url": "{{site_url}}/services/sample-service/",
-                    "priceCurrency": "USD",
-                    "price": "149",
-                    "priceSpecification": {
-                        "@type": "UnitPriceSpecification",
-                        "price": "149",
-                        "priceCurrency": "USD"
-                    },
-                    "itemOffered": {
-                        "@type": "Service",
-                        "name": "Service 2",
-                        "serviceType": "{{service_category_2}}",
-                        "url": "{{site_url}}/services/sample-service/"
-                    }
-                },
-                {
-                    "@type": "Offer",
-                    "name": "Service 3 (Monthly)",
-                    "url": "{{site_url}}/services/sample-service/",
-                    "priceCurrency": "USD",
-                    "price": "49",
-                    "priceSpecification": {
-                        "@type": "UnitPriceSpecification",
-                        "price": "49",
-                        "priceCurrency": "USD",
-                        "billingDuration": "P1M",
-                        "unitCode": "MON"
-                    },
-                    "itemOffered": {
-                        "@type": "Service",
-                        "name": "Service 3 (Monthly)",
-                        "serviceType": "{{service_category_3}}",
-                        "url": "{{site_url}}/services/sample-service/"
-                    }
-                },
-                {
-                    "@type": "Offer",
-                    "name": "Service 4 (Monthly)",
-                    "url": "{{site_url}}/services/sample-service/",
-                    "priceCurrency": "USD",
-                    "price": "299",
-                    "priceSpecification": {
-                        "@type": "UnitPriceSpecification",
-                        "price": "299",
-                        "priceCurrency": "USD",
-                        "billingDuration": "P1M",
-                        "unitCode": "MON"
-                    },
-                    "itemOffered": {
-                        "@type": "Service",
-                        "name": "Service 4 (Monthly)",
-                        "serviceType": "{{service_category_4}}",
-                        "url": "{{site_url}}/services/sample-service/"
-                    }
-                },
-                {
-                    "@type": "Offer",
-                    "name": "Service 5",
-                    "url": "{{site_url}}/services/sample-service/",
-                    "priceCurrency": "USD",
-                    "price": "290",
-                    "priceSpecification": {
-                        "@type": "UnitPriceSpecification",
-                        "price": "290",
-                        "priceCurrency": "USD"
-                    },
-                    "itemOffered": {
-                        "@type": "Service",
-                        "name": "Service 5",
-                        "serviceType": "{{service_category_5}}",
-                        "url": "{{site_url}}/services/sample-service/"
-                    }
-                },
-                {
-                    "@type": "Offer",
-                    "name": "Free Consultation",
-                    "url": "{{site_url}}/featured-action/",
-                    "priceCurrency": "USD",
+                    "name": "Tapas y aperitivos",
+                    "url": "https://bar-colon-valdemoro.onrender.com/services/",
+                    "priceCurrency": "EUR",
                     "price": "0",
                     "priceSpecification": {
                         "@type": "UnitPriceSpecification",
                         "price": "0",
-                        "priceCurrency": "USD"
+                        "priceCurrency": "EUR"
                     },
                     "itemOffered": {
                         "@type": "Service",
-                        "name": "Free Consultation",
-                        "serviceType": "Initial consultation",
-                        "url": "{{site_url}}/featured-action/"
+                        "name": "Tapas y aperitivos",
+                        "serviceType": "food",
+                        "url": "https://bar-colon-valdemoro.onrender.com/services/"
                     }
                 }
             ]
@@ -183,12 +90,12 @@
     },
     {
         "@type": "WebSite",
-        "@id": "{{site_url}}/#website",
-        "url": "{{site_url}}/",
-        "name": "{{site_name}}",
-        "inLanguage": "{{in_language}}",
+        "@id": "https://bar-colon-valdemoro.onrender.com/#website",
+        "url": "https://bar-colon-valdemoro.onrender.com/",
+        "name": "Bar Colon",
+        "inLanguage": "es",
         "publisher": {
-            "@id": "{{site_url}}/#business"
+            "@id": "https://bar-colon-valdemoro.onrender.com/#business"
         }
     }
 ]
