@@ -1,20 +1,20 @@
 {
-  "site_url": "https://YOUR-DOMAIN.com",
-  "site_name": "Your Business",
+  "site_url": "https://techflow.blog",
+  "site_name": "TechFlow Blog",
   "language": "en",
-  "project_stage": "template",
-  "contact_email": "hello@example.com",
+  "project_stage": "in_progress",
+  "contact_email": "contact@techflow.blog",
   "phone_e164": "+15550100",
-  "whatsapp_message": "Hello, I am interested in your services. My business is:",
+  "whatsapp_message": "Hello, I am interested in your blog. My question is:",
   "geo_enabled": true,
-  "geo_region_code": "",
-  "build_banner": "Legible • Static site generator",
-  "city": "Your City",
-  "region": "Your Region",
+  "geo_region_code": "ES-MD",
+  "build_banner": "TechFlow Blog • Technology reviews and tutorials",
+  "city": "Madrid",
+  "region": "Madrid",
   "price_range": "",
   "generated_content": {
     "lead_strip": {
-      "action_url": "/featured-action/"
+      "action_url": "/contact/"
     },
     "guides_index": {
       "extra_paragraphs": [
@@ -25,26 +25,29 @@
     },
     "blog_index": {
       "criteria_paragraphs": [
-        "Each article starts from a question we are asked, or ask ourselves, when working with businesses like yours, and answers it with concrete examples and no unnecessary jargon. We do not publish on a fixed schedule: we prefer to write when there is something useful to say.",
-        "If you miss a topic, suggest it: many of the pieces come from the questions of the people who write to us. And if what you need is a solution rather than something to read, you can also see how we work on the services page."
+        "Each article starts from a question we are asked, or ask ourselves, when working with technology, and answers it with concrete examples and no unnecessary jargon. We do not publish on a fixed schedule: we prefer to write when there is something useful to say.",
+        "If you miss a topic, suggest it: many of the pieces come from the questions of the people who write to us. And if what you need is a solution rather than something to read, you can also see our tutorials and reviews."
       ]
     }
   },
-  "check_banner": "Legible • Site validator",
+  "check_banner": "TechFlow Blog • Site validator",
   "collection_topics": [
-    "Topic 1",
-    "Topic 2",
-    "Topic 3",
-    "Topic 4",
-    "Topic 5"
+    "Tech Reviews",
+    "Tutorials",
+    "Industry News",
+    "Opinion Pieces"
   ],
   "sitemap_base_order": [
     "/",
-    "/services/",
-    "/services/sample-service/",
-    "/pricing/",
+    "/category/",
+    "/category/tech-reviews/",
+    "/category/tutorials/",
+    "/category/industry-news/",
+    "/category/opinion-pieces/",
     "/about/",
     "/contact/",
-    "/featured-action/"
+    "/legal-notice/",
+    "/privacy-policy/",
+    "/cookie-policy/"
   ]
 }

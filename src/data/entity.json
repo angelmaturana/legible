@@ -1,194 +1,111 @@
 [
-    {
-        "@type": "ProfessionalService",
-        "@id": "{{site_url}}/#business",
-        "name": "{{site_name}}",
-        "description": "{{site_description}}",
-        "url": "{{site_url}}",
-        "email": "{{contact_email}}",
-        "logo": "{{site_url}}/images/logo.svg",
-        "image": "{{site_url}}/images/og-image.png",
-        "openingHoursSpecification": [
-            {
-                "@type": "OpeningHoursSpecification",
-                "dayOfWeek": [
-                    "Monday",
-                    "Tuesday",
-                    "Wednesday",
-                    "Thursday",
-                    "Friday"
-                ],
-                "opens": "09:00",
-                "closes": "19:00"
-            }
-        ],
-        "contactPoint": {
-            "@type": "ContactPoint",
-            "contactType": "customer service",
-            "email": "{{contact_email}}",
-            "availableLanguage": "{{lang}}",
-            "telephone": "{{phone_e164}}"
-        },
-        "areaServed": [
-            {
-                "@type": "City",
-                "name": "City 1"
-            },
-            {
-                "@type": "City",
-                "name": "City 2"
-            },
-            {
-                "@type": "City",
-                "name": "City 3"
-            },
-            {
-                "@type": "City",
-                "name": "City 4"
-            }
-        ],
-        "knowsAbout": [
-            "Service 1",
-            "Service 2",
-            "Service 3",
-            "Service 4",
-            "Service 5",
-            "Service 6"
-        ],
-        "priceRange": "{{price_range}}",
-        "address": {
-            "@type": "PostalAddress",
-            "addressLocality": "{{city}}",
-            "addressRegion": "{{region}}",
-            "addressCountry": "US"
-        },
-        "hasOfferCatalog": {
-            "@type": "OfferCatalog",
-            "name": "{{site_name}} services",
-            "itemListElement": [
-                {
-                    "@type": "Offer",
-                    "name": "Service 1",
-                    "url": "{{site_url}}/services/sample-service/",
-                    "priceCurrency": "USD",
-                    "price": "99",
-                    "priceSpecification": {
-                        "@type": "UnitPriceSpecification",
-                        "price": "99",
-                        "priceCurrency": "USD"
-                    },
-                    "itemOffered": {
-                        "@type": "Service",
-                        "name": "Service 1",
-                        "serviceType": "{{service_category_1}}",
-                        "url": "{{site_url}}/services/sample-service/"
-                    }
-                },
-                {
-                    "@type": "Offer",
-                    "name": "Service 2",
-                    "url": "{{site_url}}/services/sample-service/",
-                    "priceCurrency": "USD",
-                    "price": "149",
-                    "priceSpecification": {
-                        "@type": "UnitPriceSpecification",
-                        "price": "149",
-                        "priceCurrency": "USD"
-                    },
-                    "itemOffered": {
-                        "@type": "Service",
-                        "name": "Service 2",
-                        "serviceType": "{{service_category_2}}",
-                        "url": "{{site_url}}/services/sample-service/"
-                    }
-                },
-                {
-                    "@type": "Offer",
-                    "name": "Service 3 (Monthly)",
-                    "url": "{{site_url}}/services/sample-service/",
-                    "priceCurrency": "USD",
-                    "price": "49",
-                    "priceSpecification": {
-                        "@type": "UnitPriceSpecification",
-                        "price": "49",
-                        "priceCurrency": "USD",
-                        "billingDuration": "P1M",
-                        "unitCode": "MON"
-                    },
-                    "itemOffered": {
-                        "@type": "Service",
-                        "name": "Service 3 (Monthly)",
-                        "serviceType": "{{service_category_3}}",
-                        "url": "{{site_url}}/services/sample-service/"
-                    }
-                },
-                {
-                    "@type": "Offer",
-                    "name": "Service 4 (Monthly)",
-                    "url": "{{site_url}}/services/sample-service/",
-                    "priceCurrency": "USD",
-                    "price": "299",
-                    "priceSpecification": {
-                        "@type": "UnitPriceSpecification",
-                        "price": "299",
-                        "priceCurrency": "USD",
-                        "billingDuration": "P1M",
-                        "unitCode": "MON"
-                    },
-                    "itemOffered": {
-                        "@type": "Service",
-                        "name": "Service 4 (Monthly)",
-                        "serviceType": "{{service_category_4}}",
-                        "url": "{{site_url}}/services/sample-service/"
-                    }
-                },
-                {
-                    "@type": "Offer",
-                    "name": "Service 5",
-                    "url": "{{site_url}}/services/sample-service/",
-                    "priceCurrency": "USD",
-                    "price": "290",
-                    "priceSpecification": {
-                        "@type": "UnitPriceSpecification",
-                        "price": "290",
-                        "priceCurrency": "USD"
-                    },
-                    "itemOffered": {
-                        "@type": "Service",
-                        "name": "Service 5",
-                        "serviceType": "{{service_category_5}}",
-                        "url": "{{site_url}}/services/sample-service/"
-                    }
-                },
-                {
-                    "@type": "Offer",
-                    "name": "Free Consultation",
-                    "url": "{{site_url}}/featured-action/",
-                    "priceCurrency": "USD",
-                    "price": "0",
-                    "priceSpecification": {
-                        "@type": "UnitPriceSpecification",
-                        "price": "0",
-                        "priceCurrency": "USD"
-                    },
-                    "itemOffered": {
-                        "@type": "Service",
-                        "name": "Free Consultation",
-                        "serviceType": "Initial consultation",
-                        "url": "{{site_url}}/featured-action/"
-                    }
-                }
-            ]
-        }
+  {
+    "@type": "Organization",
+    "@id": "{{site_url}}/#business",
+    "name": "{{site_name}}",
+    "description": "{{site_description}}",
+    "url": "{{site_url}}",
+    "email": "{{contact_email}}",
+    "logo": "{{site_url}}/images/logo.svg",
+    "image": "{{site_url}}/images/og-image.png",
+    "contactPoint": {
+      "@type": "ContactPoint",
+      "contactType": "customer service",
+      "email": "{{contact_email}}",
+      "availableLanguage": "{{lang}}",
+      "telephone": "{{phone_e164}}"
     },
-    {
-        "@type": "WebSite",
-        "@id": "{{site_url}}/#website",
-        "url": "{{site_url}}/",
-        "name": "{{site_name}}",
-        "inLanguage": "{{in_language}}",
-        "publisher": {
-            "@id": "{{site_url}}/#business"
+    "address": {
+      "@type": "PostalAddress",
+      "addressLocality": "{{city}}",
+      "addressRegion": "{{region}}",
+      "addressCountry": "ES"
+    },
+    "areaServed": [
+      {
+        "@type": "City",
+        "name": "Madrid"
+      },
+      {
+        "@type": "City",
+        "name": "Getafe"
+      },
+      {
+        "@type": "City",
+        "name": "Alcobendas"
+      },
+      {
+        "@type": "City",
+        "name": "Las Rozas"
+      }
+    ],
+    "hasOfferCatalog": {
+      "@type": "OfferCatalog",
+      "name": "{{site_name}} offers",
+      "itemListElement": [
+        {
+          "@type": "Offer",
+          "name": "Free Consultation",
+          "url": "{{site_url}}/contact/",
+          "priceCurrency": "EUR",
+          "price": "0",
+          "priceSpecification": {
+            "@type": "UnitPriceSpecification",
+            "price": "0",
+            "priceCurrency": "EUR"
+          },
+          "itemOffered": {
+            "@type": "Service",
+            "name": "Free Consultation",
+            "serviceType": "Initial consultation",
+            "url": "{{site_url}}/contact/"
+          }
         }
+      ]
+    },
+    "sameAs": []
+  },
+  {
+    "@type": "WebSite",
+    "@id": "{{site_url}}/#website",
+    "url": "{{site_url}}/",
+    "name": "{{site_name}}",
+    "inLanguage": "{{in_language}}",
+    "publisher": {
+      "@id": "{{site_url}}/#business"
+    },
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": {
+        "@type": "EntryPoint",
+        "urlTemplate": "{{site_url}}/blog/?q={search_term_string}"
+      },
+      "query-input": "required name=search_term_string"
     }
+  },
+  {
+    "@type": "Blog",
+    "@id": "{{site_url}}/#blog",
+    "name": "{{site_name}}",
+    "description": "Technology blog featuring reviews, tutorials, industry news, and opinion pieces",
+    "url": "{{site_url}}/blog/",
+    "inLanguage": "{{in_language}}",
+    "publisher": {
+      "@id": "{{site_url}}/#business"
+    },
+    "blogPosts": {
+      "@type": "ItemList",
+      "itemListElement": []
+    }
+  },
+  {
+    "@type": "Person",
+    "@id": "{{site_url}}/#author",
+    "name": "TechFlow Author",
+    "email": "{{contact_email}}",
+    "url": "{{site_url}}/about/",
+    "affiliation": {
+      "@id": "{{site_url}}/#business"
+    }
+  }
 ]

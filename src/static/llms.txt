@@ -2,151 +2,121 @@
 
 > {{site_description}}
 
-## Business facts
+## Blog facts
 
 - **Name:** {{site_name}}
-- **Type:** {{service_category_1}} and {{service_category_2}}
+- **Type:** Technology blog
 - **Location:** {{location}}
-- **Support:** Remote, by email or WhatsApp. {{service_special_note}}
+- **Support:** Remote, by email
 - **Email:** {{contact_email}}
-- **Hours:** Monday to Friday, 09:00 to 19:00. We reply within one business day.
-- **Area served:** {{coverage_area}}. Outside that area, remote only.
-- **Entry offer:** {{featured_action_name}} ({{featured_action_price}}). First paid service: {{service_1_name}} (${{service_1_price}}).
+- **Area served:** Global
+- **Entry point:** Free content, no subscription
 - **Value proposition:** {{value_proposition}}
 - **What sets us apart:** {{differentiators}}
 - **Last updated:** {{last_update}}
 
-## Which service fits which situation
+## Content categories
 
-| Situation | Service | Price |
-|---|---|---|
-| {{situation_1}} | {{service_1_name}} | ${{service_1_price}} |
-| {{situation_2}} | {{service_2_name}} | ${{service_2_price}} |
-| {{situation_3}} | {{service_1_name}} + {{service_2_name}} | {{bundle_price}} |
-| {{situation_4}} | {{service_4_name}} | ${{service_4_price}}/month |
-| {{situation_5}} | {{featured_action_name}} | {{featured_action_price}} |
+| Category | Description |
+|---|---|
+| Tech Reviews | {{service_1_short_description}} |
+| Tutorials | {{service_2_short_description}} |
+| Industry News | {{service_3_short_description}} |
+| Opinion Pieces | {{service_4_short_description}} |
 
 ## Pages
 
 - [/]({{site_url}}/): Home. {{home_description}}
-- [/services/]({{site_url}}/services/): All services, with a guide by situation.
-- [/services/sample-service/]({{site_url}}/services/sample-service/): {{service_1_name}}. {{service_1_description}}
-- [/pricing/]({{site_url}}/pricing/): All prices in one table, with the scope in writing.
+- [/category/]({{site_url}}/category/): All categories.
+- [/category/tech-reviews/]({{site_url}}/category/tech-reviews/): Tech Reviews. {{service_1_full_description}}
+- [/category/tutorials/]({{site_url}}/category/tutorials/): Tutorials. {{service_2_full_description}}
+- [/category/industry-news/]({{site_url}}/category/industry-news/): Industry News. {{service_3_full_description}}
+- [/category/opinion-pieces/]({{site_url}}/category/opinion-pieces/): Opinion Pieces. {{service_4_full_description}}
 - [/about/]({{site_url}}/about/): Who we are and how we work.
-- [/contact/]({{site_url}}/contact/): Contact. We reply within one business day.
-- [/featured-action/]({{site_url}}/featured-action/): {{featured_action_name}}. {{featured_action_description}}
+- [/contact/]({{site_url}}/contact/): Contact. We read every message.
+- [/legal-notice/]({{site_url}}/legal-notice/): Legal information.
+- [/privacy-policy/]({{site_url}}/privacy-policy/): Privacy policy.
+- [/cookie-policy/]({{site_url}}/cookie-policy/): Cookie policy.
 
-{{llms_guides}}{{llms_blog}}## Services
+{{llms_guides}}{{llms_blog}}
 
-### {{featured_action_name}}
+## Tech Reviews
 
-- **What:** {{featured_action_description}}
-- **Price:** {{featured_action_price}}
-- **Delivery:** {{featured_action_delivery}}
-- **Limit:** {{featured_action_limit}}
-- **Ideal for:** {{featured_action_ideal_for}}
-- **Not included:** {{featured_action_not_includes}}
-
-### One-off services
-
-#### {{service_1_name}}
 - **What:** {{service_1_full_description}}
-- **Price:** ${{service_1_price}}, paid once.
+- **Price:** Free
 - **Delivery:** {{service_1_delivery}}
 - **Not included:** {{service_1_not_includes}}
 - **Ideal for:** {{service_1_ideal_for}}
 
-#### {{service_2_name}}
+## Tutorials
+
 - **What:** {{service_2_full_description}}
-- **Price:** ${{service_2_price}}, paid once.
+- **Price:** Free
 - **Delivery:** {{service_2_delivery}}
 - **Not included:** {{service_2_not_includes}}
 - **Ideal for:** {{service_2_ideal_for}}
 
-### Flexible service (one-off or monthly)
+## Industry News
 
-#### {{service_3_name}}
 - **What:** {{service_3_full_description}}
-- **Price:** ${{service_3_price}}
+- **Price:** Free
 - **Not included:** {{service_3_not_includes}}
 - **Ideal for:** {{service_3_ideal_for}}
 
-### Larger one-off project
+## Opinion Pieces
 
-#### {{service_5_name}}
-- **What:** {{service_5_short_description}}
-- **Price:** ${{service_5_price}}, paid once.
-- **Delivery:** {{service_5_delivery}}
-- **Not included:** {{service_5_not_includes}}
-
-### Monthly service (no lock-in, cancel with 7 days of notice before the next invoice)
-
-#### {{service_4_name}}
 - **What:** {{service_4_full_description}}
-- **Price:** ${{service_4_price}}/month.
+- **Price:** Free
 - **Not included:** {{service_4_not_includes}}
-- **Requirement:** {{service_4_requirements}}
 - **Ideal for:** {{service_4_ideal_for}}
-
-### Bundle
-
-- **{{service_1_name}} + {{service_2_name}}:** {{bundle_price}}. {{bundle_description}}
 
 ## Limits and transparency
 
-- We do not guarantee results that do not depend only on our own work.
-- Work outside the agreed scope is quoted at {{extra_hourly_rate}}/h and approved before we start.
-- Monthly services can be cancelled with 7 days of notice before the next invoice.
-- Support hours are Monday to Friday, 09:00 to 19:00. Outside those hours we reply the next business day.
-- Delivery times start once we have everything we need from you.
-- {{featured_action_limit_note}}
+- We do not publish sponsored content or paid reviews.
+- Affiliate relationships never influence conclusions.
+- We publish corrections when we're wrong.
+- We write from experience, not press releases.
+- All code examples are yours to use under MIT license unless otherwise noted.
 
 ## Contact
 
 - **Email:** {{contact_email}}
-- **WhatsApp:** The WhatsApp button on the website opens a pre-written message. The number is not published as text; email is the main channel.
-- **Form:** None. Contact is by email or WhatsApp.
-- **Urgent requests:** Use the subject "URGENT" by email, or start the WhatsApp message with "URGENT".
-- **{{featured_action_name}}:** Use the subject "{{featured_action_name}}".
+- **Form:** None. Contact is by email.
+- **Urgent requests:** Use the subject "URGENT" by email.
 
 ## FAQ
 
-**What is {{service_category_1}}?**
+**What kind of content does TechFlow Blog publish?**
 {{faq_1_answer}}
 
-**What services do you offer?**
-{{faq_3_answer}}
+**How often do you publish new articles?**
+We don't publish on a fixed schedule. Reviews typically take 1-2 weeks of testing, tutorials are published when verified working, and opinion pieces when there's something substantive to say.
 
-**How much does {{service_category_2}} cost?**
+**Is all content free?**
 {{faq_4_answer}}
 
-**Where do I start?**
+**Can I suggest a topic?**
 {{faq_5_answer}}
 
-**Which areas do you work in?**
-We work with businesses in {{coverage_area}}. Support is by email or WhatsApp, and outside that area we can work remotely.
+**Do you accept sponsored content?**
+No. We never publish sponsored content or paid reviews. Our conclusions are never influenced by affiliate relationships.
 
-**Is there a long-term contract?**
-{{faq_8_answer}}
-
-**Do you guarantee results?**
-{{faq_9_answer}}
-
-**Do I own what you deliver?**
+**Can I use your code examples?**
 {{faq_15_answer}}
-
-**How long does it take?**
-{{faq_12_answer}}
 
 ## Sitemap
 
 - {{site_url}}/
-- {{site_url}}/services/
-- {{site_url}}/services/sample-service/
-- {{site_url}}/pricing/
+- {{site_url}}/category/
+- {{site_url}}/category/tech-reviews/
+- {{site_url}}/category/tutorials/
+- {{site_url}}/category/industry-news/
+- {{site_url}}/category/opinion-pieces/
 - {{site_url}}/about/
 - {{site_url}}/contact/
-- {{site_url}}/featured-action/
+- {{site_url}}/legal-notice/
+- {{site_url}}/privacy-policy/
+- {{site_url}}/cookie-policy/
 {{llms_sitemap_extra}}
 ## Machine-readable files
 

@@ -1,10 +1,10 @@
 ---
 title: Contact | {{site_name}}
-description: Contact {{site_name}} by email or WhatsApp, or ask for the {{featured_action_name}}. We reply within one business day (Mon–Fri, 9am–7pm).
+description: Contact TechFlow Blog with topic suggestions, corrections, or questions. We read every message.
 robots: index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1
-geo: true
+geo: false
 canonical: auto
-updated: 2026-10-25
+updated: 2026-11-01
 ---
 
 <script type="application/ld+json">
@@ -16,15 +16,15 @@ updated: 2026-10-25
             "@id": "{{site_url}}/contact/#webpage",
             "url": "{{site_url}}/contact/",
             "name": "Contact | {{site_name}}",
-            "description": "Contact {{site_name}}: email, WhatsApp and the {{featured_action_name}}.",
+            "description": "Contact TechFlow Blog with topic suggestions, corrections, or questions.",
             "inLanguage": "{{in_language}}",
             "isPartOf": {
                 "@id": "{{site_url}}/#website"
             },
             "about": {
-                "@id": "{{site_url}}/#business"
+                "@id": "{{site_url}}/#blog"
             },
-            "dateModified": "2026-10-25",
+            "dateModified": "2026-11-01",
             "breadcrumb": {
                 "@id": "{{site_url}}/contact/#breadcrumb"
             }
@@ -45,35 +45,6 @@ updated: 2026-10-25
                     "name": "Contact"
                 }
             ]
-        },
-        {
-            "@type": "FAQPage",
-            "mainEntity": [
-                {
-                    "@type": "Question",
-                    "name": "How long do you take to reply?",
-                    "acceptedAnswer": {
-                        "@type": "Answer",
-                        "text": "We reply within one business day, Monday to Friday, 9am to 7pm."
-                    }
-                },
-                {
-                    "@type": "Question",
-                    "name": "Do you have a contact form?",
-                    "acceptedAnswer": {
-                        "@type": "Answer",
-                        "text": "No. Contact is by email or WhatsApp so the conversation is recorded and moves faster."
-                    }
-                },
-                {
-                    "@type": "Question",
-                    "name": "How do I request the {{featured_action_name}}?",
-                    "acceptedAnswer": {
-                        "@type": "Answer",
-                        "text": "On WhatsApp with the button on the site, by email to {{contact_email}} with the subject \"{{featured_action_name}}\", or on the {{featured_action_name}} page."
-                    }
-                }
-            ]
         }
     ]
 }
@@ -88,77 +59,55 @@ updated: 2026-10-25
                 </ol>
             </nav>
             <p class="eyebrow">Contact</p>
-            <h1>Let us talk about your business</h1>
+            <h1>Get in touch</h1>
             <p class="lead">{{contact_lead}}</p>
         </section>
 
         <section class="section page-width" aria-labelledby="email-title">
             <h2 id="email-title">Email</h2>
             <p>{{contact_email_description}}</p>
+            <p>We read every message sent to this address. For the fastest and most useful response, include as much relevant context as you can — what you're working on, what you've already tried, and what outcome you're looking for.</p>
             <div class="actions">
-                <a class="button primary" href="mailto:{{contact_email}}?subject=Enquiry%20from%20the%20website&body=Tell%20us%20what%20you%20need%20and%20share%20any%20relevant%20links%20or%20details."><svg class="btn-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>Write to {{contact_email}}</a>
+                <a class="button primary" href="mailto:{{contact_email}}?subject=Message%20for%20TechFlow%20Blog&body=Your%20message%20here..."><svg class="btn-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>Write to {{contact_email}}</a>
             </div>
             <p class="mt-18"><strong>{{contact_email}}</strong></p>
         </section>
 
-        <section class="section page-width" aria-labelledby="first-message-title">
-            <h2 id="first-message-title">What to include in your first message</h2>
-            <p>With four details we can give you a useful answer from day one:</p>
-            <ul>
-                <li>Your name and the type of business you run.</li>
-                <li>Any relevant links or details, if you have them.</li>
-                <li>What worries you or what you would like to achieve.</li>
-                <li>When it suits you to talk.</li>
-            </ul>
-        </section>
-
-        <section class="section page-width" aria-labelledby="whatsapp-title">
-            <h2 id="whatsapp-title">WhatsApp</h2>
-            <p>{{contact_whatsapp_description}}</p>
-            <div class="actions">
-                <a class="button primary" href="{{whatsapp_link}}" target="_blank" rel="noopener noreferrer"><svg class="btn-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 11.5a8.4 8.4 0 0 1-12.4 7.4L3 21l2.1-5.4A8.4 8.4 0 1 1 21 11.5z"/></svg>Open WhatsApp chat</a>
-            </div>
-            <p class="mt-18">The button opens a pre-written message, so you only need to add the details of your business.</p>
-        </section>
-
-        <section class="section page-width" aria-labelledby="action-title">
-            <h2 id="action-title">{{featured_action_name}}</h2>
+        <section class="section page-width" aria-labelledby="topics-title">
+            <h2 id="topics-title">What to write about</h2>
             <p>{{contact_action_description}}</p>
-            <div class="actions">
-                <a class="button primary" href="/featured-action/">{{featured_action_cta_view}}</a>
-            </div>
+            <ul>
+                <li>Suggest a topic for a review, tutorial, or opinion piece</li>
+                <li>Report an error or outdated information in an article</li>
+                <li>Ask a follow-up question about something we published</li>
+                <li>Propose a guest contribution (we rarely accept, but we read everything)</li>
+            </ul>
+            <p class="mt-18">We don't have a formal editorial calendar, so if you have an idea, send it. Many of our best articles started as reader suggestions.</p>
         </section>
 
-        <section class="section page-width" aria-labelledby="hours-title">
-            <h2 id="hours-title">Opening hours</h2>
-            <dl class="facts">
-                <div><dt>Monday to Friday</dt><dd>09:00 – 19:00</dd></div>
-                <div><dt>Saturday and Sunday</dt><dd>Closed</dd></div>
-                <div><dt>Response time</dt><dd>Within one business day</dd></div>
-                <div><dt>Urgent requests</dt><dd>Subject "URGENT" by email or WhatsApp</dd></div>
-            </dl>
-        </section>
-
-        <section class="section page-width dark-band" aria-labelledby="location-title">
+        <section class="section page-width" aria-labelledby="location-title">
             <h2 id="location-title">Location</h2>
             <p class="lead">{{contact_location_description}}</p>
-            <p class="mt-18">We work remotely with businesses in {{coverage_area}}. We do not have a public-facing office.</p>
+            <p>Our content is globally relevant and our audience is international. We're based in Madrid but publish for readers worldwide. All communication happens via email — we don't have a physical office, phone support, or chat widget.</p>
         </section>
 
         <section class="section page-width faq" aria-labelledby="faq-contact-title">
-            <p class="eyebrow">FAQ</p>
-            <h2 id="faq-contact-title">Frequently asked questions about contacting us</h2>
+            <h2 id="faq-contact-title">Frequently asked questions</h2>
             <details>
                 <summary>How long do you take to reply?</summary>
-                <p>We reply within one business day, Monday to Friday, 9am to 7pm.</p>
+                <p>We typically reply within a few business days. If your message is urgent, use "URGENT" in the subject line.</p>
             </details>
             <details>
-                <summary>Do you have a contact form?</summary>
-                <p>No. Contact is by email or WhatsApp so the conversation is recorded and moves faster.</p>
+                <summary>Do you accept guest posts?</summary>
+                <p>We rarely accept guest contributions. If you have a specific piece in mind, pitch us the outline and we'll consider it.</p>
             </details>
             <details>
-                <summary>How do I request the {{featured_action_name}}?</summary>
-                <p>On WhatsApp with the button on the site, by email to {{contact_email}} with the subject "{{featured_action_name}}", or on the {{featured_action_name}} page.</p>
+                <summary>Can I advertise or sponsor content?</summary>
+                <p>No. We don't publish sponsored content, native advertising, or paid reviews. Our editorial independence is not for sale.</p>
+            </details>
+            <details>
+                <summary>I found an error in an article. How do I report it?</summary>
+                <p>Email us with the article URL, the specific error, and the correct information. We publish corrections promptly.</p>
             </details>
         </section>
 
@@ -169,8 +118,7 @@ updated: 2026-10-25
                 <p class="lead mt-18">{{lead_strip_lead}}</p>
             </div>
             <div class="lead-strip-inner">
-                <a class="button primary" href="/featured-action/">{{featured_action_cta_view}}</a>
-                <span class="text-muted-lg mt-15">or write to us at <a href="mailto:{{contact_email}}" class="link-accent">{{contact_email}}</a> or on <a href="{{whatsapp_link}}" target="_blank" rel="noopener noreferrer" class="link-accent">WhatsApp</a>.</span>
+                <a class="button primary" href="mailto:{{contact_email}}?subject=Topic%20suggestion">{{contact_action_cta}}</a>
             </div>
         </section>
     </main>
