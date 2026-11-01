@@ -33,7 +33,7 @@
 | 5 | Layout and partials: `layout.html`, `header.html`, `footer.html` | done | 2026-10-31 | Partial headers/footers updated |
 | 6 | Brand assets: `logo.svg`, `favicon.svg`, and the PNG and ICO files if provided | done | 2026-10-31 | Template files used as-is |
 | 7 | Content: home, services index and pricing | done | 2026-10-31 | HTML content markers updated; texts.json/entity.json populated; build validation NOT RUN - python3 not available in environment |
-| 8 | Content: service pages (at most three per phase) | pending | | |
+| 8 | Content: service pages (at most three per phase) | done | 2026-11-01 | Service page created at /servicios/tapas-y-aperitivos/ with proper JSON-LD; services index updated |
 | 9 | Content: featured action, about and contact | pending | | |
 | 10 | Legal and close: legal pages, 404, pre-launch sweep, full strict baseline | pending | | |
 
@@ -53,6 +53,8 @@
 
 ## Execution log
 <one short entry per session, at most three lines: date, phase, what changed and the decisions taken, real command results>
+
+2026-11-01: Phase 8 executed. Updated entity.json service URL to /servicios/tapas-y-aperitivos/. Updated site.json sitemap_base_order. Rewrote services/index.html for single service with Spanish URLs. Created services/tapas-y-aperitivos/index.html with proper JSON-LD, breadcrumbs, FAQ. Renamed directory from sample-service. Build verification NOT RUN - python3 not available.
 
 ## Later
 <requests beyond the base>

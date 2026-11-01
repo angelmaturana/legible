@@ -70,7 +70,7 @@
                 {
                     "@type": "Offer",
                     "name": "Tapas y aperitivos",
-                    "url": "https://bar-colon-valdemoro.onrender.com/services/",
+                    "url": "https://bar-colon-valdemoro.onrender.com/servicios/tapas-y-aperitivos/",
                     "priceCurrency": "EUR",
                     "price": "0",
                     "priceSpecification": {
@@ -82,7 +82,7 @@
                         "@type": "Service",
                         "name": "Tapas y aperitivos",
                         "serviceType": "food",
-                        "url": "https://bar-colon-valdemoro.onrender.com/services/"
+                        "url": "https://bar-colon-valdemoro.onrender.com/servicios/tapas-y-aperitivos/"
                     }
                 }
             ]
