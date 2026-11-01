@@ -1,0 +1,155 @@
+# {{site_name}}
+
+> {{site_description}}
+
+## Business facts
+
+- **Name:** {{site_name}}
+- **Type:** {{service_category_1}} and {{service_category_2}}
+- **Location:** {{location}}
+- **Support:** Remote, by email or WhatsApp. {{service_special_note}}
+- **Email:** {{contact_email}}
+- **Hours:** Monday to Friday, 09:00 to 19:00. We reply within one business day.
+- **Area served:** {{coverage_area}}. Outside that area, remote only.
+- **Entry offer:** {{featured_action_name}} ({{featured_action_price}}). First paid service: {{service_1_name}} (${{service_1_price}}).
+- **Value proposition:** {{value_proposition}}
+- **What sets us apart:** {{differentiators}}
+- **Last updated:** {{last_update}}
+
+## Which service fits which situation
+
+| Situation | Service | Price |
+|---|---|---|
+| {{situation_1}} | {{service_1_name}} | ${{service_1_price}} |
+| {{situation_2}} | {{service_2_name}} | ${{service_2_price}} |
+| {{situation_3}} | {{service_1_name}} + {{service_2_name}} | {{bundle_price}} |
+| {{situation_4}} | {{service_4_name}} | ${{service_4_price}}/month |
+| {{situation_5}} | {{featured_action_name}} | {{featured_action_price}} |
+
+## Pages
+
+- [/]({{site_url}}/): Home. {{home_description}}
+- [/services/]({{site_url}}/services/): All services, with a guide by situation.
+- [/services/sample-service/]({{site_url}}/services/sample-service/): {{service_1_name}}. {{service_1_description}}
+- [/pricing/]({{site_url}}/pricing/): All prices in one table, with the scope in writing.
+- [/about/]({{site_url}}/about/): Who we are and how we work.
+- [/contact/]({{site_url}}/contact/): Contact. We reply within one business day.
+- [/featured-action/]({{site_url}}/featured-action/): {{featured_action_name}}. {{featured_action_description}}
+
+{{llms_guides}}{{llms_blog}}## Services
+
+### {{featured_action_name}}
+
+- **What:** {{featured_action_description}}
+- **Price:** {{featured_action_price}}
+- **Delivery:** {{featured_action_delivery}}
+- **Limit:** {{featured_action_limit}}
+- **Ideal for:** {{featured_action_ideal_for}}
+- **Not included:** {{featured_action_not_includes}}
+
+### One-off services
+
+#### {{service_1_name}}
+- **What:** {{service_1_full_description}}
+- **Price:** ${{service_1_price}}, paid once.
+- **Delivery:** {{service_1_delivery}}
+- **Not included:** {{service_1_not_includes}}
+- **Ideal for:** {{service_1_ideal_for}}
+
+#### {{service_2_name}}
+- **What:** {{service_2_full_description}}
+- **Price:** ${{service_2_price}}, paid once.
+- **Delivery:** {{service_2_delivery}}
+- **Not included:** {{service_2_not_includes}}
+- **Ideal for:** {{service_2_ideal_for}}
+
+### Flexible service (one-off or monthly)
+
+#### {{service_3_name}}
+- **What:** {{service_3_full_description}}
+- **Price:** ${{service_3_price}}
+- **Not included:** {{service_3_not_includes}}
+- **Ideal for:** {{service_3_ideal_for}}
+
+### Larger one-off project
+
+#### {{service_5_name}}
+- **What:** {{service_5_short_description}}
+- **Price:** ${{service_5_price}}, paid once.
+- **Delivery:** {{service_5_delivery}}
+- **Not included:** {{service_5_not_includes}}
+
+### Monthly service (no lock-in, cancel with 7 days of notice before the next invoice)
+
+#### {{service_4_name}}
+- **What:** {{service_4_full_description}}
+- **Price:** ${{service_4_price}}/month.
+- **Not included:** {{service_4_not_includes}}
+- **Requirement:** {{service_4_requirements}}
+- **Ideal for:** {{service_4_ideal_for}}
+
+### Bundle
+
+- **{{service_1_name}} + {{service_2_name}}:** {{bundle_price}}. {{bundle_description}}
+
+## Limits and transparency
+
+- We do not guarantee results that do not depend only on our own work.
+- Work outside the agreed scope is quoted at {{extra_hourly_rate}}/h and approved before we start.
+- Monthly services can be cancelled with 7 days of notice before the next invoice.
+- Support hours are Monday to Friday, 09:00 to 19:00. Outside those hours we reply the next business day.
+- Delivery times start once we have everything we need from you.
+- {{featured_action_limit_note}}
+
+## Contact
+
+- **Email:** {{contact_email}}
+- **WhatsApp:** The WhatsApp button on the website opens a pre-written message. The number is not published as text; email is the main channel.
+- **Form:** None. Contact is by email or WhatsApp.
+- **Urgent requests:** Use the subject "URGENT" by email, or start the WhatsApp message with "URGENT".
+- **{{featured_action_name}}:** Use the subject "{{featured_action_name}}".
+
+## FAQ
+
+**What is {{service_category_1}}?**
+{{faq_1_answer}}
+
+**What services do you offer?**
+{{faq_3_answer}}
+
+**How much does {{service_category_2}} cost?**
+{{faq_4_answer}}
+
+**Where do I start?**
+{{faq_5_answer}}
+
+**Which areas do you work in?**
+We work with businesses in {{coverage_area}}. Support is by email or WhatsApp, and outside that area we can work remotely.
+
+**Is there a long-term contract?**
+{{faq_8_answer}}
+
+**Do you guarantee results?**
+{{faq_9_answer}}
+
+**Do I own what you deliver?**
+{{faq_15_answer}}
+
+**How long does it take?**
+{{faq_12_answer}}
+
+## Sitemap
+
+- {{site_url}}/
+- {{site_url}}/services/
+- {{site_url}}/services/sample-service/
+- {{site_url}}/pricing/
+- {{site_url}}/about/
+- {{site_url}}/contact/
+- {{site_url}}/featured-action/
+{{llms_sitemap_extra}}
+## Machine-readable files
+
+- **llms.txt:** {{site_url}}/llms.txt
+- **sitemap.xml:** {{site_url}}/sitemap.xml
+- **robots.txt:** {{site_url}}/robots.txt
