@@ -34,7 +34,7 @@
 | 6 | Brand assets: `logo.svg`, `favicon.svg`, and the PNG and ICO files if provided | done | 2026-10-31 | Template files used as-is |
 | 7 | Content: home, services index and pricing | done | 2026-10-31 | HTML content markers updated; texts.json/entity.json populated; build validation NOT RUN - python3 not available in environment |
 | 8 | Content: service pages (at most three per phase) | done | 2026-11-01 | Service page created at /servicios/tapas-y-aperitivos/ with proper JSON-LD; services index updated |
-| 9 | Content: featured action, about and contact | pending | | |
+| 9 | Content: featured action, about and contact | done | 2026-11-01 | Three pages rewritten with Bar Colon content: featured-action (consulta inicial + tercio+tapa 2,5€), about (familiar, Mercamadrid, frituras), contact (horario 8-16 miércoles cerrado, ubicación) |
 | 10 | Legal and close: legal pages, 404, pre-launch sweep, full strict baseline | pending | | |
 
 ### Phase details
@@ -55,6 +55,8 @@
 <one short entry per session, at most three lines: date, phase, what changed and the decisions taken, real command results>
 
 2026-11-01: Phase 8 executed. Updated entity.json service URL to /servicios/tapas-y-aperitivos/. Updated site.json sitemap_base_order. Rewrote services/index.html for single service with Spanish URLs. Created services/tapas-y-aperitivos/index.html with proper JSON-LD, breadcrumbs, FAQ. Renamed directory from sample-service. Build verification NOT RUN - python3 not available.
+
+2026-11-01: Phase 9 executed. Rewrote featured-action/index.html (consulta inicial, tercio+tapa 2,5€), about/index.html (familiar, producto Mercamadrid, frituras al momento, tapas gratis), contact/index.html (horario 8-16 excepto miércoles cerrado, Pasaje de Colón 4). All with Spanish URLs, JSON-LD, breadcrumbs, FAQs. Build verification NOT RUN - python3 not available.
 
 ## Later
 <requests beyond the base>
