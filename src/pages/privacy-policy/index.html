@@ -2,23 +2,64 @@
 title: Privacy Policy | {{site_name}}
 description: Privacy policy of {{site_name}}: what personal data we collect, why we use it, how long we keep it and how you can exercise your rights.
 robots: noindex, follow
-geo: false
-canonical: auto
 updated: 2026-10-25
 ---
+
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@graph": [
+        {
+            "@type": "WebPage",
+            "@id": "{{page_url}}#webpage",
+            "url": "{{page_url}}",
+            "name": "{{page_title}}",
+            "description": "{{page_description}}",
+            "inLanguage": "{{in_language}}",
+            "isPartOf": {
+                "@id": "{{site_url}}/#website"
+            },
+            "about": {
+                "@id": "{{site_url}}/#business"
+            },
+            "dateModified": "{{page_updated}}",
+            "breadcrumb": {
+                "@id": "{{page_url}}#breadcrumb"
+            }
+        },
+        {
+            "@type": "BreadcrumbList",
+            "@id": "{{page_url}}#breadcrumb",
+            "itemListElement": [
+                {
+                    "@type": "ListItem",
+                    "position": 1,
+                    "name": "{{ui_home}}",
+                    "item": "{{site_url}}/"
+                },
+                {
+                    "@type": "ListItem",
+                    "position": 2,
+                    "name": "Privacy policy"
+                }
+            ]
+        }
+    ]
+}
+</script>
 
 <main id="main">
         <section class="inner-hero page-width">
             <h1>Privacy Policy</h1>
             <p class="lead">{{site_name}} respects your privacy and protects your personal data.</p>
-            <p class="text-muted-lg mt-15">This text is a template. Adapt it to your real data practices and to the data protection law that applies to you, and have it reviewed by a qualified lawyer before you publish it.</p>
+            <p class="page-note">This text is a template. Adapt it to your real data practices and to the data protection law that applies to you, and have it reviewed by a qualified lawyer before you publish it.</p>
         </section>
 
         <section class="section page-width" aria-labelledby="controller-title">
             <h2 id="controller-title">1. Data controller</h2>
             <ul>
                 <li><strong>Identity:</strong> {{site_name}}</li>
-                <li><strong>Address:</strong> {{location}}</li>
+                <li><strong>Address:</strong> {{legal_address}}</li>
                 <li><strong>Email:</strong> {{contact_email}}</li>
                 <li><strong>Website:</strong> {{site_url}}</li>
             </ul>
@@ -28,8 +69,8 @@ updated: 2026-10-25
             <h2 id="purposes-title">2. Purposes</h2>
             <p>We use the data you give us for the following purposes:</p>
             <ul>
-                <li><strong>Handling enquiries:</strong> Replying to your requests for information, for the {{featured_action_name}} or for a quote, by email or WhatsApp.</li>
-                <li><strong>Providing services:</strong> Delivering the services you hire ({{service_1_name}}, {{service_2_name}}, {{service_3_name}}, {{service_4_name}}, {{service_5_name}}).</li>
+                <li><strong>Handling enquiries:</strong> Replying to your requests for information or for a quote, by email or WhatsApp.</li>
+                <li><strong>Providing services:</strong> Delivering the services you hire.</li>
                 <li><strong>Sending communications:</strong> Sending reports, service updates or relevant information (only if you give your consent).</li>
                 <li><strong>Legal compliance:</strong> Meeting our tax, accounting and legal obligations.</li>
             </ul>
@@ -39,7 +80,7 @@ updated: 2026-10-25
             <h2 id="bases-title">3. Legal bases</h2>
             <p>We process your data on the following bases:</p>
             <ul>
-                <li><strong>Consent:</strong> When you contact us, request the {{featured_action_name}} or hire a service.</li>
+                <li><strong>Consent:</strong> When you contact us or hire a service.</li>
                 <li><strong>Contract:</strong> To provide the services you hire.</li>
                 <li><strong>Legal obligation:</strong> To meet our tax and legal obligations.</li>
             </ul>
@@ -54,7 +95,7 @@ updated: 2026-10-25
                 <li>Business data: your activity, location and the details you share about your business.</li>
                 <li>Billing data: invoicing details and payment information (only for invoicing).</li>
             </ul>
-            <p class="mt-18">We collect this data when you write to us by email or WhatsApp. This website does not use forms, cookies or tracking scripts.</p>
+            <p class="lead-follow">We collect this data when you write to us by email or WhatsApp. This website does not use forms, cookies or tracking scripts.</p>
         </section>
 
         <section class="section page-width" aria-labelledby="recipients-title">
@@ -68,7 +109,7 @@ updated: 2026-10-25
 
         <section class="section page-width" aria-labelledby="rights-title">
             <h2 id="rights-title">6. Your rights</h2>
-            <p>You can exercise your rights at any time by writing to {{contact_email}}:</p>
+            <p>You can exercise your rights at any time by writing to {{contact_email}} or through the <a href="/contact/">contact page</a>:</p>
             <ul>
                 <li><strong>Access:</strong> Find out what data we process and why.</li>
                 <li><strong>Rectification:</strong> Correct inaccurate or incomplete data.</li>
@@ -103,6 +144,6 @@ updated: 2026-10-25
         <section class="section page-width" aria-labelledby="changes-title">
             <h2 id="changes-title">10. Changes to this policy</h2>
             <p>We may update this Privacy Policy to reflect changes in the law or in our services. We will give reasonable notice if the changes are significant.</p>
-            <p><strong>Last updated:</strong> {{last_update}}</p>
+            <p><strong>Last updated:</strong> {{page_updated}}</p>
         </section>
     </main>

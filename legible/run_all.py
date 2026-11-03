@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 """legible: run in order tests -> build + validation -> local server.
 
-    python3 legible/run_all.py              # tests, build.sh (builds and validates) and, if all goes well, dev.py
+    python3 legible/run_all.py              # tests, build.py --all (builds and validates) and, if all goes well, dev.py
     python3 legible/run_all.py --no-dev     # same, but without starting the server (useful before publishing)
     python3 legible/run_all.py --skip-tests # without tests (when you only touched src/)
 
-Stops at the first step that fails. build.sh already runs check_site.py, so it is not called separately.
-Honours the build.sh environment variables (SITE_URL, CSS_MINIFY, CHECK_STRICT).
+Stops at the first step that fails. `build.py --all` already validates, so check_site.py is not called separately.
+Honours the environment variables of `build.py --all` (SITE_URL, CSS_MINIFY, CHECK_STRICT). Needs no bash.
 """
 import argparse
-import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -36,10 +35,7 @@ def main():
     if not args.skip_tests:
         step('1/3 Tests', [sys.executable, '-B', '-m', 'unittest', 'discover', 'tests'])
 
-    bash = shutil.which('bash')
-    if not bash:
-        sys.exit('✗ bash not found, needed to run build.sh. On Windows use Git Bash or WSL.')
-    step('2/3 Build + validation (build.sh)', [bash, str(REPO / 'legible' / 'build.sh')])
+    step('2/3 Build + validation (build.py --all)', [sys.executable, str(REPO / 'legible' / 'build.py'), '--all'])
 
     if args.no_dev:
         print('\nDone. No server (--no-dev). The site is in dist/.')

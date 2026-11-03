@@ -5,6 +5,7 @@ Usage:
     python3 legible/check_site.py                 # checks dist/
     python3 legible/check_site.py --dir .dev-dist # another folder
     python3 legible/check_site.py --strict        # warnings also fail
+    python3 legible/check_site.py --prelaunch     # is it ready to publish? (no example data left)
 
 Also run by legible/build.py at the end of every build.
 Exit code: 0 = OK, 1 = errors (or warnings with --strict).
@@ -21,24 +22,8 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 
-def _apply_site_url_override():
-    """Let the CLI URL override reach build.py before its import-time validation."""
-    args = sys.argv[1:]
-    for index, arg in enumerate(args):
-        if arg == '--site-url':
-            if index + 1 < len(args) and not args[index + 1].startswith('--'):
-                os.environ['SITE_URL'] = args[index + 1]
-            return
-        if arg.startswith('--site-url='):
-            os.environ['SITE_URL'] = arg.split('=', 1)[1]
-            return
-
-
-_apply_site_url_override()
-sys.dont_write_bytecode = True  # importing build must not leave legible/__pycache__/
-# Intentional circular import: this validator uses shared build settings and report helpers;
-# build imports check_site only at the end, when validation is requested.
-from build import SITE_URL, SITE_CONFIG, get_git_info, report_lines
+sys.dont_write_bytecode = True  # importing this module must not leave legible/__pycache__/
+from common import BuildError, fail, get_git_info, load_site_config, read_text, report_lines, resolve_site_url
 
 REPO = Path(__file__).resolve().parent.parent
 OUT_DEFAULT = REPO / 'dist'
@@ -51,6 +36,10 @@ DESC_MAX = 160
 ALT_MAX = 125
 MIN_WORDS_INDEXABLE = 250
 MIN_CONTEXTUAL_INLINKS = 1  # inbound links from the <main> of other pages
+
+OG_IMAGE_MIN_WIDTH = 1200
+OG_IMAGE_RATIO = 1200 / 630  # the 1.91:1 that social networks crop to
+OG_IMAGE_RATIO_TOLERANCE = 0.05
 
 REQUIRED_FILES = ['index.html', '404.html', 'sitemap.xml', 'robots.txt']
 RECOMMENDED_FILES = ['llms.txt']
@@ -255,7 +244,7 @@ def parse_page(path: Path) -> PageParser:
 
 
 def _get(node, *keys):
-    """Walk nested dict keys; None when a level is missing or explicitly null (same behaviour as build._get)."""
+    """Walk nested dict keys; None when a level is missing or explicitly null ."""
     for key in keys:
         if not isinstance(node, dict):
             return None
@@ -409,6 +398,16 @@ def check_page(rel_file, p: PageParser, out: Path, site_url: str, errors, warnin
         E(f'og:image without HTTPS: {og_img}')
     if og_img and 'og:image:alt' not in p.metas:
         W('og:image without og:image:alt')
+    if rel_file == 'index.html' and 'og:image:width' in p.metas:  # the layout is shared: reported once
+        try:
+            og_w, og_h = int(p.metas['og:image:width']), int(p.metas.get('og:image:height', ''))
+        except ValueError:
+            og_w = og_h = 0
+        if og_w <= 0 or og_h <= 0:
+            W('og:image:width and og:image:height are not numbers: the engine could not read the size of '
+              'og-image.png (see the build warning)')
+        elif og_w < OG_IMAGE_MIN_WIDTH or abs(og_w / og_h - OG_IMAGE_RATIO) > OG_IMAGE_RATIO_TOLERANCE:
+            W(f'og:image is {og_w}x{og_h}: use at least {OG_IMAGE_MIN_WIDTH} px wide and a 1.91:1 ratio (1200x630)')
     og_url = p.metas.get('og:url', '')
     if og_url and not og_url.startswith('https://'):
         E(f'og:url without HTTPS: {og_url}')
@@ -731,8 +730,10 @@ def check_robots(out: Path, site_url: str, errors, warnings):
 
 # --------------------------------------------------------------------------- API
 
-def run_checks(out_dir, site_url: str = SITE_URL):
-    """Return (errors, warnings): lists of (file, message) tuples."""
+def run_checks(out_dir, site_url=None):
+    """Return (errors, warnings): lists of (file, message) tuples. Without `site_url`, the one of the project."""
+    if site_url is None:
+        site_url = resolve_site_url(load_site_config(REPO))
     out = Path(out_dir)
     errors, warnings = [], []
     if not out.is_dir():
@@ -773,11 +774,85 @@ def run_checks(out_dir, site_url: str = SITE_URL):
     return errors, warnings
 
 
+# --------------------------------------------------------------------------- --prelaunch (plan 4.6)
+
+# `site.json` key -> the example value of the template. `--prelaunch` fails while a key still has it. A test checks
+# that this table matches the site.json that ships with the project.
+SAMPLE_VALUES = {
+    'site_url': 'https://YOUR-DOMAIN.com',
+    'site_name': 'Your Business',
+    'site_description': 'One sentence about what the site is and who it is for.',
+    'contact_email': 'hello@example.com',
+    'phone_e164': '+15550100',
+    'city': 'Your City',
+    'region': 'Your Region',
+    'country_code': 'XX',
+    'legal_name': 'Your legal name',
+    'legal_tax_id': 'Your registration number',
+    'legal_address': 'Your registered address',
+    'legal_jurisdiction': 'Your jurisdiction',
+}
+SAMPLE_STRINGS = ('YOUR-DOMAIN', 'Your Business')  # unmistakable: they can only come from the template
+_NOT_VISIBLE = re.compile(r'<!--.*?-->|<script\b.*?</script>|<style\b.*?</style>', re.DOTALL | re.IGNORECASE)
+_PENDING_TEXT = re.compile(r'\bTODO\b|\[CONFIRM')
+
+
+def prelaunch_findings(root, out, site_url_override=None):
+    """What still says "example" in the project `root` and its built folder `out`: a list of
+    `(file, finding, action)`. Empty = ready to publish. Never changes anything. A site whose address comes
+    from `--site-url` or the SITE_URL variable (as on a host that sets it) does not need `site_url` in site.json."""
+    root, out = Path(root), Path(out)
+    found = []
+    config = load_site_config(root)
+    url_given = bool(site_url_override or os.environ.get('SITE_URL'))
+    for key, sample in SAMPLE_VALUES.items():
+        if key == 'site_url' and url_given:
+            continue
+        if config.get(key) == sample:
+            found.append(('src/data/site.json', f'"{key}" still has the example value "{sample}"',
+                          f'write the real value of "{key}"'))
+    for page in sorted((root / 'src' / 'pages').rglob('*.html')):
+        if '<!-- SAMPLE COPY' in read_text(page):
+            found.append((str(page.relative_to(root)), 'it still has the <!-- SAMPLE COPY --> comment',
+                          'replace the sample text with the real one and delete the comment'))
+    if not out.is_dir():
+        found.append((str(out), 'the built folder does not exist, so the output was not checked',
+                      'run ./legible/build.sh first'))
+        return found
+    where = {}  # what was found in the output -> the files that have it (one finding each, not one per file)
+    for path in sorted(p for p in out.rglob('*') if p.is_file() and p.suffix in ('.html', '.txt', '.xml')):
+        text = read_text(path)
+        rel = str(path.relative_to(out))
+        for sample in SAMPLE_STRINGS:
+            if sample in text:
+                where.setdefault(('the output contains "%s"' % sample,
+                                  'fix it in src/ (data or page) and rebuild'), []).append(rel)
+        if path.suffix == '.html':
+            visible = re.sub(r'<[^>]+>', ' ', _NOT_VISIBLE.sub(' ', text))
+            for match in sorted(set(_PENDING_TEXT.findall(visible))):
+                where.setdefault(('the visible text contains "%s"' % match,
+                                  'finish the text and rebuild'), []).append(rel)
+    for (finding, action), files in where.items():
+        more = f' and {len(files) - 3} more' if len(files) > 3 else ''
+        found.append((str(out.name) + '/', f'{finding} (in {", ".join(files[:3])}{more})', action))
+    return found
+
+
+def print_prelaunch_report(findings):
+    if not findings:
+        print('✓ Ready to publish: no example data left.')
+        return
+    print(f'✗ Not ready to publish: {len(findings)} thing(s) still say "example":\n')
+    for file, finding, action in findings:
+        print(f'  • {file}: {finding}\n      → {action}')
+    print('\nThe base itself is fine (`check_site.py --strict` passes): this list is what to do before going live.')
+
+
 def print_check_report(success, errors, warnings, n_pages, check_time, git_branch, git_commit, out_dir, strict):
     COL = 50
     LBL = 15
     W = 2 + LBL + 2 + COL  # interior width
-    BANNER = str(SITE_CONFIG.get('check_banner', SITE_CONFIG.get('site_name', 'Legible') + ' • Site validator'))
+    BANNER = 'Legible • Site validator'
 
     def hr(): print('╠' + '═' * W + '╣')
     def row(label, value): print(f'║  {label:<{LBL}}: {str(value):<{COL}}║')
@@ -834,16 +909,26 @@ def print_check_report(success, errors, warnings, n_pages, check_time, git_branc
 def main(argv=None):
     ap = argparse.ArgumentParser(description='SEO validator for the compiled output.')
     ap.add_argument('--dir', default=str(OUT_DEFAULT), help='compiled folder (default: dist/)')
-    ap.add_argument('--site-url', default=SITE_URL)
+    ap.add_argument('--site-url', default=None, help='public https URL (default: SITE_URL or site_url in site.json)')
     ap.add_argument('--strict', action='store_true', help='warnings also fail')
+    ap.add_argument('--prelaunch', action='store_true',
+                    help='instead of the SEO checks: fail while any example data is left (exit 1)')
     args = ap.parse_args(argv)
 
+    try:
+        site_url = resolve_site_url(load_site_config(REPO), args.site_url)
+    except BuildError as exc:
+        return fail(exc)
     out = Path(args.dir)
-    errors, warnings = run_checks(out, args.site_url)
+    if args.prelaunch:
+        findings = prelaunch_findings(REPO, out, args.site_url)
+        print_prelaunch_report(findings)
+        return 1 if findings else 0
+    errors, warnings = run_checks(out, site_url)
     n_pages = len(list(out.rglob('*.html'))) if out.is_dir() else 0
     success = len(errors) == 0 and (not args.strict or len(warnings) == 0)
     check_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    git_branch, git_commit = get_git_info()
+    git_branch, git_commit = get_git_info(REPO)
 
     print_check_report(success, errors, warnings, n_pages, check_time, git_branch, git_commit, out, args.strict)
     return 0 if success else 1

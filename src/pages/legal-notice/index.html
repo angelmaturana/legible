@@ -2,27 +2,69 @@
 title: Legal Notice | {{site_name}}
 description: Legal notice of {{site_name}}: owner details, terms of use, intellectual property and liability. Template text to be reviewed by a lawyer.
 robots: noindex, follow
-geo: false
-canonical: auto
 updated: 2026-10-25
 ---
+
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@graph": [
+        {
+            "@type": "WebPage",
+            "@id": "{{page_url}}#webpage",
+            "url": "{{page_url}}",
+            "name": "{{page_title}}",
+            "description": "{{page_description}}",
+            "inLanguage": "{{in_language}}",
+            "isPartOf": {
+                "@id": "{{site_url}}/#website"
+            },
+            "about": {
+                "@id": "{{site_url}}/#business"
+            },
+            "dateModified": "{{page_updated}}",
+            "breadcrumb": {
+                "@id": "{{page_url}}#breadcrumb"
+            }
+        },
+        {
+            "@type": "BreadcrumbList",
+            "@id": "{{page_url}}#breadcrumb",
+            "itemListElement": [
+                {
+                    "@type": "ListItem",
+                    "position": 1,
+                    "name": "{{ui_home}}",
+                    "item": "{{site_url}}/"
+                },
+                {
+                    "@type": "ListItem",
+                    "position": 2,
+                    "name": "Legal notice"
+                }
+            ]
+        }
+    ]
+}
+</script>
 
 <main id="main">
         <section class="inner-hero page-width">
             <h1>Legal Notice</h1>
             <p class="lead">Legal information and terms of use of {{site_name}}.</p>
-            <p class="text-muted-lg mt-15">This text is a template. Replace the placeholders with your own details and have it reviewed by a qualified lawyer before you publish it.</p>
+            <p class="page-note">This text is a template. Replace the placeholders with your own details and have it reviewed by a qualified lawyer before you publish it.</p>
+            <p class="page-note">Last updated: {{page_updated}}</p>
         </section>
 
         <section class="section page-width" aria-labelledby="identification-title">
             <h2 id="identification-title">1. Owner identification</h2>
             <p>The following details identify the owner of this website:</p>
             <ul>
-                <li><strong>Legal name:</strong> Your legal name</li>
+                <li><strong>Legal name:</strong> {{legal_name}}</li>
                 <li><strong>Trading name:</strong> {{site_name}}</li>
-                <li><strong>Registered address:</strong> Your registered address</li>
-                <li><strong>Registration or tax number:</strong> Your registration number</li>
-                <li><strong>Email:</strong> {{contact_email}}</li>
+                <li><strong>Registered address:</strong> {{legal_address}}</li>
+                <li><strong>Registration or tax number:</strong> {{legal_tax_id}}</li>
+                <li><strong>Email:</strong> {{contact_email}} (or the <a href="/contact/">contact page</a>)</li>
                 <li><strong>Website:</strong> {{site_url}}</li>
             </ul>
         </section>
@@ -72,6 +114,6 @@ updated: 2026-10-25
 
         <section class="section page-width" aria-labelledby="law-title">
             <h2 id="law-title">9. Governing law and jurisdiction</h2>
-            <p>The relationship between {{site_name}} and the user is governed by the laws of Your jurisdiction, and any dispute will be submitted to the competent courts of Your jurisdiction.</p>
+            <p>The relationship between {{site_name}} and the user is governed by the laws of {{legal_jurisdiction}}, and any dispute will be submitted to the competent courts of {{legal_jurisdiction}}.</p>
         </section>
     </main>
