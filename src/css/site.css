@@ -8,6 +8,10 @@
 
 /* ---- 1. Tokens ------------------------------------------------------------ */
 :root {
+  /* Distance header -> eyebrow, shared by the home and the inner pages (breadcrumb = 44px link + 12px margin) */
+  --hero-top: clamp(56px, 3vw + 32px, 64px);
+  --breadcrumb-gap: 8px;
+  --breadcrumb-h: calc(44px + var(--breadcrumb-gap));
   color-scheme: dark;
 
   /* Surfaces (slate of the social image): from deepest to most elevated */
@@ -361,13 +365,16 @@ p { margin: 0; }
 .btn-icon { flex: none; width: 20px; height: 20px; }
 
 /* ---- 6. Hero (home page) -------------------------------------------------- */
-.hero { padding-block: clamp(40px, 7vw, 88px) clamp(16px, 3vw, 28px); }
+.hero { padding-block: var(--hero-top) clamp(16px, 3vw, 28px); }
 .hero-copy { max-width: 52rem; }
 
 /* ---- 7. Sections and bands ------------------------------------------------ */
 .section { padding-block: clamp(40px, 6vw, 72px); }
 
-.inner-hero { padding-block: clamp(24px, 4vw, 48px) clamp(16px, 3vw, 24px); }
+.inner-hero { padding-block: var(--hero-top) clamp(16px, 3vw, 24px); }
+/* With a breadcrumb the eyebrow must land where the home's does: the breadcrumb takes part of the space above it */
+.inner-hero:has(> .breadcrumb) { padding-top: max(0px, calc(var(--hero-top) - var(--breadcrumb-h))); }
+@media (min-width: 1100px) { :root { --breadcrumb-gap: 8px; } }
 /* First section after the hero: less space above (it used to add up to ~150 px) */
 .hero + .section, .inner-hero + .section { padding-top: clamp(24px, 4vw, 40px); }
 .inner-hero h1 { font-size: clamp(2rem, 1.3rem + 3vw, 3.5rem); }
@@ -380,14 +387,14 @@ p { margin: 0; }
   border-radius: var(--r-lg);
 }
 
-.breadcrumb { margin: 0 0 12px; font-size: .8125rem; }
-.breadcrumb ol { display: flex; flex-wrap: wrap; align-items: center; margin: 0; padding: 0; list-style: none; color: var(--text-muted); }
+.breadcrumb { margin: 0 0 var(--breadcrumb-gap); font-size: .8125rem; }
+.breadcrumb ol { display: flex; flex-wrap: nowrap; overflow: hidden; align-items: center; margin: 0; padding: 0; list-style: none; color: var(--text-muted); }
 .breadcrumb li { display: flex; align-items: center; min-width: 0; }
 .breadcrumb li + li::before { content: "/"; margin: 0 8px; color: var(--edge); }
 .breadcrumb a { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; }
 .breadcrumb a:hover, .breadcrumb a:focus-visible { color: var(--accent); }
 .breadcrumb svg { flex: none; color: var(--accent); }
-.breadcrumb li:last-child span { color: var(--text); font-weight: 600; }
+.breadcrumb li:last-child span { overflow: hidden; color: var(--text); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ---- 8. Cards ------------------------------------------------------------- */
 /* As many columns as fit; with fewer cards than columns they share the row. */
