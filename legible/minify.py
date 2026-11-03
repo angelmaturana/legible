@@ -155,31 +155,28 @@ def minify_html(html_text: str) -> str:
 
     html_text = html_text.strip()
 
-    # 7) Restore attribute values
-    for i, s in enumerate(attr_strings):
-        html_text = html_text.replace(f'\x00A{i}\x00', s)
+    # 7) Restore attribute values (single pass)
+    html_text = re.sub(r'\x00A(\d+)\x00', lambda m: attr_strings[int(m.group(1))], html_text)
 
-    # 8) Restore protected blocks (with JSON-LD minified)
-    for i, (original, is_json) in enumerate(protected):
-        if is_json:
-            match = re.match(r'<script[^>]*>(.*?)</script>', original, re.DOTALL | re.IGNORECASE)
-            if match:
-                inner = match.group(1)
-                try:
-                    parsed = json.loads(inner)
-                    minified_inner = json.dumps(parsed, ensure_ascii=False, separators=(',', ':'))
-                    gt_pos = original.find('>')
-                    close_pos = original.rfind('</script>')
-                    if gt_pos != -1 and close_pos != -1:
-                        new_tag = original[:gt_pos + 1] + minified_inner + original[close_pos:]
-                    else:
-                        new_tag = original
-                except ValueError:
-                    new_tag = original  # Preserve the original block when JSON-LD cannot be parsed.
-            else:
-                new_tag = original
-            html_text = html_text.replace(f'\x00P{i}\x00', new_tag)
-        else:
-            html_text = html_text.replace(f'\x00P{i}\x00', original)
+    # 8) Restore protected blocks (with JSON-LD minified, single pass)
+    def _restore_block(m):
+        original, is_json = protected[int(m.group(1))]
+        if not is_json:
+            return original
+        match = re.match(r'<script[^>]*>(.*?)</script>', original, re.DOTALL | re.IGNORECASE)
+        if not match:
+            return original
+        try:
+            parsed = json.loads(match.group(1))
+            minified_inner = json.dumps(parsed, ensure_ascii=False, separators=(',', ':'))
+            gt_pos = original.find('>')
+            close_pos = original.rfind('</script>')
+            if gt_pos != -1 and close_pos != -1:
+                return original[:gt_pos + 1] + minified_inner + original[close_pos:]
+        except ValueError:
+            pass  # Preserve the original block when JSON-LD cannot be parsed.
+        return original
+
+    html_text = re.sub(r'\x00P(\d+)\x00', _restore_block, html_text)
 
     return html_text

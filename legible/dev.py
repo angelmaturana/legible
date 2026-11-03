@@ -68,35 +68,27 @@ def build_dev(minify):
     result = subprocess.run(args, cwd=REPO, capture_output=True, text=True)
     return result.returncode, result.stdout, result.stderr
 
-def watch_src(callback, interval=0.5):
-    mtimes = {}
-    for p in (REPO / 'src').rglob('*'):
-        try:
-            if p.is_file():
-                mtimes[p] = p.stat().st_mtime
-        except OSError:
-            pass  # a file vanished mid-scan (editor temp files); it will be picked up on the next poll
+def watch_src(callback, interval=0.5, debounce=0.15):
+    def _scan():
+        current = {}
+        for p in (REPO / 'src').rglob('*'):
+            try:
+                if p.is_file():
+                    current[p] = p.stat().st_mtime
+            except OSError:
+                pass  # a file vanished mid-scan (editor temp files); it will be picked up on the next poll
+        return current
+
+    mtimes = _scan()
     while True:
-        changed = False
-        try:
-            for p in list(mtimes.keys()):
-                if not p.exists():
-                    del mtimes[p]
-                    changed = True
-                else:
-                    mtime = p.stat().st_mtime
-                    if mtime != mtimes.get(p):
-                        mtimes[p] = mtime
-                        changed = True
-            for p in (REPO / 'src').rglob('*'):
-                if p.is_file() and p not in mtimes:
-                    mtimes[p] = p.stat().st_mtime
-                    changed = True
-        except OSError:
-            pass  # a file vanished mid-scan (editor temp files); retry on the next poll
-        if changed:
-            callback()
         time.sleep(interval)
+        current = _scan()
+        if current != mtimes:
+            if debounce > 0:
+                time.sleep(debounce)
+                current = _scan()
+            mtimes = current
+            callback()
 
 def main():
     parser = argparse.ArgumentParser(description='Development server for the configured static site')

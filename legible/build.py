@@ -128,6 +128,8 @@ def load_site(root, site_url_override=None):
         entity = json.loads(read_text(root / 'src' / 'data' / 'entity.json'))
     except (OSError, ValueError) as exc:
         raise BuildError(f'could not read src/data/entity.json: {exc}')
+    if not isinstance(entity, list):
+        raise BuildError('src/data/entity.json must contain a JSON list [...]')
     return Site(root=root, config=config, site_url=site_url, language=language, lang=lang, og_locale=og_locale,
                 in_language=in_language, ui=ui, entity=entity, business=_main_node(entity),
                 nav_markers=render_nav_markers(config))
@@ -441,7 +443,7 @@ def menu_hrefs(header_html):
 def parse_front_matter(text):
     if not text.startswith('---'):
         return {}, text
-    m = re.match(r'^---\n(.*?)\n---\n(.*)$', text, re.DOTALL)
+    m = re.match(r'^---\r?\n(.*?)\r?\n---\r?\n(.*)$', text, re.DOTALL)
     if not m:
         return {}, text
     block, content = m.group(1), m.group(2)
@@ -734,7 +736,7 @@ def _write_site_files(out, pages_data, replacements, site):
         write_text(robots_path, _apply_markers(read_text(robots_path), replacements))
     llms_path = out / 'llms.txt'
     if llms_path.exists():
-        write_text(llms_path, render_llms(_apply_markers(read_text(llms_path), replacements), replacements))
+        write_text(llms_path, render_llms(read_text(llms_path), replacements))
 
 
 # --------------------------------------------------------------------------- 7. report and output folder
@@ -837,6 +839,15 @@ def check_out_dir(out, root):
         raise BuildError(f'the output folder {out} is the project, src/, legible/ or contains one of them, '
                          'and would be emptied. Use a folder of its own, such as dist/.', label='BUILD ABORTED')
 
+
+def _read_required(root, rel_path):
+    """Read a required project file or raise a clean BuildError."""
+    try:
+        return read_text(Path(root) / rel_path)
+    except OSError as exc:
+        raise BuildError(f'could not read {rel_path}: {exc}')
+
+
 def _prepare_output(root, out, minify):
     """Empty the output folder, copy src/static/ and write the (optionally minified) CSS.
     Returns the size of the CSS before and after minifying."""
@@ -857,10 +868,9 @@ def _prepare_output(root, out, minify):
                 write_text(target, read_text(p))  # text files leave with LF even if the source has CRLF
             else:
                 target.write_bytes(p.read_bytes())
-    css_src = root / 'src' / 'css' / 'site.css'
     css_dst = out / 'css' / 'site.css'
     css_dst.parent.mkdir(parents=True, exist_ok=True)
-    css_text = read_text(css_src)
+    css_text = _read_required(root, 'src/css/site.css')
     css_size_before = len(css_text.encode('utf-8'))
     if minify:
         css_text = minify_css(css_text)
@@ -890,9 +900,9 @@ def build(root, out_dir=None, minify=None, no_validate=False, strict=False, site
     out = Path(out_dir or root / 'dist')
     css_size_before, css_size_after = _prepare_output(root, out, minify)
 
-    layout = read_text(root / 'src' / 'layout.html')
-    header = read_text(root / 'src' / 'partials' / 'header.html')
-    footer = read_text(root / 'src' / 'partials' / 'footer.html')
+    layout = _read_required(root, 'src/layout.html')
+    header = _read_required(root, 'src/partials/header.html')
+    footer = _read_required(root, 'src/partials/footer.html')
     errors = []
     warnings = []
     values = _site_values(site)
