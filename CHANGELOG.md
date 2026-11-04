@@ -4,6 +4,13 @@ All notable changes to `legible` are recorded here. The format follows [Keep a C
 
 ## [Unreleased]
 
+### Stylesheet architecture
+
+- `--header-h` token: the header height, the anchor offset (`scroll-margin-top`) and the mobile menu panel height derive from it. This also fixes two stale values (anchors were offset 120 px and the panel 110 px for a 131 px header).
+- Breakpoints reduced to four documented values (640 / 768 / 960 / 1100). The footer grid now switches at 960 px instead of 901 px; the 1101 px tier is now 1100 px; the redundant `--breadcrumb-gap` media query is gone.
+- Menu styled with flat classes (`.site-nav`, `.nav-list`, `.nav-sub`, `.nav-link`, `.nav-sublink`, `.nav-action`) instead of `.site-header nav li ul a`. **The engine now writes these classes in `{{nav}}`** (and `header.html` gives the `<nav>` the class `site-nav`); a project with its own header partial must add `class="site-nav"`.
+- Radius scale `--r-sm` / `--r-md` / `--r-lg` (replaces `--r`; cards and the submenu use 12 px) and z-index tokens `--z-header` / `--z-float` / `--z-skip`.
+
 ### V4 restructuring
 
 `legible` is now a small, general base for a site with one main entity (a business, a project or a person). The work was done in sub-phases F0 to F12; each one kept the tests green and, when it touched the engine, left `dist/` identical unless noted.

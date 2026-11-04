@@ -4,6 +4,18 @@
    smoothly), no downloaded fonts, no costly effects. Mobile-first.
    Terminal look: flat slate surfaces with soft glows, mono type for labels and
    figures, and the logo palette: green > · amber [ ] · cyan · blue ] · white i.
+
+   Conventions
+   - Colours, radii, z-indexes and the header height are tokens in :root.
+   - Breakpoints (min-width, mobile-first; custom properties do not work in
+     @media, so these four values are written out and must stay the only ones):
+       640px   buttons go from full width to auto width
+       768px   wider page gutters, larger floating button, footer text no longer
+               needs room for it
+       960px   desktop menu (hover submenu), three-column footer
+       1100px  wider menu spacing
+   - Selectors stay flat (one class, at most one state or modifier). The menu is
+     styled with its own classes (.nav-*), never through the element tree.
    ========================================================================== */
 
 /* ---- 1. Tokens ------------------------------------------------------------ */
@@ -12,6 +24,9 @@
   --hero-top: clamp(56px, 3vw + 32px, 64px);
   --breadcrumb-gap: 8px;
   --breadcrumb-h: calc(44px + var(--breadcrumb-gap));
+  /* Fixed header height (its 1px border comes on top). The anchor offset and
+     the mobile menu panel are derived from it. */
+  --header-h: 130px;
   color-scheme: dark;
 
   /* Surfaces (slate of the social image): from deepest to most elevated */
@@ -63,9 +78,16 @@
   /* Logo proportions (viewBox of logo.svg): header and footer reserve the same box */
   --logo-ratio: 585 / 140;
 
-  --r: 10px;
+  /* Radius scale */
+  --r-sm: 8px;
+  --r-md: 12px;
   --r-lg: 16px;
   --gap: 16px;
+
+  /* Stacking order: header < floating button < skip link */
+  --z-header: 100;
+  --z-float: 200;
+  --z-skip: 300;
 }
 
 /* ---- 2. Base -------------------------------------------------------------- */
@@ -105,13 +127,13 @@ p a:hover, dd a:hover { color: var(--text); }
   position: fixed;
   left: 16px;
   top: 16px;
-  z-index: 9999;
+  z-index: var(--z-skip);
   width: auto;
   height: auto;
   padding: 12px 18px;
   color: var(--accent-text);
   background: var(--accent);
-  border-radius: 8px;
+  border-radius: var(--r-sm);
   font-weight: 700;
 }
 
@@ -120,8 +142,8 @@ p a:hover, dd a:hover { color: var(--text); }
   .page-width, .site-footer { width: min(1200px, 100% - 64px); }
 }
 
-/* The fixed header is about 111 px tall at every width; anchors leave a margin so they are not hidden behind it. */
-[id] { scroll-margin-top: 120px; }
+/* The sticky header has the same height at every width; anchors leave a margin so they are not hidden behind it. */
+[id] { scroll-margin-top: calc(var(--header-h) + 16px); }
 
 /* ---- 3. Typography -------------------------------------------------------- */
 h1, h2, h3 { margin: 0; font-family: var(--font-display); text-wrap: balance; }
@@ -176,15 +198,14 @@ p { margin: 0; }
 .lead-follow { margin-top: 18px; }
 
 /* ---- 4. Header and navigation (CSS only) ---------------------------------- */
-/* Header and menu sizes and styles; font family, weight and size. */
 .site-header {
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: var(--z-header);
   background: var(--bg-header);
   border-bottom: 1px solid var(--nav-line);
 }
-.site-header .page-width { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 130px; padding-block: 12px; }
+.site-header .page-width { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: var(--header-h); padding-block: 12px; }
 
 .brand { display: inline-flex; align-items: center; gap: 12px; min-width: 0; }
 .brand-logo { width: 230px; height: auto; aspect-ratio: var(--logo-ratio); }
@@ -200,7 +221,7 @@ p { margin: 0; }
   white-space: nowrap;
   border: 0;
 }
-.nav-toggle:focus-visible + .nav-toggle-label { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 12px; }
+.nav-toggle:focus-visible + .nav-toggle-label { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: var(--r-md); }
 
 .nav-toggle-label {
   position: relative;
@@ -210,7 +231,7 @@ p { margin: 0; }
   width: 44px;
   height: 44px;
   cursor: pointer;
-  border-radius: 12px;
+  border-radius: var(--r-md);
 }
 .nav-toggle-label:hover { background: var(--overlay-2); }
 .nav-toggle-label span, .nav-toggle-label::before, .nav-toggle-label::after {
@@ -226,23 +247,27 @@ p { margin: 0; }
 }
 .nav-toggle-label::before { transform: translateX(-50%) translateY(-7px); }
 .nav-toggle-label::after { transform: translateX(-50%) translateY(7px); }
-#nav-toggle:checked + .nav-toggle-label span { opacity: 0; }
-#nav-toggle:checked + .nav-toggle-label::before { transform: translateX(-50%) rotate(45deg); }
-#nav-toggle:checked + .nav-toggle-label::after { transform: translateX(-50%) rotate(-45deg); }
+.nav-toggle:checked + .nav-toggle-label span { opacity: 0; }
+.nav-toggle:checked + .nav-toggle-label::before { transform: translateX(-50%) rotate(45deg); }
+.nav-toggle:checked + .nav-toggle-label::after { transform: translateX(-50%) rotate(-45deg); }
 /* Windows high contrast: the system overrides `background`, so the three bars of the menu button are painted
    with the system text colour or the button would disappear */
 @media (forced-colors: active) {
   .nav-toggle-label span, .nav-toggle-label::before, .nav-toggle-label::after { background: CanvasText; }
 }
 
-/* Mobile: drop-down panel driven by the checkbox */
-.site-header nav {
+/* Menu classes (written by the build): .site-nav (the <nav>), .nav-list (top <ul>), .has-sub (item with a
+   submenu), .nav-sub (submenu <ul>), .nav-link (every link), .nav-sublink (link inside a submenu),
+   .nav-action (featured link); .active marks the current page. */
+
+/* Mobile: drop-down panel driven by the checkbox. The 100vh line is the fallback for browsers without dvh. */
+.site-nav {
   position: absolute;
   top: 100%;
   left: 0;
   right: 0;
-  max-height: calc(100vh - 110px);
-  max-height: calc(100dvh - 110px);
+  max-height: calc(100vh - var(--header-h));
+  max-height: calc(100dvh - var(--header-h));
   padding: 8px 16px 16px;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -251,34 +276,38 @@ p { margin: 0; }
   border-bottom: 1px solid var(--nav-line);
   font-weight: 600;
 }
-#nav-toggle:checked + .nav-toggle-label + nav { visibility: visible; }
-.site-header nav ul { margin: 0; padding: 0; list-style: none; }
-.site-header nav > ul { display: flex; flex-direction: column; align-items: stretch; gap: 4px; }
-.site-header nav li { position: relative; }
-.site-header nav a {
+.nav-toggle:checked + .nav-toggle-label + .site-nav { visibility: visible; }
+
+.nav-list, .nav-sub { margin: 0; padding: 0; list-style: none; }
+.nav-list { display: flex; flex-direction: column; align-items: stretch; gap: 4px; }
+.has-sub { position: relative; }
+
+.nav-link {
   display: flex;
   align-items: center;
   min-height: 48px;
   padding: 14px 16px;
   color: var(--text-soft);
-  border-radius: 8px;
+  border-radius: var(--r-sm);
 }
-.site-header nav a:hover, .site-header nav a:focus-visible, .site-header nav a.active { color: var(--accent-text); background: var(--accent); }
-.site-header nav li ul {
+.nav-link:hover, .nav-link:focus-visible, .nav-link.active { color: var(--accent-text); background: var(--accent); }
+
+.nav-sub {
   display: flex;
   flex-direction: column;
   gap: 4px;
   margin: 0 0 4px 16px;
-  padding: 0 0 0 8px;
+  padding-left: 8px;
   visibility: inherit;
   border-left: 1px solid var(--nav-line);
 }
-.site-header nav li ul a { min-height: 44px; padding: 10px 14px; color: var(--text-muted); font-weight: 500; font-size: .95rem; }
+.nav-sublink { min-height: 44px; padding: 10px 14px; color: var(--text-muted); font-weight: 500; font-size: .95rem; }
+
 /* Featured-action link: cyan border on every page; filled only on its own
    page (class .active) or on hover / focus */
-.site-header nav a.nav-action { justify-content: center; margin-top: 8px; border: 1px solid var(--accent); border-radius: 12px; color: var(--accent); background: transparent; text-align: center; }
-.site-header nav a.nav-action:hover, .site-header nav a.nav-action:focus-visible, .site-header nav a.nav-action.active { color: var(--accent-text); background: var(--accent); }
-.site-header nav a.nav-action.active:hover, .site-header nav a.nav-action.active:focus-visible { background: var(--accent-hi); border-color: var(--accent-hi); }
+.nav-action { justify-content: center; margin-top: 8px; border: 1px solid var(--accent); border-radius: var(--r-md); color: var(--accent); background: transparent; text-align: center; }
+.nav-action:hover, .nav-action:focus-visible, .nav-action.active { color: var(--accent-text); background: var(--accent); }
+.nav-action.active:hover, .nav-action.active:focus-visible { background: var(--accent-hi); border-color: var(--accent-hi); }
 
 /* Desktop: horizontal menu with a :hover / :focus-within submenu. From 960 px the logo (295 px)
    and the menu fit on one row; below that the mobile menu is used. */
@@ -286,7 +315,7 @@ p { margin: 0; }
   .site-header .page-width { gap: 16px; }
   .brand-logo { width: 295px; }
   .nav-toggle-label { display: none; }
-  .site-header nav {
+  .site-nav {
     position: static;
     max-height: none;
     padding: 0;
@@ -297,9 +326,9 @@ p { margin: 0; }
     font-size: .9375rem;
     letter-spacing: .01em;
   }
-  .site-header nav > ul { flex-direction: row; align-items: center; gap: 4px; }
-  .site-header nav a { min-height: 44px; padding: 9px 9px; white-space: nowrap; }
-  .site-header nav li ul {
+  .nav-list { flex-direction: row; align-items: center; }
+  .nav-link { min-height: 44px; padding: 9px; white-space: nowrap; }
+  .nav-sub {
     position: absolute;
     top: 100%;
     left: 0;
@@ -309,13 +338,12 @@ p { margin: 0; }
     visibility: hidden;
     background: var(--bg-alt);
     border: 1px solid var(--nav-line);
-    border-radius: 14px;
+    border-radius: var(--r-md);
   }
-  .site-header nav li:hover > ul, .site-header nav li:focus-within > ul { visibility: visible; }
-  .site-header nav li ul a { min-height: 44px; padding: 9px 14px; color: var(--text-soft); font-weight: 600; font-size: inherit; white-space: nowrap; }
-  .site-header nav li ul a:hover, .site-header nav li ul a:focus-visible, .site-header nav li ul a.active { color: var(--accent-text); }
-  .site-header nav a.nav-action { margin: 0; padding: 8px 10px; }
-  .site-header nav .has-sub > a::after {
+  .has-sub:hover > .nav-sub, .has-sub:focus-within > .nav-sub { visibility: visible; }
+  .nav-sublink { padding: 9px 14px; color: var(--text-soft); font-weight: 600; font-size: inherit; }
+  .nav-action { margin: 0; padding: 8px 10px; }
+  .has-sub > .nav-link::after {
     content: "";
     flex: none;
     width: 5px;
@@ -325,25 +353,23 @@ p { margin: 0; }
     border-width: 0 2px 2px 0;
     transform: rotate(45deg);
   }
-  .site-header nav .has-sub:hover > a, .site-header nav .has-sub:focus-within > a { color: var(--accent-text); background: var(--accent); }
-  .site-header nav .has-sub:not(:hover):not(:focus-within):has(>ul a.active)>a { color: var(--accent); background: none; }
+  .has-sub:hover > .nav-link, .has-sub:focus-within > .nav-link { color: var(--accent-text); background: var(--accent); }
+  .has-sub:has(.active):not(:hover, :focus-within) > .nav-link { color: var(--accent); background: none; }
 }
-/* With a long menu, between 960 and 1100 px it does not fit on one line
-   with the wide spacing. That range uses the compact
-   spacing of the previous block (gap 4px, padding 9px / 10px, no line breaks);
-   from 1101 px the original values return (gap 8px, padding 14px / 13px).
-   Fonts, header height and logo do not change. */
-@media (min-width: 1101px) {
-  .site-header nav > ul { gap: 8px; }
-  .site-header nav a { padding: 9px 14px; }
-  .site-header nav a.nav-action { padding: 8px 13px; }
+/* Between 960 and 1100 px the menu only fits on one line with compact spacing (above); from 1100 px it gets
+   wider spacing. Fonts, header height and logo do not change. */
+@media (min-width: 1100px) {
+  .nav-list { gap: 8px; }
+  .nav-link { padding: 9px 14px; }
+  .nav-action { padding: 8px 13px; }
 }
 
 /* ---- 5. Buttons ----------------------------------------------------------- */
 .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
 .actions .button { width: 100%; }
-.contact-methods { list-style: none; padding: 0; }
 @media (min-width: 640px) { .actions .button { width: auto; } }
+/* The engine writes the contact buttons as a <ul class="actions contact-methods">: same row of buttons, list reset */
+.contact-methods { list-style: none; padding: 0; }
 
 .button {
   display: inline-flex;
@@ -353,7 +379,7 @@ p { margin: 0; }
   min-height: 48px;
   padding: 12px 22px;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: var(--r-sm);
   font: 700 .9375rem/1.25 var(--font-text);
   text-align: center;
   text-decoration: none;
@@ -374,7 +400,6 @@ p { margin: 0; }
 .inner-hero { padding-block: var(--hero-top) clamp(16px, 3vw, 24px); }
 /* With a breadcrumb the eyebrow must land where the home's does: the breadcrumb takes part of the space above it */
 .inner-hero:has(> .breadcrumb) { padding-top: max(0px, calc(var(--hero-top) - var(--breadcrumb-h))); }
-@media (min-width: 1100px) { :root { --breadcrumb-gap: 8px; } }
 /* First section after the hero: less space above (it used to add up to ~150 px) */
 .hero + .section, .inner-hero + .section { padding-top: clamp(24px, 4vw, 40px); }
 .inner-hero h1 { font-size: clamp(2rem, 1.3rem + 3vw, 3.5rem); }
@@ -405,7 +430,7 @@ p { margin: 0; }
   padding: 24px;
   background: var(--surface-2);
   border: 1px solid var(--line);
-  border-radius: var(--r);
+  border-radius: var(--r-md);
   overflow-wrap: break-word;
 }
 .card p { margin-bottom: 12px; color: var(--text-muted); font-size: .9375rem; }
@@ -415,7 +440,7 @@ p { margin: 0; }
 /* ---- 9. Footer ----------------------------------------------------------- */
 .site-footer { margin-top: 50px; padding-block: 40px 20px; color: var(--text-muted); border-top: 1px solid var(--line); font-size: .9375rem; }
 .footer-grid { display: grid; grid-template-columns: 1fr; gap: 28px; align-items: start; }
-@media (min-width: 901px) { .footer-grid { grid-template-columns: 2.8fr 1fr 1fr; gap: 48px; } }
+@media (min-width: 960px) { .footer-grid { grid-template-columns: 2.8fr 1fr 1fr; gap: 48px; } }
 
 .footer-entity { margin: 0 0 20px; line-height: 1.5; }
 .footer-brand-row { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 40px; }
@@ -431,9 +456,9 @@ p { margin: 0; }
 .footer-nav a { display: flex; align-items: center; min-height: 44px; font-weight: 500; line-height: 1.5; }
 .footer-nav a:hover, .footer-nav a:focus-visible { color: var(--accent); }
 
-.footer-bottom { margin-top: 24px; padding: 16px 0 0; border-top: 1px solid var(--line); font-size: .8125rem; }
-/* On mobile the text does not run under the floating WhatsApp button */
-@media (max-width: 767px) { .footer-bottom { padding-right: 72px; } }
+.footer-bottom { margin-top: 24px; padding: 16px 72px 0 0; border-top: 1px solid var(--line); font-size: .8125rem; }
+/* On mobile (the base) the text keeps clear of the floating WhatsApp button; from 768 px it no longer needs to */
+@media (min-width: 768px) { .footer-bottom { padding-right: 0; } }
 
 /* Floating WhatsApp button: flat circle in the official green with a white icon.
    No shadows, no motion and no pseudo-elements. */
@@ -441,7 +466,7 @@ p { margin: 0; }
   position: fixed;
   right: 16px;
   bottom: 16px;
-  z-index: 9999;
+  z-index: var(--z-float);
   display: grid;
   place-items: center;
   width: 56px;

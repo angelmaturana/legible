@@ -223,9 +223,9 @@ class TestNav(Project):
 
     def test_main_menu_with_submenu_and_action(self):
         home = self.built()
-        self.assertIn('<li class="has-sub"><a href="/company/">Company</a><ul><li><a href="/company/team/">Team</a></li></ul></li>', home)
-        self.assertIn('<li><a class="nav-action" href="/talk/">Talk to us</a></li>', home)
-        self.assertIn('<nav aria-label="Main navigation"><ul>', home)
+        self.assertIn('<li class="has-sub"><a class="nav-link" href="/company/">Company</a><ul class="nav-sub"><li><a class="nav-link nav-sublink" href="/company/team/">Team</a></li></ul></li>', home)
+        self.assertIn('<li><a class="nav-link nav-action" href="/talk/">Talk to us</a></li>', home)
+        self.assertIn('<nav aria-label="Main navigation"><ul class="nav-list">', home)
 
     def test_footer_menu_flattens_the_submenus(self):
         home = self.built()
@@ -249,16 +249,16 @@ class TestNav(Project):
         fixtures.write(self.root, 'src/pages/company/index.html', fixtures.page('Company page for the fixture'))
         fixtures.write(self.root, 'src/pages/company/team/index.html', fixtures.page('Team page for the fixture'))
         fixtures.write(self.root, 'src/pages/other/index.html', fixtures.page('Other page for the fixture'))
-        self.assertIn('<a href="/company/" class="active" aria-current="page">Company</a>', self.built('company/index.html'))
-        self.assertIn('<a href="/company/team/" class="active" aria-current="page">Team</a>', self.built('company/team/index.html'))
+        self.assertIn('<a class="nav-link active" href="/company/" aria-current="page">Company</a>', self.built('company/index.html'))
+        self.assertIn('<a class="nav-link nav-sublink active" href="/company/team/" aria-current="page">Team</a>', self.built('company/team/index.html'))
         other = self.built('other/index.html')
-        self.assertNotIn('class="active"', other)
-        self.assertIn('<a href="/" class="active" aria-current="page">Home</a>', self.built())
+        self.assertNotIn(' active"', other)
+        self.assertIn('<a class="nav-link active" href="/" aria-current="page">Home</a>', self.built())
 
     def test_a_page_below_an_entry_highlights_the_entry(self):
         fixtures.write(self.root, 'src/pages/talk/deeper/index.html', fixtures.page('Deeper page for the fixture'))
         page = self.built('talk/deeper/index.html')
-        self.assertIn('<a class="nav-action active" href="/talk/" aria-current="true">Talk to us</a>', page)
+        self.assertIn('<a class="nav-link nav-action active" href="/talk/" aria-current="true">Talk to us</a>', page)
 
     def test_errors_name_the_entry(self):
         cases = [
@@ -385,7 +385,7 @@ class TestPageMarkers(Project):
         self.assertIn('<p>https://fixture.test/hablemos/</p>', page)
         self.assertEqual(self.jsonld(page, 'https://fixture.test/hablemos/#webpage')['url'], 'https://fixture.test/hablemos/')
         self.assertNotIn('/talk/', page)
-        self.assertIn('<a class="nav-action active" href="/hablemos/" aria-current="page">Hablemos</a>', page)
+        self.assertIn('<a class="nav-link nav-action active" href="/hablemos/" aria-current="page">Hablemos</a>', page)
         self.assertIn('https://fixture.test/hablemos/', (self.root / 'dist' / 'sitemap.xml').read_text(encoding='utf-8'))
 
 

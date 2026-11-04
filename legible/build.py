@@ -348,14 +348,16 @@ def render_nav_markers(config):
     nav = _nav_items(config, 'nav', allow_children=True, allow_action=True)
     legal = _nav_items(config, 'legal_nav', allow_children=False, allow_action=False)
 
-    lines = ['<ul>']
+    # Menu classes (styled in site.css, section 4): one literal per class, so the stylesheet test can see them.
+    link, sublink, action = "nav-link", "nav-sublink", "nav-action"
+    lines = ['<ul class="nav-list">']
     for entry in nav:
         children = entry.get('children') or []
         if children:
-            lines.append(f'<li class="has-sub">{_link(entry)}<ul>'
-                         + ''.join(f'<li>{_link(c)}</li>' for c in children) + '</ul></li>')
+            lines.append(f'<li class="has-sub">{_link(entry, link)}<ul class="nav-sub">'
+                         + ''.join(f'<li>{_link(c, f"{link} {sublink}")}</li>' for c in children) + '</ul></li>')
         else:
-            lines.append(f'<li>{_link(entry, "nav-action" if entry.get("action") else "")}</li>')
+            lines.append(f'<li>{_link(entry, f"{link} {action}" if entry.get("action") else link)}</li>')
     lines.append('</ul>')
     flat = [e for entry in nav for e in [entry] + (entry.get('children') or [])]
     return {

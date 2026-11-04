@@ -284,7 +284,12 @@ class TestStylesheetAccessibility(TemplateCopy):
 
     # (text token, background token, minimum ratio): WCAG 2.x AA for text (4.5) and for borders of controls (3).
     CONTRAST = (('text', 'bg', 4.5), ('text-muted', 'bg', 4.5), ('text-muted', 'surface-2', 4.5),
-                ('accent', 'bg', 4.5), ('accent-text', 'accent', 4.5), ('edge', 'bg', 3.0))
+                ('accent', 'bg', 4.5), ('accent-text', 'accent', 4.5), ('edge', 'bg', 3.0),
+                # Pairs the stylesheet really uses: eyebrow, footer titles and the ">" prompt, lead text,
+                # menu links (header and submenu panel) and the hover state of the primary button / filled links.
+                ('info-soft', 'bg', 4.5), ('warn', 'bg', 4.5), ('success', 'bg', 4.5),
+                ('text-soft', 'bg', 4.5), ('text-soft', 'bg-header', 4.5), ('text-soft', 'bg-alt', 4.5),
+                ('accent-text', 'accent-hi', 4.5))
 
     def setUp(self):
         super().setUp()
@@ -345,7 +350,7 @@ class TestStylesheetAccessibility(TemplateCopy):
         return values
 
     def test_touch_targets_are_at_least_44_px(self):
-        for selector in ('.site-header nav a', '.site-header nav li ul a', '.footer-nav a', '.footer-contact-item',
+        for selector in ('.nav-link', '.nav-sublink', '.footer-nav a', '.footer-contact-item',
                          '.footer-logo', '.breadcrumb a', '.button'):
             values = self.declared(selector, 'min-height')
             self.assertTrue(values, '%s declares no min-height' % selector)
@@ -353,8 +358,26 @@ class TestStylesheetAccessibility(TemplateCopy):
         for prop in ('width', 'height'):
             self.assertEqual(self.declared('.nav-toggle-label', prop), [44], 'the menu button must be 44 px')
 
+    BREAKPOINTS = {640, 768, 960, 1100}
+
+    def test_media_queries_use_only_the_documented_breakpoints(self):
+        """Custom properties do not work in @media, so the four widths of the header comment are the whole set."""
+        found = {int(v) for v in re.findall(r'@media\s*\((?:min|max)-width:\s*(\d+)px\)', self.css)}
+        self.assertEqual(sorted(found - self.BREAKPOINTS), [],
+                         'breakpoints outside %s: add the value to the header comment and to this test, or reuse one'
+                         % sorted(self.BREAKPOINTS))
+
+    def test_header_offsets_derive_from_the_header_height_token(self):
+        self.assertRegex(self.token('header-h'), r'^\d+px$')
+        derived = self.outside_root
+        self.assertRegex(derived, r'\.site-header \.page-width\s*\{[^}]*min-height:\s*var\(--header-h\)')
+        self.assertRegex(derived, r'\[id\]\s*\{[^}]*scroll-margin-top:\s*calc\(var\(--header-h\)')
+        self.assertRegex(derived, r'max-height:\s*calc\(100dvh - var\(--header-h\)\)')
+        self.assertEqual(re.findall(r'\b(?:min-height|scroll-margin-top):\s*1[0-9]{2}px', derived), [],
+                         'a header-sized number is written by hand: use --header-h')
+
     def test_the_mobile_menu_scrolls_on_its_own(self):
-        panel = [body for selectors, body in rules(self.css) if selectors == ['.site-header nav']][0]
+        panel = [body for selectors, body in rules(self.css) if selectors == ['.site-nav']][0]
         self.assertIn('overflow-y: auto', panel)
         self.assertIn('max-height: calc(100dvh', panel)
         self.assertIn('overscroll-behavior: contain', panel)
