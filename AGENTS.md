@@ -95,10 +95,10 @@ If a test fails on the adapted site, first check whether your change caused it. 
 
 **Final message.** Keep it short: what you built; the checks with their result; the pending list (every sample value kept and every `SAMPLE COPY` page); the legal-pages notice. Example:
 
-> Site for Casa Lola built (3 pages + legal). Tests: 295 OK. `build.py --all`: OK. `--prelaunch`: 4 pending: phone, address, legal data (example values), `SAMPLE COPY` on `/`. The legal pages are templates, not legal advice.
+> Site for Casa Lola built (3 pages + legal). Tests: all OK. `build.py --all`: OK. `--prelaunch`: 4 pending: phone, address, legal data (example values), `SAMPLE COPY` on `/`. The legal pages are templates, not legal advice.
 
 ## Map
 
 - `src/`: what you edit (`data/`, `pages/`, `partials/`, `layout.html`, `css/`, `static/`).
 - `legible/`: build, validator (`check_site.py`), dev server. `tests/`: the suite. Neither is edited.
-- `README.md`: what `legible` is and how to use it. `DOCUMENTATION.md`: technical reference. If either differs from this file on a procedure, a command or a limit, follow this file.
+- `README.md`: what `legible` is and how to use it. `DOCUMENTATION.md`: technical reference. `SKILLS.md`: depth for audits, design, AI-search policy and engine mode; read it only for those. If either differs from this file on a procedure, a command or a limit, follow this file.

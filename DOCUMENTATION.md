@@ -1,6 +1,6 @@
 # legible: technical reference
 
-`legible` turns the files in `src/` into a static site in `dist/`. This file is the reference for the engine and the data model. The procedure for an AI is in [`AGENTS.md`](AGENTS.md); how to use the project is in [`README.md`](README.md).
+`legible` turns the files in `src/` into a static site in `dist/`. This file is the reference for the engine and the data model. The procedure for an AI is in [`AGENTS.md`](AGENTS.md); how to use the project is in [`README.md`](README.md). The standard expected for audits, design and engine changes is in [`SKILLS.md`](SKILLS.md), which links here instead of copying this reference.
 
 ## What it is and what it is not
 

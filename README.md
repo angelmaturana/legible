@@ -18,7 +18,7 @@
 
 The aim is predictable, inspectable output — not guaranteed rankings, indexing, rich results, traffic or AI citations. The included site is generic sample content; replace it with your real facts before publishing (see [Before launch](#before-launch)).
 
-The technical reference — architecture, data model, marker catalogue, validator rules — lives in [`DOCUMENTATION.md`](DOCUMENTATION.md). The procedure an AI assistant follows to adapt the base is [`AGENTS.md`](AGENTS.md).
+The technical reference — architecture, data model, marker catalogue, validator rules — lives in [`DOCUMENTATION.md`](DOCUMENTATION.md). The procedure an AI assistant follows to adapt the base is [`AGENTS.md`](AGENTS.md). For audits, distinctive design and engine changes, [`SKILLS.md`](SKILLS.md) sets the level of rigour expected (in Spanish).
 
 ## Requirements
 
