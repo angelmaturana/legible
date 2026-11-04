@@ -4,7 +4,7 @@
 > **Qué no es.** No sustituye a `AGENTS.md` (el procedimiento) ni a `DOCUMENTATION.md` (la referencia técnica), y **no autoriza por sí mismo el *engine mode***: eso solo lo hace el usuario (sección 5.2).
 > **Idioma.** Texto en español; comandos, claves y nombres de código, en inglés tal como están en el proyecto.
 > **Cómo se mantiene al día.** No fija cifras que cambian (nº de tests, líneas, bytes): se comprueban ejecutando los comandos de la sección 14. Los datos de referencia (marcadores, reglas del validador, modelo de datos, comandos) viven en [`DOCUMENTATION.md`](DOCUMENTATION.md): aquí se enlazan, no se copian.
-
+ 
 ---
 
 ## 0. Las 12 reglas que no se rompen
