@@ -100,5 +100,5 @@ If a test fails on the adapted site, first check whether your change caused it. 
 ## Map
 
 - `src/`: what you edit (`data/`, `pages/`, `partials/`, `layout.html`, `css/`, `static/`).
-- `legible/`: build, validator (`check_site.py`), dev server. `tests/`: the suite. Neither is edited.
+- `legible/`: build, validator (`check_site.py`), dev server. `tests/`: the suite. Neither is edited. Engine mode only: to add a validator rule follow "How to add a rule to the validator" in `DOCUMENTATION.md`; the order of `PAGE_RULES` is the order of the messages.
 - `README.md`: what `legible` is and how to use it. `DOCUMENTATION.md`: technical reference. `SKILLS.md`: depth for audits, design, AI-search policy and engine mode; read it only for those. If either differs from this file on a procedure, a command or a limit, follow this file.

@@ -1,0 +1,113 @@
+### CLEAN
+╔═════════════════════════════════════════════════════════════════════╗
+║                                                                     ║
+║                       Legible • Site validator                      ║
+║                                                                     ║
+╠═════════════════════════════════════════════════════════════════════╣
+║                           ✓  CHECK PASSED                           ║
+╠═════════════════════════════════════════════════════════════════════╣
+║                             CHECK REPORT                            ║
+╠═════════════════════════════════════════════════════════════════════╣
+║  Status         : ✓  PASSED                                         ║
+║  Branch         : main                                              ║
+║  Commit         : abc1234                                           ║
+║  Check Time     : 2026-01-01 00:00:00                               ║
+║  Pages Checked  : 4                                                 ║
+║  Output Dir     : dist                                              ║
+║  Strict Mode    : False                                             ║
+╠═════════════════════════════════════════════════════════════════════╣
+║                             ✓  No issues                            ║
+║                                                                     ║
+║                          Site checks passed                         ║
+║                                                                     ║
+╚═════════════════════════════════════════════════════════════════════╝
+
+### ERROR_AND_WARNING
+╔═════════════════════════════════════════════════════════════════════╗
+║                                                                     ║
+║                       Legible • Site validator                      ║
+║                                                                     ║
+╠═════════════════════════════════════════════════════════════════════╣
+║                           ✗  CHECK FAILED                           ║
+╠═════════════════════════════════════════════════════════════════════╣
+║                             CHECK REPORT                            ║
+╠═════════════════════════════════════════════════════════════════════╣
+║  Status         : ✗  FAILED                                         ║
+║  Branch         : main                                              ║
+║  Commit         : abc1234                                           ║
+║  Check Time     : 2026-01-01 00:00:00                               ║
+║  Pages Checked  : 4                                                 ║
+║  Output Dir     : dist                                              ║
+║  Strict Mode    : False                                             ║
+╠═════════════════════════════════════════════════════════════════════╣
+║                              ✗  Errors                              ║
+║  • robots.txt → required file missing                               ║
+║                             ⚠  Warnings                             ║
+║  • llms.txt → recommended file missing                              ║
+║                                                                     ║
+║                Site checks failed — fix issues above                ║
+║                                                                     ║
+╚═════════════════════════════════════════════════════════════════════╝
+
+### PRELAUNCH_CLEAN
+✓ Ready to publish: no example data left.
+
+### PRELAUNCH_FINDINGS
+✗ Not ready to publish: 2 thing(s) still say "example":
+
+  • src/data/site.json: "site_name" still has the example value "Your Business"
+      → write the real value of "site_name"
+  • dist/: the output contains "YOUR-DOMAIN" (in index.html, about/index.html and 1 more)
+      → fix it in src/ (data or page) and rebuild
+
+The base itself is fine (`check_site.py --strict` passes): this list is what to do before going live.
+
+### WARNING_ONLY_NOT_STRICT
+╔═════════════════════════════════════════════════════════════════════╗
+║                                                                     ║
+║                       Legible • Site validator                      ║
+║                                                                     ║
+╠═════════════════════════════════════════════════════════════════════╣
+║                           ✓  CHECK PASSED                           ║
+╠═════════════════════════════════════════════════════════════════════╣
+║                             CHECK REPORT                            ║
+╠═════════════════════════════════════════════════════════════════════╣
+║  Status         : ✓  PASSED                                         ║
+║  Branch         : main                                              ║
+║  Commit         : abc1234                                           ║
+║  Check Time     : 2026-01-01 00:00:00                               ║
+║  Pages Checked  : 4                                                 ║
+║  Output Dir     : dist                                              ║
+║  Strict Mode    : False                                             ║
+╠═════════════════════════════════════════════════════════════════════╣
+║                             ✓  No issues                            ║
+║                                                                     ║
+║                          Site checks passed                         ║
+║                                                                     ║
+╚═════════════════════════════════════════════════════════════════════╝
+
+### WARNING_ONLY_STRICT
+╔═════════════════════════════════════════════════════════════════════╗
+║                                                                     ║
+║                       Legible • Site validator                      ║
+║                                                                     ║
+╠═════════════════════════════════════════════════════════════════════╣
+║                           ✗  CHECK FAILED                           ║
+╠═════════════════════════════════════════════════════════════════════╣
+║                             CHECK REPORT                            ║
+╠═════════════════════════════════════════════════════════════════════╣
+║  Status         : ✗  FAILED                                         ║
+║  Branch         : main                                              ║
+║  Commit         : abc1234                                           ║
+║  Check Time     : 2026-01-01 00:00:00                               ║
+║  Pages Checked  : 4                                                 ║
+║  Output Dir     : dist                                              ║
+║  Strict Mode    : True                                              ║
+╠═════════════════════════════════════════════════════════════════════╣
+║                   ⚠  Warnings (treated as errors)                   ║
+║  • llms.txt → recommended file missing                              ║
+║                                                                     ║
+║                Site checks failed — fix issues above                ║
+║                                                                     ║
+╚═════════════════════════════════════════════════════════════════════╝
+

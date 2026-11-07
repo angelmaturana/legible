@@ -294,6 +294,61 @@ def _shared_parts(layout, header, footer, entity, replacements, html_replacement
 
 # --------------------------------------------------------------------------- 3. navigation from site.json
 
+class _NavChecker:
+    """Validates the entries of one menu. One method per family of checks, run in this order: object, label and
+    url, url shape, repeated url, action, children (which recurse one level)."""
+
+    def __init__(self, allow_children, allow_action):
+        self.allow_children = allow_children
+        self.allow_action = allow_action
+        self.seen = {}
+
+    def check(self, entry, where, level):
+        self._check_object(entry, where)
+        self._check_texts(entry, where)
+        self._check_url(entry['url'], where)
+        self._check_action(entry, where, level)
+        self._check_children(entry, where, level)
+
+    @staticmethod
+    def _check_object(entry, where):
+        if not isinstance(entry, dict):
+            raise BuildError(f'{where} must be an object {{"label": "...", "url": "/page/"}}')
+
+    @staticmethod
+    def _check_texts(entry, where):
+        for field_name in ('label', 'url'):
+            value = entry.get(field_name)
+            if not isinstance(value, str) or not value.strip():
+                raise BuildError(f'{where}: missing "{field_name}" (a non-empty text)')
+
+    def _check_url(self, url, where):
+        if not (url.startswith('/') and url.endswith('/')) or url.startswith('//') or ' ' in url:
+            raise BuildError(f'{where}: url {url!r} must be an internal address that starts and ends with "/" '
+                             '(for example "/contact/")')
+        if url in self.seen:
+            raise BuildError(f'{where}: url {url!r} is repeated (already used by {self.seen[url]})')
+        self.seen[url] = where
+
+    def _check_action(self, entry, where, level):
+        if 'action' not in entry:
+            return
+        if not self.allow_action or level > 0:
+            raise BuildError(f'{where}: "action" is only allowed on a top-level entry of nav')
+        if not isinstance(entry['action'], bool):
+            raise BuildError(f'{where}: "action" must be true or false (found {entry["action"]!r})')
+
+    def _check_children(self, entry, where, level):
+        if 'children' not in entry:
+            return
+        if not self.allow_children or level > 0:
+            raise BuildError(f'{where}: "children" is only allowed in one level of nav (no submenus inside a submenu)')
+        if not isinstance(entry['children'], list):
+            raise BuildError(f'{where}: "children" must be a list')
+        for j, child in enumerate(entry['children']):
+            self.check(child, f'{where} › children[{j}]', level + 1)
+
+
 def _nav_items(config, key, allow_children, allow_action):
     """Validate `config[key]` (a list of {label, url[, action][, children]}) and return it. Every problem is a
     BuildError that names the entry, e.g. `src/data/site.json › nav[1] › children[0]: ...`."""
@@ -302,37 +357,9 @@ def _nav_items(config, key, allow_children, allow_action):
         items = []
     if not isinstance(items, list):
         raise BuildError(f'src/data/site.json › {key} must be a list (found {type(items).__name__})')
-    seen = {}
-
-    def check(entry, where, level):
-        if not isinstance(entry, dict):
-            raise BuildError(f'{where} must be an object {{"label": "...", "url": "/page/"}}')
-        for field_name in ('label', 'url'):
-            value = entry.get(field_name)
-            if not isinstance(value, str) or not value.strip():
-                raise BuildError(f'{where}: missing "{field_name}" (a non-empty text)')
-        url = entry['url']
-        if not (url.startswith('/') and url.endswith('/')) or url.startswith('//') or ' ' in url:
-            raise BuildError(f'{where}: url {url!r} must be an internal address that starts and ends with "/" '
-                             '(for example "/contact/")')
-        if url in seen:
-            raise BuildError(f'{where}: url {url!r} is repeated (already used by {seen[url]})')
-        seen[url] = where
-        if 'action' in entry:
-            if not allow_action or level > 0:
-                raise BuildError(f'{where}: "action" is only allowed on a top-level entry of nav')
-            if not isinstance(entry['action'], bool):
-                raise BuildError(f'{where}: "action" must be true or false (found {entry["action"]!r})')
-        if 'children' in entry:
-            if not allow_children or level > 0:
-                raise BuildError(f'{where}: "children" is only allowed in one level of nav (no submenus inside a submenu)')
-            if not isinstance(entry['children'], list):
-                raise BuildError(f'{where}: "children" must be a list')
-            for j, child in enumerate(entry['children']):
-                check(child, f'{where} › children[{j}]', level + 1)
-
+    checker = _NavChecker(allow_children, allow_action)
     for i, entry in enumerate(items):
-        check(entry, f'src/data/site.json › {key}[{i}]', 0)
+        checker.check(entry, f'src/data/site.json › {key}[{i}]', 0)
     return items
 
 
@@ -746,86 +773,81 @@ def _write_site_files(out, pages_data, replacements, site):
 REPORT_BANNER = 'Legible • Static site generator'
 
 
-def print_report(banner, success, errors, warnings, generated, total_bytes, out, minify,
-                 git_branch, git_commit, build_time,
-                 total_html_before, total_html_after, css_size_before, css_size_after, strict=False):
+class _Box:
+    """The framed console report: draws the rules, rows and centered lines of the box."""
     COL = 50
     LBL = 15
     W = 2 + LBL + 2 + COL  # interior width
-    BANNER = banner
 
-    def hr(): print('╠' + '═' * W + '╣')
-    def row(label, value): print(f'║  {label:<{LBL}}: {str(value):<{COL}}║')
-    def centered(text): print(f'║{text.center(W)}║')
-    def empty(): print(f'║{" " * W}║')
+    def hr(self): print('╠' + '═' * self.W + '╣')
+    def row(self, label, value): print(f'║  {label:<{self.LBL}}: {str(value):<{self.COL}}║')
+    def centered(self, text): print(f'║{text.center(self.W)}║')
+    def empty(self): print(f'║{" " * self.W}║')
 
-    print('╔' + '═' * W + '╗')
-    empty()
-    centered(BANNER)
-    empty()
-    hr()
+    def lines(self, items):
+        """The findings of a section, wrapped to the box."""
+        for line in report_lines(items, self.W - 2):
+            print(f'║  {line:<{self.W - 2}}║')
 
-    if success:
-        centered('✓  BUILD SUCCESS')
-    else:
-        centered('✗  BUILD FAILED')
-    hr()
 
-    centered('BUILD REPORT')
-    hr()
+def _size_rows(box, name, before, after):
+    """The Before / After / Saved rows of one line of the size breakdown."""
+    saved = before - after
+    pct = f'{(saved/before*100):.1f}%' if before else '0%'
+    box.row(f'{name} Before', f'{before:,} bytes')
+    box.row(f'{name} After', f'{after:,} bytes')
+    box.row(f'{name} Saved', f'{saved:,} bytes ({pct})')
 
-    status = '✓  SUCCESS' if success else '✗  FAILED'
-    row('Status', status)
-    row('Branch', git_branch)
-    row('Commit', git_commit)
-    row('Build Time', build_time)
-    row('Pages Generated', str(generated))
-    row('Total Size', f'{total_bytes:,} bytes')
-    row('Output Dir', str(out))
-    row('Minify', str(minify))
 
-    if success:
-        hr()
-        centered('SIZE BREAKDOWN')
-        hr()
-        html_saved = total_html_before - total_html_after
-        html_pct = f'{(html_saved/total_html_before*100):.1f}%' if total_html_before else '0%'
-        row('HTML Before', f'{total_html_before:,} bytes')
-        row('HTML After', f'{total_html_after:,} bytes')
-        row('HTML Saved', f'{html_saved:,} bytes ({html_pct})')
-        css_saved = css_size_before - css_size_after
-        css_pct = f'{(css_saved/css_size_before*100):.1f}%' if css_size_before else '0%'
-        row('CSS Before', f'{css_size_before:,} bytes')
-        row('CSS After', f'{css_size_after:,} bytes')
-        row('CSS Saved', f'{css_saved:,} bytes ({css_pct})')
-        total_before = total_html_before + css_size_before
-        total_after = total_html_after + css_size_after
-        total_saved = total_before - total_after
-        total_pct = f'{(total_saved/total_before*100):.1f}%' if total_before else '0%'
-        row('TOTAL Before', f'{total_before:,} bytes')
-        row('TOTAL After', f'{total_after:,} bytes')
-        row('TOTAL Saved', f'{total_saved:,} bytes ({total_pct})')
+def _report_sizes(box, html_before, html_after, css_before, css_after):
+    box.hr()
+    box.centered('SIZE BREAKDOWN')
+    box.hr()
+    _size_rows(box, 'HTML', html_before, html_after)
+    _size_rows(box, 'CSS', css_before, css_after)
+    _size_rows(box, 'TOTAL', html_before + css_before, html_after + css_after)
 
-    hr()
 
+def _report_findings(box, success, errors, warnings, strict):
     if errors:
-        centered('✗  Errors')
-        for line in report_lines(errors, W - 2):
-            print(f'║  {line:<{W-2}}║')
+        box.centered('✗  Errors')
+        box.lines(errors)
     if warnings:
-        centered('⚠  Warnings (treated as errors)' if strict else '⚠  Warnings')
-        for line in report_lines(warnings, W - 2):
-            print(f'║  {line:<{W-2}}║')
+        box.centered('⚠  Warnings (treated as errors)' if strict else '⚠  Warnings')
+        box.lines(warnings)
     elif success:
-        centered('✓  No warnings')
+        box.centered('✓  No warnings')
 
-    empty()
+
+def print_report(banner, success, errors, warnings, generated, total_bytes, out, minify,
+                 git_branch, git_commit, build_time,
+                 total_html_before, total_html_after, css_size_before, css_size_after, strict=False):
+    box = _Box()
+    print('╔' + '═' * box.W + '╗')
+    box.empty()
+    box.centered(banner)
+    box.empty()
+    box.hr()
+    box.centered('✓  BUILD SUCCESS' if success else '✗  BUILD FAILED')
+    box.hr()
+    box.centered('BUILD REPORT')
+    box.hr()
+    box.row('Status', '✓  SUCCESS' if success else '✗  FAILED')
+    box.row('Branch', git_branch)
+    box.row('Commit', git_commit)
+    box.row('Build Time', build_time)
+    box.row('Pages Generated', str(generated))
+    box.row('Total Size', f'{total_bytes:,} bytes')
+    box.row('Output Dir', str(out))
+    box.row('Minify', str(minify))
     if success:
-        centered('Site ready for deployment')
-    else:
-        centered('Build aborted — fix errors above')
-    empty()
-    print('╚' + '═' * W + '╝')
+        _report_sizes(box, total_html_before, total_html_after, css_size_before, css_size_after)
+    box.hr()
+    _report_findings(box, success, errors, warnings, strict)
+    box.empty()
+    box.centered('Site ready for deployment' if success else 'Build aborted — fix errors above')
+    box.empty()
+    print('╚' + '═' * box.W + '╝')
 
 def check_out_dir(out, root):
     """Abort if the output folder would put the project at risk (the build empties it entirely)."""
@@ -951,41 +973,57 @@ def _env_enabled(environ, name):
     return environ.get(name, 'TRUE').strip().upper() != 'FALSE'
 
 
-def parse_args(args, environ=None):
-    """Command line -> keyword arguments of build() plus `all`. Raises BuildError (with the usage line) on a
-    bad option. `--all` is the whole pipeline: it minifies unless CSS_MINIFY=FALSE and is strict unless
-    CHECK_STRICT=FALSE (an explicit --minify or --strict wins over the variable) and always validates."""
+_FLAG_OPTIONS = {'--all': 'all', '--no-validate': 'no_validate', '--strict': 'strict'}
+_VALUE_OPTIONS = ('--out', '--minify')
+
+
+def _parse_minify(value):
+    """The value of --minify: true or false, in any case."""
+    if value.lower() not in ('true', 'false'):
+        raise BuildError(f'--minify accepts true or false (got: {value!r})\n{USAGE}', label='')
+    return value.lower() == 'true'
+
+
+def _read_options(args):
+    """Walk the command line, option by option, into the options table (nothing resolved yet)."""
     options = dict(out_dir=None, minify=None, no_validate=False, strict=None, all=False)
     i = 0
     while i < len(args):
         arg = args[i]
-        if arg == '--all':
-            options['all'] = True
-        elif arg == '--no-validate':
-            options['no_validate'] = True
-        elif arg == '--strict':
-            options['strict'] = True
-        elif arg in ('--out', '--minify'):
+        if arg in _FLAG_OPTIONS:
+            options[_FLAG_OPTIONS[arg]] = True
+        elif arg in _VALUE_OPTIONS:
             i += 1
             if i >= len(args):
                 raise BuildError(f'missing value for {arg}\n{USAGE}', label='')
             if arg == '--out':
                 options['out_dir'] = args[i]
-            elif args[i].lower() in ('true', 'false'):
-                options['minify'] = args[i].lower() == 'true'
             else:
-                raise BuildError(f'--minify accepts true or false (got: {args[i]!r})\n{USAGE}', label='')
+                options['minify'] = _parse_minify(args[i])
         else:
             raise BuildError(f'unknown argument: {arg}\n{USAGE}', label='')
         i += 1
+    return options
+
+
+def _apply_all(options, environ):
+    """--all: always validates, and minifies / is strict unless the variables say FALSE."""
+    if options['no_validate']:
+        raise BuildError(f'--all always validates: drop --no-validate\n{USAGE}', label='')
+    environ = os.environ if environ is None else environ
+    if options['minify'] is None:
+        options['minify'] = _env_enabled(environ, 'CSS_MINIFY')
+    if options['strict'] is None:
+        options['strict'] = _env_enabled(environ, 'CHECK_STRICT')
+
+
+def parse_args(args, environ=None):
+    """Command line -> keyword arguments of build() plus `all`. Raises BuildError (with the usage line) on a
+    bad option. `--all` is the whole pipeline: it minifies unless CSS_MINIFY=FALSE and is strict unless
+    CHECK_STRICT=FALSE (an explicit --minify or --strict wins over the variable) and always validates."""
+    options = _read_options(args)
     if options['all']:
-        if options['no_validate']:
-            raise BuildError(f'--all always validates: drop --no-validate\n{USAGE}', label='')
-        environ = os.environ if environ is None else environ
-        if options['minify'] is None:
-            options['minify'] = _env_enabled(environ, 'CSS_MINIFY')
-        if options['strict'] is None:
-            options['strict'] = _env_enabled(environ, 'CHECK_STRICT')
+        _apply_all(options, environ)
     options['minify'] = bool(options['minify'])
     options['strict'] = bool(options['strict'])
     return options

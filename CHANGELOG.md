@@ -4,6 +4,22 @@ All notable changes to `legible` are recorded here. The format follows [Keep a C
 
 ## [Unreleased]
 
+### Validator no longer crashes on malformed JSON-LD
+
+- A page whose JSON-LD had an unexpected shape (root that is a list or `null`, a `@graph` item that is not an object, `FAQPage.mainEntity` that is an object or a list of texts, `dateModified` or `name` that is not text) made `run_checks`, and so the build, fail with a Python traceback. It now reports a validator message instead: an error `JSON-LD with an unexpected shape: <detail>` for the structural cases, and the warnings `dateModified is not text: <value>` / `name is not text: <value>`. No existing message changed.
+- Same for the shapes found afterwards: a JSON-LD `@id` (of a node or of a reference) that is a list, object or number is now the error `JSON-LD with an unexpected shape: @id is not text: <value>`; a FAQ `Question.name` or `acceptedAnswer.text` that is not text is the warning `FAQPage Question name is not text: <value>` / `FAQPage Answer text is not text: <value>`; an `acceptedAnswer` that is text gets the existing warning `without acceptedAnswer @type="Answer"`; a `null` question name no longer crashes. A fuzz pass over every value of the sample JSON-LD (11 odd values per position, 275 cases) now produces no traceback.
+- A JSON-LD `@type` that is neither text nor a list of texts (an object, a number, a list with a number) is now the warning `JSON-LD @type is not text or a list of texts: <value>`. A missing `@type` and a list of texts such as `["Restaurant", "LocalBusiness"]` stay valid and silent.
+
+### Internal refactor of `build.py` (no change to output)
+
+- `_nav_items`, `print_report` and `parse_args` are split into small pieces (`_NavChecker`, `_Box` with `_size_rows`, `_report_sizes` and `_report_findings`, `_read_options`, `_apply_all` and `_parse_minify`), so every function in `legible/` now has cyclomatic complexity ≤ 10. The files in `dist/`, the console report and the usage error texts are byte-for-byte identical (checked with a SHA-256 golden of `dist/` and a golden of the console report).
+
+### Validator test net (refactor of `check_site.py`)
+
+- Tests only, no engine change: `fixtures.make_clean_project` (a site with no findings) and `tests/test_validator_rules.py`, a rule table where each row changes one thing and expects exactly one message. Rule rows R01-R95, a golden file of the validator output, a public API test and a mutation check (every message-emitting statement is covered).
+- Internal refactor of `check_site.py` (F5-F9b, no change to messages or their order; every function now has cyclomatic complexity ≤ 10 and ≤ 40 lines, and `run_checks` is not slower): `run_checks`, `prelaunch_findings` and the console report are split into small helpers (`_check_required_files`, `_load_pages`, `_check_one_page`, `_prelaunch_*`, `_Box`). How to add a rule is documented in `DOCUMENTATION.md`.
+- (Details of the earlier steps, F5-F9a:) `Findings`/`PageCtx`, JSON-LD parsed once per page, and `check_page` split into eleven rule groups (the last one, `rules_jsonld`, built from small `_ld_*` pieces) listed in `PAGE_RULES` (the order of that tuple is the order of the messages); `check_links` and `check_sitemap` are split into small helpers (`_classify_href`, `_check_href`, `_check_resources`, `_orphans`, `_read_sitemap`, `_check_sitemap_entries`, …) and the dead code in `check_links` is gone. `PageParser` dispatches start and end tags through tables (one method per tag) and `find_broken_markup` is split into `_comment_end` and `_tag_end`.
+
 ### Stylesheet architecture
 
 - `--header-h` token: the header height, the anchor offset (`scroll-margin-top`) and the mobile menu panel height derive from it. This also fixes two stale values (anchors were offset 120 px and the panel 110 px for a 131 px header).

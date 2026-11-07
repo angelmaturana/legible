@@ -55,7 +55,8 @@ src/
   pages/            one folder per page (index.html inside), plus 404.html
   css/site.css      one stylesheet; every colour is a token in :root
   static/           copied as they are: favicon.ico, robots.txt, llms.txt, images/
-tests/              fixtures.py, test_engine.py, test_validator.py, test_site.py
+tests/              fixtures.py, report_cases.py, test_engine.py, test_build_directed.py, test_site.py,
+                    test_validator*.py (rules, branches, console, infra, golden), golden/ (validator output)
 ```
 
 A page's URL is its folder: `src/pages/contact/index.html` is `/contact/`, `src/pages/index.html` is `/`, `404.html` is `/404.html`. A new page is a new folder (copy `example/`); a new slug is a renamed folder plus its `nav`/`legal_nav` entry and links.
@@ -146,11 +147,23 @@ Every page the base ships, and every page an adapted site adds by copying `examp
 | Links | broken internal link, anchor or resource; missing trailing slash; malformed `mailto:`/`tel:`; empty `href`; internal link using `http://` | external `http://` link; relative link; `target="_blank"` without `rel="noopener"`/`"noreferrer"`; no contextual inbound link |
 | Leftovers | unresolved `{{marker}}` | `TODO` or `[CONFIRM` in visible text; a URL on `example.com`/`.org`/`.net` |
 | Broken markup | one extra error naming the unclosed tag, only on a page that already has another error | — |
-| Structured data | indexable page with no JSON-LD or invalid JSON; wrong `@context`; duplicate or undefined `@id`; missing main node or `WebSite` | `name` ≠ `<title>`; `dateModified` not ISO |
+| Structured data | indexable page with no JSON-LD or invalid JSON; wrong `@context`; duplicate or undefined `@id`; missing main node or `WebSite` | `name` ≠ `<title>`; `dateModified` not ISO; `@type` neither text nor a list of texts |
 | Duplicates | same title or description on two indexable pages | — |
 | Site files | missing `index.html`, `404.html`, `sitemap.xml` or `robots.txt`; invalid or off-domain sitemap URL; indexable page missing from the sitemap, or a `noindex` page in it; `Disallow: /` for all crawlers | missing `llms.txt`; `lastmod` not ISO or ≠ `dateModified`; `robots.txt` without `Sitemap:` |
 
 These checks are not a substitute for a browser, an accessibility review or a search engine's own tools.
+
+### How to add a rule to the validator
+
+Engine mode only (see `AGENTS.md`). Messages are literal strings written where they are emitted; the order of the rules is the order of the messages.
+
+1. **Write one function** `rules_<topic>(ctx)` in `check_site.py`. `ctx` is a `PageCtx` (`rel_file`, `p` = the parsed page, `out`, `site_url`, `url`, `title`, `desc`, `indexable`, `is404`). Report with `ctx.E('message')` for an error and `ctx.W('message')` for a warning. Keep it at complexity ≤ 10 and ≤ 40 lines; split helpers (`_topic_part(ctx)`) if it grows. JSON-LD is already parsed in `ctx.p.ld_docs`; read nodes through `_ld_nodes` and text through `_as_text`, never assume a shape.
+2. **Add it to `PAGE_RULES`** (the tuple above `check_page`). The position is the position of its messages in the output; put it last unless there is a reason. `TestPageRules.EXPECTED` in `tests/test_validator_infra.py` lists the names in order: update it.
+3. **Add a row to the test table** in `tests/test_validator_rules.py`: `RULES` (change one string in a page of the clean project), `LD_RULES` (change the JSON-LD), `SITE_RULES` (site-wide rules, several files) or `MISSING_FILES`. Each row changes one thing and states the exact message expected on top of the clean base, which has no findings.
+4. **Regenerate the golden file only for the new rows**: `UPDATE_GOLDEN=1 python3 -B -m unittest tests.test_validator_golden.TestGolden.test_golden_matches`, then read the diff: new entries only, no existing entry changed. A change in an existing entry means a message moved or changed and is a regression, not something to regenerate.
+5. Run `python3 -B -m unittest discover tests` and `ruff check --select F,B,W,RET505,C416,SIM105,C901 --config "lint.mccabe.max-complexity=10" legible/check_site.py` (if `ruff` is installed). Add one line to `CHANGELOG.md`.
+
+A site-wide rule (links, sitemap, duplicates, robots) is a function called from `run_checks`, not part of `PAGE_RULES`; its tests go in `SITE_RULES`.
 
 ## Pre-launch sweep
 

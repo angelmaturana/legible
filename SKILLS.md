@@ -69,7 +69,7 @@ La estructura de carpetas está en [`DOCUMENTATION.md` › Structure](DOCUMENTAT
 |---|---|---|
 | `src/` (`data/`, `pages/`, `partials/`, `layout.html`, `css/`, `static/`) | Sí (modos A y B) | Lo que adapta la IA |
 | `legible/` (`common.py`, `build.py`, `check_site.py`, `minify.py`, `dev.py`, `run_all.py`, `build.sh`) | Solo modo C | Motor fijo |
-| `tests/` (`fixtures.py`, `test_engine.py`, `test_validator.py`, `test_site.py`) | Solo modo C | `test_site.py` es el único que lee la plantilla de `src/` |
+| `tests/` (`fixtures.py`, `report_cases.py`, `test_engine.py`, `test_build_directed.py`, `test_site.py`, `test_validator*.py`, `golden/`) | Solo modo C | `test_site.py` es el único que lee la plantilla de `src/` |
 
 El flujo de `build()` (carga y validación de `site.json` → marcadores → composición → escritura → minificado → validación → informe, código de salida 0/1) está en [`DOCUMENTATION.md` › Architecture and flow](DOCUMENTATION.md).
 

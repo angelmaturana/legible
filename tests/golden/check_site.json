@@ -1,0 +1,1022 @@
+{
+ "CLEAN": {
+  "errors": [],
+  "warnings": []
+ },
+ "FAQ_OK": {
+  "errors": [],
+  "warnings": []
+ },
+ "R01": {
+  "errors": [
+   [
+    "index.html",
+    "<html> without lang attribute"
+   ]
+  ],
+  "warnings": []
+ },
+ "R02": {
+  "errors": [],
+  "warnings": [
+   [
+    "index.html",
+    "unusual lang value: 'english'"
+   ]
+  ]
+ },
+ "R03": {
+  "errors": [
+   [
+    "index.html",
+    "missing <meta name=\"viewport\">"
+   ]
+  ],
+  "warnings": []
+ },
+ "R04": {
+  "errors": [],
+  "warnings": [
+   [
+    "index.html",
+    "viewport without width=device-width"
+   ]
+  ]
+ },
+ "R05": {
+  "errors": [
+   [
+    "index.html",
+    "missing <title>"
+   ]
+  ],
+  "warnings": [
+   [
+    "index.html",
+    "og:title differs from <title>"
+   ],
+   [
+    "index.html",
+    "WebPage.name differs from <title>"
+   ]
+  ]
+ },
+ "R06": {
+  "errors": [],
+  "warnings": [
+   [
+    "index.html",
+    "title of 82 characters (> 60)"
+   ]
+  ]
+ },
+ "R07": {
+  "errors": [],
+  "warnings": [
+   [
+    "index.html",
+    "title too short (11 characters)"
+   ]
+  ]
+ },
+ "R08": {
+  "errors": [
+   [
+    "index.html",
+    "missing meta description"
+   ]
+  ],
+  "warnings": []
+ },
+ "R09": {
+  "errors": [],
+  "warnings": [
+   [
+    "index.html",
+    "description of 217 characters (> 160)"
+   ]
+  ]
+ },
+ "R10": {
+  "errors": [],
+  "warnings": [
+   [
+    "index.html",
+    "description too short (32 characters)"
+   ]
+  ]
+ },
+ "R100": {
+  "errors": [
+   [
+    "index.html",
+    "FAQ answer differs between JSON-LD and visible text: \"Q1\""
+   ]
+  ],
+  "warnings": [
+   [
+    "index.html",
+    "FAQPage Question \"Q1\" without acceptedAnswer @type=\"Answer\""
+   ]
+  ]
+ },
+ "R101": {
+  "errors": [
+   [
+    "index.html",
+    "JSON-LD with an unexpected shape: @id is not text: 5"
+   ]
+  ],
+  "warnings": []
+ },
+ "R102": {
+  "errors": [],
+  "warnings": [
+   [
+    "index.html",
+    "JSON-LD @type is not text or a list of texts: {\"a\": 1}"
+   ]
+  ]
+ },
+ "R103": {
+  "errors": [],
+  "warnings": [
+   [
+    "index.html",
+    "JSON-LD @type is not text or a list of texts: [\"Thing\", 5]"
+   ]
+  ]
+ },
+ "R104": {
+  "errors": [
+   [
+    "index.html",
+    "WebPage.url (5) differs from the page URL (https://fixture.test/)"
+   ]
+  ],
+  "warnings": []
+ },
+ "R11": {
+  "errors": [
+   [
+    "index.html",
+    "missing <meta name=\"robots\">"
+   ]
+  ],
+  "warnings": []
+ },
+ "R12": {
+  "errors": [
+   [
+    "404.html",
+    "the 404 page must not have canonical or og:url"
+   ]
+  ],
+  "warnings": []
+ },
+ "R13": {
+  "errors": [
+   [
+    "index.html",
+    "indexable page without canonical"
+   ]
+  ],
+  "warnings": []
+ },
+ "R14": {
+  "errors": [
+   [
+    "index.html",
+    "canonical https://fixture.test/about/ does not match the expected URL https://fixture.test/"
+   ],
+   [
+    "index.html",
+    "og:url differs from canonical"
+   ]
+  ],
+  "warnings": []
+ },
+ "R15": {
+  "errors": [
+   [
+    "index.html",
+    "canonical http://fixture.test/ does not match the expected URL https://fixture.test/"
+   ],
+   [
+    "index.html",
+    "canonical without HTTPS: http://fixture.test/"
+   ],
+   [
+    "index.html",
+    "og:url differs from canonical"
+   ]
+  ],
+  "warnings": []
+ },
+ "R16": {
+  "errors": [
+   [
+    "index.html",
+    "og:url differs from canonical"
+   ]
+  ],
+  "warnings": []
+ },
+ "R17": {
+  "errors": [],
+  "warnings": [
+   [
+    "index.html",
+    "missing og:site_name"
+   ]
+  ]
+ },
+ "R18": {
+  "errors": [],
+  "warnings": [
+   [
+    "index.html",
+    "missing og:url"
+   ]
+  ]
+ },
+ "R19": {
+  "errors": [],
+  "warnings": [
+   [
+    "index.html",
+    "og:title differs from <title>"
+   ]
+  ]
+ },
+ "R20": {
+  "errors": [],
+  "warnings": [
+   [
+    "index.html",
+    "unusual og:locale format: english"
+   ]
+  ]
+ },
+ "R21": {
+  "errors": [],
+  "warnings": [
+   [
+    "index.html",
+    "unrecognised twitter:card: huge"
+   ]
+  ]
+ },
+ "R22": {
+  "errors": [
+   [
+    "index.html",
+    "og:image without HTTPS: http://fixture.test/images/og-image.png"
+   ]
+  ],
+  "warnings": []
+ },
+ "R23": {
+  "errors": [],
+  "warnings": [
+   [
+    "index.html",
+    "og:image without og:image:alt"
+   ]
+  ]
+ },
+ "R24": {
+  "errors": [],
+  "warnings": [
+   [
+    "index.html",
+    "og:image:width and og:image:height are not numbers: the engine could not read the size of og-image.png (see the build warning)"
+   ]
+  ]
+ },
+ "R25": {
+  "errors": [],
+  "warnings": [
+   [
+    "index.html",
+    "og:image is 1000x630: use at least 1200 px wide and a 1.91:1 ratio (1200x630)"
+   ]
+  ]
+ },
+ "R26": {
+  "errors": [
+   [
+    "index.html",
+    "og:url differs from canonical"
+   ],
+   [
+    "index.html",
+    "og:url without HTTPS: http://fixture.test/"
+   ]
+  ],
+  "warnings": []
+ },
+ "R27": {
+  "errors": [
+   [
+    "index.html",
+    "og:image does not exist in the output: https://fixture.test/images/missing.png"
+   ]
+  ],
+  "warnings": []
+ },
+ "R28": {
+  "errors": [
+   [
+    "index.html",
+    "expected 1 <h1>, found 2"
+   ]
+  ],
+  "warnings": []
+ },
+ "R29": {
+  "errors": [],
+  "warnings": [
+   [
+    "index.html",
+    "the first heading is h2 (\"Intro\"), expected h1"
+   ]
+  ]
+ },
+ "R30": {
+  "errors": [],
+  "warnings": [
+   [
+    "index.html",
+    "heading level skipped h1 → h4 (\"More information\")"
+   ]
+  ]
+ },
+ "R31": {
+  "errors": [
+   [
+    "index.html",
+    "empty h2 heading"
+   ]
+  ],
+  "warnings": []
+ },
+ "R32": {
+  "errors": [],
+  "warnings": [
+   [
+    "index.html",
+    "<img> without src or srcset"
+   ]
+  ]
+ },
+ "R33": {
+  "errors": [
+   [
+    "index.html",
+    "<img> without alt: /images/og-image.png"
+   ]
+  ],
+  "warnings": []
+ },
+ "R34": {
+  "errors": [],
+  "warnings": [
+   [
+    "index.html",
+    "alt of 126 characters (> 125): /images/og-image.png"
+   ]
+  ]
+ },
+ "R35": {
+  "errors": [],
+  "warnings": [
+   [
+    "index.html",
+    "<img> without width/height (CLS risk): /images/og-image.png"
+   ]
+  ]
+ },
+ "R36": {
+  "errors": [],
+  "warnings": [
+   [
+    "index.html",
+    "<a target=\"_blank\"> without rel=\"noopener\"/\"noreferrer\": https://other.test/"
+   ]
+  ]
+ },
+ "R37": {
+  "errors": [],
+  "warnings": [
+   [
+    "index.html",
+    "URL on a sample domain (example.com, example.org or example.net): https://example.com/; use the real address or remove the link"
+   ]
+  ]
+ },
+ "R38": {
+  "errors": [
+   [
+    "index.html",
+    "2 elements with aria-current"
+   ]
+  ],
+  "warnings": []
+ },
+ "R39": {
+  "errors": [
+   [
+    "index.html",
+    "unrendered {{...}} marker"
+   ]
+  ],
+  "warnings": []
+ },
+ "R40": {
+  "errors": [],
+  "warnings": [
+   [
+    "index.html",
+    "contains TODO or [CONFIRM"
+   ]
+  ]
+ },
+ "R41": {
+  "errors": [],
+  "warnings": [
+   [
+    "index.html",
+    "thin content: 13 words in <main> (< 250)"
+   ]
+  ]
+ },
+ "R44": {
+  "errors": [
+   [
+    "index.html",
+    "indexable page without JSON-LD"
+   ]
+  ],
+  "warnings": []
+ },
+ "R45": {
+  "errors": [
+   [
+    "index.html",
+    "invalid JSON-LD: Expecting ':' delimiter: line 3 column 16 (char 18)"
+   ],
+   [
+    "index.html",
+    "missing main node (@id https://fixture.test/#business) in the JSON-LD"
+   ],
+   [
+    "index.html",
+    "missing WebSite node in the JSON-LD"
+   ]
+  ],
+  "warnings": []
+ },
+ "R46": {
+  "errors": [
+   [
+    "index.html",
+    "JSON-LD without schema.org @context"
+   ]
+  ],
+  "warnings": []
+ },
+ "R47": {
+  "errors": [
+   [
+    "index.html",
+    "duplicate @id on the page: https://fixture.test/#website"
+   ]
+  ],
+  "warnings": []
+ },
+ "R48": {
+  "errors": [
+   [
+    "index.html",
+    "undefined @id reference on the page: https://fixture.test/#nope"
+   ]
+  ],
+  "warnings": []
+ },
+ "R49": {
+  "errors": [
+   [
+    "index.html",
+    "undefined @id reference on the page: https://fixture.test/#business"
+   ],
+   [
+    "index.html",
+    "undefined @id reference on the page: https://fixture.test/#business"
+   ],
+   [
+    "index.html",
+    "missing main node (@id https://fixture.test/#business) in the JSON-LD"
+   ]
+  ],
+  "warnings": []
+ },
+ "R50": {
+  "errors": [
+   [
+    "index.html",
+    "missing WebSite node in the JSON-LD"
+   ]
+  ],
+  "warnings": []
+ },
+ "R51": {
+  "errors": [
+   [
+    "index.html",
+    "WebPage.url (https://fixture.test/other/) differs from the page URL (https://fixture.test/)"
+   ]
+  ],
+  "warnings": []
+ },
+ "R52": {
+  "errors": [],
+  "warnings": [
+   [
+    "index.html",
+    "WebPage.name differs from <title>"
+   ]
+  ]
+ },
+ "R53": {
+  "errors": [],
+  "warnings": [
+   [
+    "index.html",
+    "dateModified in non-ISO format: 01/01/2026"
+   ],
+   [
+    "sitemap.xml",
+    "lastmod 2026-01-01 ≠ dateModified 01/01/2026 in https://fixture.test/"
+   ]
+  ]
+ },
+ "R54": {
+  "errors": [
+   [
+    "index.html",
+    "FAQPage without mainEntity"
+   ]
+  ],
+  "warnings": []
+ },
+ "R55": {
+  "errors": [],
+  "warnings": [
+   [
+    "index.html",
+    "FAQPage.mainEntity with @type 'Thing', expected \"Question\""
+   ]
+  ]
+ },
+ "R56": {
+  "errors": [],
+  "warnings": [
+   [
+    "index.html",
+    "FAQPage Question \"Q1\" without acceptedAnswer @type=\"Answer\""
+   ]
+  ]
+ },
+ "R57": {
+  "errors": [
+   [
+    "index.html",
+    "JSON-LD FAQ not visible on the page: \"Q1\""
+   ]
+  ],
+  "warnings": []
+ },
+ "R58": {
+  "errors": [
+   [
+    "index.html",
+    "FAQ answer differs between JSON-LD and visible text: \"Q1\""
+   ]
+  ],
+  "warnings": []
+ },
+ "R61": {
+  "errors": [
+   [
+    "index.html",
+    "link with empty href"
+   ]
+  ],
+  "warnings": []
+ },
+ "R62": {
+  "errors": [
+   [
+    "index.html",
+    "malformed mailto: mailto:bad"
+   ]
+  ],
+  "warnings": []
+ },
+ "R63": {
+  "errors": [
+   [
+    "index.html",
+    "malformed tel: tel:abc"
+   ]
+  ],
+  "warnings": []
+ },
+ "R64": {
+  "errors": [
+   [
+    "index.html",
+    "internal link with http instead of https: http://fixture.test/about/"
+   ]
+  ],
+  "warnings": []
+ },
+ "R65": {
+  "errors": [],
+  "warnings": [
+   [
+    "index.html",
+    "external link without HTTPS: http://other.test/"
+   ]
+  ]
+ },
+ "R66": {
+  "errors": [
+   [
+    "index.html",
+    "anchor not found on the same page: #nope"
+   ]
+  ],
+  "warnings": []
+ },
+ "R67": {
+  "errors": [],
+  "warnings": [
+   [
+    "index.html",
+    "relative link (an absolute path is better): about/"
+   ]
+  ]
+ },
+ "R68": {
+  "errors": [
+   [
+    "index.html",
+    "missing trailing slash in /about"
+   ]
+  ],
+  "warnings": []
+ },
+ "R69": {
+  "errors": [
+   [
+    "index.html",
+    "broken internal link: /nothing/"
+   ]
+  ],
+  "warnings": []
+ },
+ "R70": {
+  "errors": [
+   [
+    "index.html",
+    "anchor not found: /about/#nope"
+   ]
+  ],
+  "warnings": []
+ },
+ "R71": {
+  "errors": [
+   [
+    "index.html",
+    "missing resource (link:stylesheet): /css/missing.css"
+   ]
+  ],
+  "warnings": []
+ },
+ "R72": {
+  "errors": [],
+  "warnings": [
+   [
+    "legal/index.html",
+    "no inbound contextual links from other pages (menu/footer only)"
+   ]
+  ]
+ },
+ "R73": {
+  "errors": [
+   [
+    "index.html",
+    "title duplicated with about/index.html"
+   ]
+  ],
+  "warnings": [
+   [
+    "about/index.html",
+    "og:title differs from <title>"
+   ],
+   [
+    "about/index.html",
+    "WebPage.name differs from <title>"
+   ]
+  ]
+ },
+ "R74": {
+  "errors": [
+   [
+    "index.html",
+    "description duplicated with about/index.html"
+   ]
+  ],
+  "warnings": []
+ },
+ "R75": {
+  "errors": [
+   [
+    "sitemap.xml",
+    "invalid XML: no element found: line 16, column 0"
+   ]
+  ],
+  "warnings": []
+ },
+ "R76": {
+  "errors": [
+   [
+    "sitemap.xml",
+    "duplicate URL: https://fixture.test/"
+   ]
+  ],
+  "warnings": []
+ },
+ "R77": {
+  "errors": [
+   [
+    "sitemap.xml",
+    "URL outside the domain: https://other.test/"
+   ]
+  ],
+  "warnings": []
+ },
+ "R78": {
+  "errors": [
+   [
+    "sitemap.xml",
+    "sitemap URL without a generated page: https://fixture.test/ghost/"
+   ],
+   [
+    "sitemap.xml",
+    "the sitemap includes a noindex or non-existent page: https://fixture.test/ghost/"
+   ]
+  ],
+  "warnings": []
+ },
+ "R79": {
+  "errors": [],
+  "warnings": [
+   [
+    "sitemap.xml",
+    "lastmod in non-ISO format: https://fixture.test/legal/ → 01/01/2026"
+   ],
+   [
+    "sitemap.xml",
+    "lastmod 01/01/2026 ≠ dateModified 2026-01-01 in https://fixture.test/legal/"
+   ]
+  ]
+ },
+ "R80": {
+  "errors": [
+   [
+    "sitemap.xml",
+    "indexable page missing from the sitemap: https://fixture.test/legal/"
+   ]
+  ],
+  "warnings": []
+ },
+ "R81": {
+  "errors": [
+   [
+    "sitemap.xml",
+    "the sitemap includes a noindex or non-existent page: https://fixture.test/404.html"
+   ]
+  ],
+  "warnings": []
+ },
+ "R82": {
+  "errors": [],
+  "warnings": [
+   [
+    "sitemap.xml",
+    "lastmod 2026-02-02 ≠ dateModified 2026-01-01 in https://fixture.test/legal/"
+   ]
+  ]
+ },
+ "R83": {
+  "errors": [],
+  "warnings": [
+   [
+    "robots.txt",
+    "does not declare \"Sitemap: https://fixture.test/sitemap.xml\""
+   ]
+  ]
+ },
+ "R84": {
+  "errors": [
+   [
+    "robots.txt",
+    "Disallow: / for all crawlers (blocks the whole site)"
+   ]
+  ],
+  "warnings": []
+ },
+ "R85": {
+  "errors": [
+   [
+    "robots.txt",
+    "required file missing"
+   ]
+  ],
+  "warnings": []
+ },
+ "R86": {
+  "errors": [],
+  "warnings": [
+   [
+    "llms.txt",
+    "recommended file missing"
+   ]
+  ]
+ },
+ "R87": {
+  "errors": [
+   [
+    "about/index.html",
+    "could not read/parse: 'utf-8' codec can't decode byte 0xff in position 0: invalid start byte"
+   ],
+   [
+    "sitemap.xml",
+    "the sitemap includes a noindex or non-existent page: https://fixture.test/about/"
+   ]
+  ],
+  "warnings": []
+ },
+ "R88": {
+  "errors": [
+   [
+    "index.html",
+    "broken markup at line 32: the tag <script> never closes (an attribute quote or the \">\" is missing): <script type=\"application/ld+json> { \"@context\": \"https:"
+   ],
+   [
+    "index.html",
+    "expected 1 <h1>, found 0"
+   ],
+   [
+    "index.html",
+    "indexable page without JSON-LD"
+   ]
+  ],
+  "warnings": [
+   [
+    "index.html",
+    "thin content: 0 words in <main> (< 250)"
+   ],
+   [
+    "about/index.html",
+    "no inbound contextual links from other pages (menu/footer only)"
+   ],
+   [
+    "legal/index.html",
+    "no inbound contextual links from other pages (menu/footer only)"
+   ]
+  ]
+ },
+ "R89": {
+  "errors": [
+   [
+    "index.html",
+    "JSON-LD with an unexpected shape: the root is a list, expected an object"
+   ],
+   [
+    "index.html",
+    "missing main node (@id https://fixture.test/#business) in the JSON-LD"
+   ],
+   [
+    "index.html",
+    "missing WebSite node in the JSON-LD"
+   ]
+  ],
+  "warnings": []
+ },
+ "R90": {
+  "errors": [
+   [
+    "index.html",
+    "JSON-LD with an unexpected shape: the root is null, expected an object"
+   ],
+   [
+    "index.html",
+    "missing main node (@id https://fixture.test/#business) in the JSON-LD"
+   ],
+   [
+    "index.html",
+    "missing WebSite node in the JSON-LD"
+   ]
+  ],
+  "warnings": []
+ },
+ "R91": {
+  "errors": [
+   [
+    "index.html",
+    "JSON-LD with an unexpected shape: @graph item is not an object: \"x\""
+   ]
+  ],
+  "warnings": []
+ },
+ "R92": {
+  "errors": [
+   [
+    "index.html",
+    "JSON-LD with an unexpected shape: FAQPage.mainEntity is an object, expected a list"
+   ]
+  ],
+  "warnings": []
+ },
+ "R93": {
+  "errors": [
+   [
+    "index.html",
+    "JSON-LD with an unexpected shape: FAQPage.mainEntity item is not an object: \"a\""
+   ],
+   [
+    "index.html",
+    "JSON-LD with an unexpected shape: FAQPage.mainEntity item is not an object: \"b\""
+   ]
+  ],
+  "warnings": []
+ },
+ "R94": {
+  "errors": [],
+  "warnings": [
+   [
+    "index.html",
+    "dateModified is not text: 2024"
+   ]
+  ]
+ },
+ "R95": {
+  "errors": [],
+  "warnings": [
+   [
+    "index.html",
+    "name is not text: 5"
+   ]
+  ]
+ },
+ "R96": {
+  "errors": [
+   [
+    "index.html",
+    "JSON-LD with an unexpected shape: @id is not text: [\"x\"]"
+   ]
+  ],
+  "warnings": []
+ },
+ "R97": {
+  "errors": [
+   [
+    "index.html",
+    "JSON-LD with an unexpected shape: @id is not text: [\"x\"]"
+   ]
+  ],
+  "warnings": []
+ },
+ "R98": {
+  "errors": [],
+  "warnings": [
+   [
+    "index.html",
+    "FAQPage Question name is not text: 5"
+   ]
+  ]
+ },
+ "R99": {
+  "errors": [],
+  "warnings": [
+   [
+    "index.html",
+    "FAQPage Answer text is not text: 5"
+   ]
+  ]
+ }
+}

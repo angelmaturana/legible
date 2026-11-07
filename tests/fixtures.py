@@ -110,3 +110,101 @@ def make_project(root, site=None, entity=None):
     write(root, 'src/pages/404.html', NOT_FOUND)
     write(root, 'src/static/robots.txt', 'User-agent: *\nAllow: /\nSitemap: {{site_url}}/sitemap.xml\n')
     return root
+
+
+# --------------------------------------------------------------------------- clean project
+# A complete project for which `run_checks` reports NOTHING: the base of the rule table in
+# `test_validator_rules.py`. Independent of `src/` (a site adapted by a client does not change it).
+
+CLEAN_SITE_URL = 'https://fixture.test'
+
+CLEAN_LAYOUT = (
+    '<!doctype html>\n<html lang="{{lang}}" dir="ltr">\n<head>\n<meta charset="utf-8">\n'
+    '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
+    '<meta name="color-scheme" content="dark">\n<meta name="theme-color" content="{{theme_color}}">\n'
+    '<meta name="author" content="{{site_name}}">\n'
+    '<meta name="description" content="{{description}}">\n<meta name="robots" content="{{robots}}">\n'
+    '{{canonical}}\n'
+    '<link rel="icon" href="/favicon.ico" sizes="48x48">\n'
+    '<link rel="icon" href="/images/favicon.svg" type="image/svg+xml" sizes="any">\n'
+    '<link rel="apple-touch-icon" href="/images/apple-touch-icon.png">\n'
+    '<meta property="og:locale" content="{{og_locale}}">\n<meta property="og:type" content="website">\n'
+    '<meta property="og:site_name" content="{{site_name}}">\n<meta property="og:title" content="{{title}}">\n'
+    '<meta property="og:description" content="{{description}}">\n{{og_url}}\n'
+    '<meta property="og:image" content="{{site_url}}/images/og-image.png">\n'
+    '<meta property="og:image:type" content="image/png">\n'
+    '<meta property="og:image:width" content="{{og_image_width}}">\n'
+    '<meta property="og:image:height" content="{{og_image_height}}">\n'
+    '<meta property="og:image:alt" content="{{site_name}}">\n'
+    '<meta name="twitter:card" content="summary_large_image">\n<meta name="twitter:title" content="{{title}}">\n'
+    '<meta name="twitter:description" content="{{description}}">\n'
+    '<meta name="twitter:image" content="{{site_url}}/images/og-image.png">\n'
+    '<title>{{title}}</title>\n<link rel="sitemap" type="application/xml" href="/sitemap.xml">\n{{jsonld}}\n'
+    '<link rel="stylesheet" href="/css/site.css">\n</head>\n'
+    '<body>\n<a class="skip-link" href="#main">{{ui_skip_to_content}}</a>\n{{header}}\n{{content}}\n{{footer}}\n'
+    '{{whatsapp_float}}\n</body>\n</html>\n'
+)
+
+CLEAN_ENTITY = [
+    {'@type': 'Organization', '@id': '{{site_url}}/#business', 'name': '{{site_name}}', 'url': '{{site_url}}'},
+    {'@type': 'WebSite', '@id': '{{site_url}}/#website', 'url': '{{site_url}}/', 'name': '{{site_name}}',
+     'inLanguage': '{{in_language}}', 'publisher': {'@id': '{{site_url}}/#business'}},
+]
+
+CLEAN_WEBPAGE_JSONLD = (
+    '<script type="application/ld+json">\n'
+    '{"@context": "https://schema.org", "@graph": [{"@type": "WebPage", "@id": "{{page_url}}#webpage", '
+    '"url": "{{page_url}}", "name": "{{page_title}}", "description": "{{page_description}}", '
+    '"inLanguage": "{{in_language}}", "isPartOf": {"@id": "{{site_url}}/#website"}, '
+    '"about": {"@id": "{{site_url}}/#business"}, "dateModified": "{{page_updated}}"}]}\n</script>\n'
+)
+
+# title / description of each indexable page of the clean project (length inside the validator thresholds)
+CLEAN_PAGES = {
+    'index': ('Fixture Site | Clear information for visitors',
+              'Fixture Site explains what it does, how it works and how to get in touch, in plain words and with '
+              'every fact written down.'),
+    'about': ('About Fixture Site and the people behind it',
+              'Who runs Fixture Site, since when and how to reach the team, written for visitors who want '
+              'the facts before they get in touch.'),
+    'legal': ('Legal notice of Fixture Site for visitors',
+              'The legal notice of Fixture Site: who is responsible for the website, how to contact them and '
+              'which rules apply to the content.'),
+}
+_FILLER = ('This sentence is plain filler text with no claim in it. It only exists so that the page has enough '
+           'words in the main area to count as real content for the validator. ')
+
+
+def clean_body(links, h2='More information'):
+    """Body of a clean page: JSON-LD, a <main> with a heading, over 250 words and contextual links."""
+    paragraphs = ''.join(f'<p>{_FILLER * 3}</p>' for _ in range(4))
+    nav = ' '.join(f'<a href="{href}">{label}</a>' for href, label in links)
+    return (f'{CLEAN_WEBPAGE_JSONLD}<main id="main"><h1>{{{{page_title}}}}</h1>{paragraphs}'
+            f'<h2>{h2}</h2><p>{nav}</p></main>\n')
+
+
+def make_clean_project(root):
+    """Write a project whose build gives a site with no errors and no warnings. Pages: /, /about/, /legal/ (all
+    indexable, all linked from the <main> of another one) and the 404 page. Returns `root`."""
+    root = Path(root)
+    site = {**SITE, 'site_url': CLEAN_SITE_URL, 'theme_color': '#080d17', 'site_description': 'A fixture site used only by the tests.', 'nav': [{'label': 'Home', 'url': '/'}, {'label': 'About', 'url': '/about/'}],
+            'legal_nav': [{'label': 'Legal notice', 'url': '/legal/'}]}
+    write(root, 'src/data/site.json', json.dumps(site, indent=2) + '\n')
+    write(root, 'src/data/entity.json', json.dumps(CLEAN_ENTITY, indent=2) + '\n')
+    write(root, 'src/layout.html', CLEAN_LAYOUT)
+    write(root, 'src/partials/header.html', HEADER)
+    write(root, 'src/partials/footer.html', FOOTER)
+    write(root, 'src/css/site.css', ':root { --bg: #080d17; }\nbody { margin: 0; }\n')
+    links = {'index': [('/about/', 'About us'), ('/legal/', 'Legal notice')],
+             'about': [('/', 'Back to the home page')], 'legal': [('/', 'Back to the home page')]}
+    for name, (title, desc) in CLEAN_PAGES.items():
+        rel = 'src/pages/index.html' if name == 'index' else f'src/pages/{name}/index.html'
+        write(root, rel, f'---\ntitle: {title}\ndescription: {desc}\nupdated: 2026-01-01\n---\n' + clean_body(links[name]))
+    write(root, 'src/pages/404.html', NOT_FOUND)
+    write(root, 'src/static/robots.txt', 'User-agent: *\nAllow: /\n\nSitemap: {{site_url}}/sitemap.xml\n')
+    write(root, 'src/static/llms.txt', '# {{site_name}}\n\n> {{site_description}}\n\n## Pages\n\n{{llms_pages}}\n')
+    write_bytes(root, 'src/static/favicon.ico', b'\x00\x00\x01\x00')
+    write(root, 'src/static/images/favicon.svg', '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"/>\n')
+    write_bytes(root, 'src/static/images/apple-touch-icon.png', png_header(180, 180))
+    write_bytes(root, 'src/static/images/og-image.png', png_header(1200, 630))
+    return root

@@ -16,6 +16,8 @@ import os
 import re
 import sys
 import xml.etree.ElementTree as ET
+from dataclasses import dataclass
+from functools import partial
 from datetime import datetime
 from html.parser import HTMLParser
 from pathlib import Path
@@ -67,6 +69,7 @@ class PageParser(HTMLParser):
         self.h = []                # (level, text)
         self.imgs = []
         self.ld_raw = []
+        self._ld_cache = None      # (blocks, parsed) of `load_ld`
         self.aria_current = 0
         self.main_text = []
         self.all_text = []
@@ -79,7 +82,26 @@ class PageParser(HTMLParser):
         self._in_main = 0
         self._details = []         # stack of dicts {'q': str, 'a': [..], 'in_summary': bool}
 
-    # -- helpers
+    # -- JSON-LD, parsed once
+    def load_ld(self):
+        """Parse every JSON-LD block ONCE: [(data, None) | (None, error), ...]. Cached; redone only if `ld_raw` changes."""
+        blocks = tuple(self.ld_raw)
+        if self._ld_cache is None or self._ld_cache[0] != blocks:
+            self._ld_cache = (blocks, [_parse_ld(raw) for raw in blocks])
+        return self._ld_cache[1]
+
+    @property
+    def ld_docs(self):
+        return self.load_ld()
+
+    # -- start tags: common attributes, then one method per tag (see _START)
+    _START = {'title': '_start_title', 'meta': '_start_meta', 'link': '_start_link', 'script': '_start_script',
+              'style': '_start_style', 'main': '_start_main', 'a': '_start_a', 'img': '_start_img',
+              'source': '_start_source', 'details': '_start_details', 'summary': '_start_summary'}
+    # -- end tags (headings are handled before the table)
+    _END = {'title': '_end_title', 'script': '_end_script', 'style': '_end_style', 'main': '_end_main',
+            'summary': '_end_summary', 'details': '_end_details'}
+
     def handle_starttag(self, tag, attrs):
         a = dict(attrs)
         if tag == 'html':
@@ -88,80 +110,109 @@ class PageParser(HTMLParser):
             self.ids.add(a['id'])
         if 'aria-current' in a:
             self.aria_current += 1
-        if tag == 'title':
-            self._in_title = True
-        elif tag == 'meta':
-            key = a.get('name') or a.get('property')
-            if key:
-                self.metas[key] = a.get('content', '')
-        elif tag == 'link':
-            rel = (a.get('rel') or '').lower()
-            if rel == 'canonical':
-                self.canonical = a.get('href')
-            if a.get('href'):
-                self.resources.append((a['href'], 'link:' + rel))
-        elif tag == 'script':
-            if a.get('type') == 'application/ld+json':
-                self._in_script = 'ld'
-                self.ld_raw.append('')
-            else:
-                self._in_script = 'js'
-            if a.get('src'):
-                self.resources.append((a['src'], 'script'))
-        elif tag == 'style':
-            self._in_style = True
-        elif tag == 'main':
-            self._in_main += 1
-        elif tag == 'a':
-            if a.get('href') is not None:
-                self.links.append((a['href'], self._in_main > 0, 'a'))
-                self.a_meta.append({
-                    'href': a['href'],
-                    'target': a.get('target'),
-                    'rel': a.get('rel') or '',
-                    'in_main': self._in_main > 0,
-                })
-        elif tag in ('img', 'source'):
-            if tag == 'img':
-                self.imgs.append(a)
-            if a.get('src'):
-                self.resources.append((a['src'], 'img'))
-            for part in (a.get('srcset') or '').split(','):
-                u = part.strip().split(' ')[0]
-                if u:
-                    self.resources.append((u, 'img'))
-        elif re.fullmatch(r'h[1-6]', tag):
+        if re.fullmatch(r'h[1-6]', tag):
             self._cur_h = [int(tag[1]), '']
-        elif tag == 'details':
-            self._details.append({'q': '', 'a': [], 'in_summary': False})
-        elif tag == 'summary' and self._details:
-            self._details[-1]['in_summary'] = True
+        elif tag in self._START:
+            getattr(self, self._START[tag])(a)
         if tag not in VOID:
             self._stack.append(tag)
 
+    def _start_title(self, a):
+        self._in_title = True
+
+    def _start_meta(self, a):
+        key = a.get('name') or a.get('property')
+        if key:
+            self.metas[key] = a.get('content', '')
+
+    def _start_link(self, a):
+        rel = (a.get('rel') or '').lower()
+        if rel == 'canonical':
+            self.canonical = a.get('href')
+        if a.get('href'):
+            self.resources.append((a['href'], 'link:' + rel))
+
+    def _start_script(self, a):
+        if a.get('type') == 'application/ld+json':
+            self._in_script = 'ld'
+            self.ld_raw.append('')
+        else:
+            self._in_script = 'js'
+        if a.get('src'):
+            self.resources.append((a['src'], 'script'))
+
+    def _start_style(self, a):
+        self._in_style = True
+
+    def _start_main(self, a):
+        self._in_main += 1
+
+    def _start_a(self, a):
+        if a.get('href') is not None:
+            self.links.append((a['href'], self._in_main > 0, 'a'))
+            self.a_meta.append({
+                'href': a['href'],
+                'target': a.get('target'),
+                'rel': a.get('rel') or '',
+                'in_main': self._in_main > 0,
+            })
+
+    def _start_img(self, a):
+        self.imgs.append(a)
+        self._start_source(a)
+
+    def _start_source(self, a):
+        if a.get('src'):
+            self.resources.append((a['src'], 'img'))
+        for part in (a.get('srcset') or '').split(','):
+            u = part.strip().split(' ')[0]
+            if u:
+                self.resources.append((u, 'img'))
+
+    def _start_details(self, a):
+        self._details.append({'q': '', 'a': [], 'in_summary': False})
+
+    def _start_summary(self, a):
+        if self._details:
+            self._details[-1]['in_summary'] = True
+
     def handle_endtag(self, tag):
-        if tag == 'title':
-            self._in_title = False
-        elif tag == 'script':
-            self._in_script = None
-        elif tag == 'style':
-            self._in_style = False
-        elif tag == 'main':
-            self._in_main = max(0, self._in_main - 1)
-        elif re.fullmatch(r'h[1-6]', tag) and self._cur_h:
-            self._cur_h[1] = re.sub(r'\s+', ' ', self._cur_h[1]).strip()
-            self.h.append(tuple(self._cur_h))
-            self._cur_h = None
-        elif tag == 'summary' and self._details:
-            self._details[-1]['in_summary'] = False
-        elif tag == 'details' and self._details:
-            d = self._details.pop()
-            self.faq.append((re.sub(r'\s+', ' ', d['q']).strip(),
-                             re.sub(r'\s+', ' ', ' '.join(d['a'])).strip()))
+        if re.fullmatch(r'h[1-6]', tag):
+            self._end_heading()
+        elif tag in self._END:
+            getattr(self, self._END[tag])()
         if tag in self._stack:
             # closes up to the tag (tolerant of badly nested HTML)
             while self._stack and self._stack.pop() != tag:
                 pass
+
+    def _end_title(self):
+        self._in_title = False
+
+    def _end_script(self):
+        self._in_script = None
+
+    def _end_style(self):
+        self._in_style = False
+
+    def _end_main(self):
+        self._in_main = max(0, self._in_main - 1)
+
+    def _end_heading(self):
+        if self._cur_h:
+            self._cur_h[1] = re.sub(r'\s+', ' ', self._cur_h[1]).strip()
+            self.h.append(tuple(self._cur_h))
+            self._cur_h = None
+
+    def _end_summary(self):
+        if self._details:
+            self._details[-1]['in_summary'] = False
+
+    def _end_details(self):
+        if self._details:
+            d = self._details.pop()
+            self.faq.append((re.sub(r'\s+', ' ', d['q']).strip(),
+                             re.sub(r'\s+', ' ', ' '.join(d['a'])).strip()))
 
     def handle_data(self, data):
         if self._in_script == 'ld':
@@ -188,6 +239,33 @@ _TAG_OPEN = re.compile(r'<([A-Za-z][A-Za-z0-9-]*)')
 _INNER_TAG = re.compile(r'<[A-Za-z/!?]')
 
 
+def _comment_end(text: str, start: int):
+    """None when `start` is outside an HTML comment; else the index after its closing `-->` (-1 if it never closes)."""
+    comment = text.rfind('<!--', 0, start)
+    if comment == -1 or text.find('-->', comment, start) != -1:
+        return None
+    end = text.find('-->', start)
+    return -1 if end == -1 else end + 3
+
+
+def _tag_end(text: str, m) -> int:
+    """Index of the `>` that closes the start tag matched by `m`, read respecting quotes; len(text) if it never closes."""
+    n, i, quote = len(text), m.end(), None
+    while i < n:
+        c = text[i]
+        if quote:
+            if c == quote:
+                quote = None
+        elif c in '"\'':
+            quote = c
+        elif c == '>':
+            break
+        if i > m.end() and c == '<' and _INNER_TAG.match(text, i):
+            return n
+        i += 1
+    return i
+
+
 def find_broken_markup(text: str):
     """Describe the first broken tag of a page's raw HTML, or return None.
 
@@ -196,35 +274,21 @@ def find_broken_markup(text: str):
     are looked for: a start tag whose attribute quote is not closed (read respecting quotes, it reaches the end
     of the file or runs into another tag) and a `<script>` or `<style>` with no closing tag. Comments and the
     bodies of scripts and styles are skipped. Line numbers refer to the file as built (a minified file has one)."""
-    pos, n = 0, len(text)
+    pos = 0
     while True:
         m = _TAG_OPEN.search(text, pos)
         if not m:
             return None
-        comment = text.rfind('<!--', 0, m.start())
-        if comment != -1 and text.find('-->', comment, m.start()) == -1:
-            end = text.find('-->', m.start())
-            if end == -1:
-                return None
-            pos = end + 3
+        skip = _comment_end(text, m.start())
+        if skip == -1:
+            return None
+        if skip is not None:
+            pos = skip
             continue
-        name, i, quote = m.group(1).lower(), m.end(), None
-        while i < n:
-            c = text[i]
-            if quote:
-                if c == quote:
-                    quote = None
-            elif c in '"\'':
-                quote = c
-            elif c == '>':
-                break
-            if i > m.end() and c == '<' and _INNER_TAG.match(text, i):
-                i = n
-                break
-            i += 1
+        name, i = m.group(1).lower(), _tag_end(text, m)
         line = text.count('\n', 0, m.start()) + 1
         snippet = re.sub(r'\s+', ' ', text[m.start():m.start() + 60]).strip()
-        if i >= n:
+        if i >= len(text):
             return (f'broken markup at line {line}: the tag <{name}> never closes (an attribute quote or the ">" '
                     f'is missing): {snippet}')
         if name in ('script', 'style'):
@@ -236,10 +300,19 @@ def find_broken_markup(text: str):
             pos = i + 1
 
 
+def _parse_ld(raw):
+    """One JSON-LD block -> (data, None), or (None, error) when it is not valid JSON."""
+    try:
+        return json.loads(raw), None
+    except ValueError as e:
+        return None, e
+
+
 def parse_page(path: Path) -> PageParser:
     p = PageParser()
     p.feed(path.read_text(encoding='utf-8'))
     p.close()
+    p.load_ld()
     return p
 
 
@@ -312,10 +385,8 @@ def sample_domain_urls(p: PageParser, site_url: str):
     own = (urlsplit(site_url).hostname or '').lower()
     candidates = [h for h, _, _ in p.links] + [u for u, _ in p.resources]
     candidates += [p.canonical or '', p.metas.get('og:url', ''), p.metas.get('og:image', '')]
-    for raw in p.ld_raw:
-        try:
-            data = json.loads(raw)
-        except ValueError:
+    for data, error in p.ld_docs:
+        if error is not None:
             continue
         for node in walk_nodes(data):
             candidates += [v for k, v in node.items() if k in ('url', '@id') and isinstance(v, str)]
@@ -326,14 +397,51 @@ def sample_domain_urls(p: PageParser, site_url: str):
     return found
 
 
-def check_page(rel_file, p: PageParser, out: Path, site_url: str, errors, warnings):
-    E = lambda msg: errors.append((rel_file, msg))
-    W = lambda msg: warnings.append((rel_file, msg))
-    is404 = rel_file == '404.html'
-    indexable = is_indexable(p)
-    url = page_url(rel_file, site_url)
+# --------------------------------------------------------------------------- context and collector
 
-    # basic <head>
+class Findings:
+    """Collects the findings of a run as (file, message) pairs. Wraps existing lists when it is given them."""
+
+    def __init__(self, errors=None, warnings=None):
+        self.errors = [] if errors is None else errors
+        self.warnings = [] if warnings is None else warnings
+
+    def error(self, file, msg):
+        self.errors.append((file, msg))
+
+    def warn(self, file, msg):
+        self.warnings.append((file, msg))
+
+    def as_tuple(self):
+        return self.errors, self.warnings
+
+
+@dataclass
+class PageCtx:
+    """Everything one page rule needs; `E`/`W` record a finding for this page."""
+    rel_file: str
+    p: PageParser
+    out: Path
+    site_url: str
+    url: str
+    title: str
+    desc: str
+    indexable: bool
+    is404: bool
+    findings: Findings
+
+    def E(self, msg):
+        self.findings.error(self.rel_file, msg)
+
+    def W(self, msg):
+        self.findings.warn(self.rel_file, msg)
+
+
+# --------------------------------------------------------------------------- page rules
+# One function per topic. The order of PAGE_RULES is the order of the messages.
+
+def _head_lang_viewport(ctx):
+    E, W, p = ctx.E, ctx.W, ctx.p
     if not p.lang:
         E('<html> without lang attribute')
     elif not re.fullmatch(r'[a-z]{2,3}(-[A-Za-z0-9]{2,8})*', p.lang):
@@ -344,30 +452,44 @@ def check_page(rel_file, p: PageParser, out: Path, site_url: str, errors, warnin
         vp = p.metas['viewport'].lower().replace(' ', '')
         if 'width=device-width' not in vp:
             W('viewport without width=device-width')
-    title = norm(p.title)
-    desc = norm(p.metas.get('description', ''))
+
+
+def _head_title(ctx):
+    E, W, title = ctx.E, ctx.W, ctx.title
     if not title:
         E('missing <title>')
-    elif indexable:
+    elif ctx.indexable:
         if len(title) > TITLE_MAX:
             W(f'title of {len(title)} characters (> {TITLE_MAX})')
         if len(title) < TITLE_MIN:
             W(f'title too short ({len(title)} characters)')
+
+
+def _head_description(ctx):
+    E, W, desc = ctx.E, ctx.W, ctx.desc
     if not desc:
         E('missing meta description')
-    elif indexable:
+    elif ctx.indexable:
         if len(desc) > DESC_MAX:
             W(f'description of {len(desc)} characters (> {DESC_MAX})')
         if len(desc) < DESC_MIN:
             W(f'description too short ({len(desc)} characters)')
-    if 'robots' not in p.metas:
-        E('missing <meta name="robots">')
 
-    # canonical
-    if is404:
+
+def rules_head(ctx):
+    _head_lang_viewport(ctx)
+    _head_title(ctx)
+    _head_description(ctx)
+    if 'robots' not in ctx.p.metas:
+        ctx.E('missing <meta name="robots">')
+
+
+def rules_canonical(ctx):
+    E, p, url = ctx.E, ctx.p, ctx.url
+    if ctx.is404:
         if p.canonical or 'og:url' in p.metas:
             E('the 404 page must not have canonical or og:url')
-    elif indexable:
+    elif ctx.indexable:
         if not p.canonical:
             E('indexable page without canonical')
         elif p.canonical != url:
@@ -377,7 +499,9 @@ def check_page(rel_file, p: PageParser, out: Path, site_url: str, errors, warnin
     if p.canonical and p.metas.get('og:url') and p.metas['og:url'] != p.canonical:
         E('og:url differs from canonical')
 
-    # Open Graph / Twitter
+
+def _social_tags(ctx):
+    W, p = ctx.W, ctx.p
     common_og = (
         'og:title', 'og:description', 'og:image', 'og:type', 'og:site_name', 'og:locale',
         'twitter:card', 'twitter:title', 'twitter:description', 'twitter:image',
@@ -385,20 +509,19 @@ def check_page(rel_file, p: PageParser, out: Path, site_url: str, errors, warnin
     for key in common_og:
         if key not in p.metas:
             W(f'missing {key}')
-    if not is404 and 'og:url' not in p.metas:
+    if not ctx.is404 and 'og:url' not in p.metas:
         W('missing og:url')
-    if p.metas.get('og:title') and norm(p.metas['og:title']) != title:
+    if p.metas.get('og:title') and norm(p.metas['og:title']) != ctx.title:
         W('og:title differs from <title>')
     if 'og:locale' in p.metas and not re.fullmatch(r'[a-z]{2,3}_[A-Z]{2}', p.metas['og:locale']):
         W(f'unusual og:locale format: {p.metas["og:locale"]}')
     if 'twitter:card' in p.metas and p.metas['twitter:card'] not in TWITTER_CARDS:
         W(f'unrecognised twitter:card: {p.metas["twitter:card"]}')
-    og_img = p.metas.get('og:image', '')
-    if og_img and not og_img.startswith('https://'):
-        E(f'og:image without HTTPS: {og_img}')
-    if og_img and 'og:image:alt' not in p.metas:
-        W('og:image without og:image:alt')
-    if rel_file == 'index.html' and 'og:image:width' in p.metas:  # the layout is shared: reported once
+
+
+def _og_image_size(ctx):
+    W, p = ctx.W, ctx.p
+    if ctx.rel_file == 'index.html' and 'og:image:width' in p.metas:  # the layout is shared: reported once
         try:
             og_w, og_h = int(p.metas['og:image:width']), int(p.metas.get('og:image:height', ''))
         except ValueError:
@@ -408,15 +531,33 @@ def check_page(rel_file, p: PageParser, out: Path, site_url: str, errors, warnin
               'og-image.png (see the build warning)')
         elif og_w < OG_IMAGE_MIN_WIDTH or abs(og_w / og_h - OG_IMAGE_RATIO) > OG_IMAGE_RATIO_TOLERANCE:
             W(f'og:image is {og_w}x{og_h}: use at least {OG_IMAGE_MIN_WIDTH} px wide and a 1.91:1 ratio (1200x630)')
+
+
+def _og_image_exists(ctx):
+    og_img = ctx.p.metas.get('og:image', '')
+    if og_img.startswith(ctx.site_url):
+        t, _, _ = resolve_internal(og_img, ctx.out, ctx.site_url)
+        if t is not None and not t.exists():
+            ctx.E(f'og:image does not exist in the output: {og_img}')
+
+
+def rules_social(ctx):
+    E, W, p = ctx.E, ctx.W, ctx.p
+    _social_tags(ctx)
+    og_img = p.metas.get('og:image', '')
+    if og_img and not og_img.startswith('https://'):
+        E(f'og:image without HTTPS: {og_img}')
+    if og_img and 'og:image:alt' not in p.metas:
+        W('og:image without og:image:alt')
+    _og_image_size(ctx)
     og_url = p.metas.get('og:url', '')
     if og_url and not og_url.startswith('https://'):
         E(f'og:url without HTTPS: {og_url}')
-    if og_img.startswith(site_url):
-        t, _, _ = resolve_internal(og_img, out, site_url)
-        if t is not None and not t.exists():
-            E(f'og:image does not exist in the output: {og_img}')
+    _og_image_exists(ctx)
 
-    # headings
+
+def rules_headings(ctx):
+    E, W, p = ctx.E, ctx.W, ctx.p
     h1s = [t for lvl, t in p.h if lvl == 1]
     if len(h1s) != 1:
         E(f'expected 1 <h1>, found {len(h1s)}')
@@ -431,8 +572,10 @@ def check_page(rel_file, p: PageParser, out: Path, site_url: str, errors, warnin
         if not t:
             E(f'empty h{lvl} heading')
 
-    # images
-    for img in p.imgs:
+
+def rules_images(ctx):
+    E, W = ctx.E, ctx.W
+    for img in ctx.p.imgs:
         src = img.get('src', '?')
         if not img.get('src') and not img.get('srcset'):
             W('<img> without src or srcset')
@@ -443,39 +586,45 @@ def check_page(rel_file, p: PageParser, out: Path, site_url: str, errors, warnin
         if not img.get('width') or not img.get('height'):
             W(f'<img> without width/height (CLS risk): {src}')
 
+
+def rules_link_safety(ctx):
     # links with target="_blank" must carry rel="noopener"/"noreferrer"
-    for meta in p.a_meta:
+    for meta in ctx.p.a_meta:
         if meta['target'] == '_blank':
             rel = (meta['rel'] or '').lower()
             if 'noopener' not in rel and 'noreferrer' not in rel:
-                W(f'<a target="_blank"> without rel="noopener"/"noreferrer": {meta["href"][:60]}')
+                ctx.W(f'<a target="_blank"> without rel="noopener"/"noreferrer": {meta["href"][:60]}')
 
+
+def rules_sample_domains(ctx):
     # URLs on a sample domain (a copied example that was never replaced)
-    sample_urls = sample_domain_urls(p, site_url)
+    sample_urls = sample_domain_urls(ctx.p, ctx.site_url)
     if sample_urls:
         more = f' and {len(sample_urls) - 3} more' if len(sample_urls) > 3 else ''
-        W('URL on a sample domain (example.com, example.org or example.net): ' + ', '.join(sample_urls[:3]) + more +
-          '; use the real address or remove the link')
+        ctx.W('URL on a sample domain (example.com, example.org or example.net): ' + ', '.join(sample_urls[:3]) + more +
+              '; use the real address or remove the link')
 
-    # aria-current
-    if p.aria_current > 1:
-        E(f'{p.aria_current} elements with aria-current')
 
+def rules_aria(ctx):
+    if ctx.p.aria_current > 1:
+        ctx.E(f'{ctx.p.aria_current} elements with aria-current')
+
+
+def rules_leftovers(ctx):
     # template leftovers / markers
+    p = ctx.p
     text = ' '.join(p.all_text)
-    if '{{' in text or '{{' in str(p.canonical or '') or '{{' in title:
-        E('unrendered {{...}} marker')
+    if '{{' in text or '{{' in str(p.canonical or '') or '{{' in ctx.title:
+        ctx.E('unrendered {{...}} marker')
     if re.search(r'\bTODO\b|\[CONFIRM', text):
-        W('contains TODO or [CONFIRM')
+        ctx.W('contains TODO or [CONFIRM')
 
-    # content
-    if indexable and not is404:
-        words = len(norm(' '.join(p.main_text)).split())
+
+def rules_content(ctx):
+    if ctx.indexable and not ctx.is404:
+        words = len(norm(' '.join(ctx.p.main_text)).split())
         if words < MIN_WORDS_INDEXABLE:
-            W(f'thin content: {words} words in <main> (< {MIN_WORDS_INDEXABLE})')
-
-    check_jsonld(rel_file, p, url, title, indexable, is404, errors, warnings, site_url)
-    check_faq_matches_schema(rel_file, p, warnings, errors)
+            ctx.W(f'thin content: {words} words in <main> (< {MIN_WORDS_INDEXABLE})')
 
 
 def walk_nodes(obj):
@@ -489,165 +638,376 @@ def walk_nodes(obj):
             yield from walk_nodes(v)
 
 
-def check_jsonld(rel_file, p, url, title, indexable, is404, errors, warnings, site_url=None):
-    E = lambda msg: errors.append((rel_file, msg))
-    W = lambda msg: warnings.append((rel_file, msg))
-    if not p.ld_raw:
-        if indexable and not is404:
-            E('indexable page without JSON-LD')
-        return
-    defined, refs, graph_nodes = {}, [], []
-    for raw in p.ld_raw:
-        try:
-            data = json.loads(raw)
-        except ValueError as e:
-            E(f'invalid JSON-LD: {e}')
+_JSON_KINDS = {type(None): 'null', list: 'a list', str: 'text', bool: 'a boolean', int: 'a number', float: 'a number',
+               dict: 'an object'}
+
+
+def _json_kind(value):
+    return _JSON_KINDS.get(type(value), type(value).__name__)
+
+
+def _as_text(value):
+    """`value` when it is text, else None: JSON-LD fields that must be text may come as numbers, lists or objects."""
+    return value if isinstance(value, str) else None
+
+
+def _ld_nodes(data, problems=None):
+    """The nodes (dicts) of one JSON-LD document: `@graph` items, or the document itself. What is not an object
+    (a root that is a list or null, a `@graph` item that is text...) is dropped and described in `problems`."""
+    if not isinstance(data, dict):
+        if problems is not None:
+            problems.append(f'the root is {_json_kind(data)}, expected an object')
+        return []
+    graph = data.get('@graph') or [data]
+    if not isinstance(graph, list):
+        graph = [graph]
+    nodes = [n for n in graph if isinstance(n, dict)]
+    if problems is not None:
+        problems += [f'@graph item is not an object: {json.dumps(n)[:40]}' for n in graph if not isinstance(n, dict)]
+    return nodes
+
+
+def _faq_questions(node, problems=None):
+    """The questions (dicts) of a FAQPage: `mainEntity` must be a list of objects; what is not is described in `problems`."""
+    entity = node.get('mainEntity')
+    if not entity:
+        return []
+    if not isinstance(entity, list):
+        if problems is not None:
+            problems.append(f'FAQPage.mainEntity is {_json_kind(entity)}, expected a list')
+        return []
+    if problems is not None:
+        problems += [f'FAQPage.mainEntity item is not an object: {json.dumps(q)[:40]}' for q in entity if not isinstance(q, dict)]
+    return [q for q in entity if isinstance(q, dict)]
+
+
+PAGE_TYPES = ('WebPage', 'CollectionPage', 'AboutPage', 'ContactPage')
+SCHEMA_CONTEXTS = ('https://schema.org', 'https://schema.org/', 'http://schema.org', 'http://schema.org/')
+
+
+def _bad_id(ctx, value):
+    ctx.E(f'JSON-LD with an unexpected shape: @id is not text: {json.dumps(value)[:40]}')
+
+
+def _ld_register_ids(ctx, nodes, defined):
+    """Record the `@id` of each node in `defined`; a repeated one is an error, one that is not text a shape error."""
+    for n in nodes:
+        nid = n.get('@id')
+        if not nid:
             continue
-        if data.get('@context') not in ('https://schema.org', 'https://schema.org/', 'http://schema.org', 'http://schema.org/'):
-            E('JSON-LD without schema.org @context')
-        nodes = data.get('@graph') or [data]
-        for n in nodes:
-            graph_nodes.append(n)
-            nid = n.get('@id')
-            if nid:
-                if nid in defined:
-                    E(f'duplicate @id on the page: {nid}')
-                defined[nid] = n
-        for sub in walk_nodes(nodes):
-            # a reference is a dict that contains only @id
-            if set(sub.keys()) == {'@id'}:
+        if _as_text(nid) is None:
+            _bad_id(ctx, nid)
+            continue
+        if nid in defined:
+            ctx.E(f'duplicate @id on the page: {nid}')
+        defined[nid] = n
+
+
+def _ld_ref_ids(ctx, nodes):
+    """The `@id` of every reference (a dict that contains only `@id`); one that is not text is a shape error."""
+    refs = []
+    for sub in walk_nodes(nodes):
+        if set(sub.keys()) == {'@id'}:
+            if _as_text(sub['@id']) is None:
+                _bad_id(ctx, sub['@id'])
+            else:
                 refs.append(sub['@id'])
+    return refs
+
+
+def _ld_collect(ctx):
+    """Read every JSON-LD block: syntax, @context, shape and duplicate ids.
+    Returns (defined @ids, @id references, all nodes)."""
+    defined, refs, graph_nodes = {}, [], []
+    for data, error in ctx.p.ld_docs:
+        if error is not None:
+            ctx.E(f'invalid JSON-LD: {error}')
+            continue
+        if isinstance(data, dict) and data.get('@context') not in SCHEMA_CONTEXTS:
+            ctx.E('JSON-LD without schema.org @context')
+        problems = []
+        nodes = _ld_nodes(data, problems)
+        for detail in problems:
+            ctx.E(f'JSON-LD with an unexpected shape: {detail}')
+        graph_nodes.extend(nodes)
+        _ld_register_ids(ctx, nodes, defined)
+        refs.extend(_ld_ref_ids(ctx, nodes))
+    return defined, refs, graph_nodes
+
+
+def _ld_references(ctx, defined, refs):
     for r in refs:
         if r not in defined:
-            E(f'undefined @id reference on the page: {r}')
-    if indexable:
-        # @type is a text or a list of texts (["Restaurant", "LocalBusiness"]): normalise before comparing
-        types = set()
-        for n in graph_nodes:
-            t = n.get('@type')
-            types.update(x for x in (t if isinstance(t, list) else [t]) if isinstance(x, str))
-        main_id = (site_url + '/#business') if site_url is not None else None
-        if not any(isinstance(n.get('@id'), str) and
-                   (n['@id'] == main_id if main_id else n['@id'].endswith('/#business')) for n in graph_nodes):
-            E(f'missing main node (@id {main_id or "<site_url>/#business"}) in the JSON-LD')
-        if 'WebSite' not in types:
-            E('missing WebSite node in the JSON-LD')
+            ctx.E(f'undefined @id reference on the page: {r}')
+
+
+def _ld_required_nodes(ctx, graph_nodes):
+    """An indexable page needs the main node and a WebSite node."""
+    # @type is a text or a list of texts (["Restaurant", "LocalBusiness"]): normalise before comparing
+    types = set()
     for n in graph_nodes:
         t = n.get('@type')
-        if t in ('WebPage', 'CollectionPage', 'AboutPage', 'ContactPage'):
-            if n.get('url') != url:
-                E(f'{t}.url ({n.get("url")}) differs from the page URL ({url})')
-            if n.get('name') and norm(n['name']) != title:
-                W(f'{t}.name differs from <title>')
-            dm = n.get('dateModified')
-            if dm and not re.fullmatch(r'\d{4}-\d{2}-\d{2}', dm):
-                W(f'dateModified in non-ISO format: {dm}')
+        types.update(x for x in (t if isinstance(t, list) else [t]) if isinstance(x, str))
+    main_id = (ctx.site_url + '/#business') if ctx.site_url is not None else None
+    if not any(isinstance(n.get('@id'), str) and
+               (n['@id'] == main_id if main_id else n['@id'].endswith('/#business')) for n in graph_nodes):
+        ctx.E(f'missing main node (@id {main_id or "<site_url>/#business"}) in the JSON-LD')
+    if 'WebSite' not in types:
+        ctx.E('missing WebSite node in the JSON-LD')
+
+
+def _ld_page_node(ctx, n, t):
+    """WebPage and its subtypes: url, name and dateModified must agree with the page."""
+    if n.get('url') != ctx.url:
+        ctx.E(f'{t}.url ({n.get("url")}) differs from the page URL ({ctx.url})')
+    name = n.get('name')
+    if name and _as_text(name) is None:
+        ctx.W(f'name is not text: {name}')
+    elif name and norm(name) != ctx.title:
+        ctx.W(f'{t}.name differs from <title>')
+    dm = n.get('dateModified')
+    if dm and _as_text(dm) is None:
+        ctx.W(f'dateModified is not text: {dm}')
+    elif dm and not re.fullmatch(r'\d{4}-\d{2}-\d{2}', dm):
+        ctx.W(f'dateModified in non-ISO format: {dm}')
+
+
+def _ld_question(ctx, q):
+    """One Question of a FAQPage: @type, text name and an Answer with text."""
+    if q.get('@type') != 'Question':
+        ctx.W(f'FAQPage.mainEntity with @type {q.get("@type")!r}, expected "Question"')
+    name = q.get('name')
+    if name is not None and _as_text(name) is None:
+        ctx.W(f'FAQPage Question name is not text: {name}')
+    ans = q.get('acceptedAnswer')
+    ans = ans if isinstance(ans, dict) else {}
+    if ans.get('@type') != 'Answer':
+        ctx.W(f'FAQPage Question "{norm(_as_text(name) or "")[:40]}" without acceptedAnswer @type="Answer"')
+    text = ans.get('text')
+    if text is not None and _as_text(text) is None:
+        ctx.W(f'FAQPage Answer text is not text: {text}')
+
+
+def _ld_faq(ctx, n):
+    """FAQPage: mainEntity must be a list of Question with an Answer."""
+    if not n.get('mainEntity'):
+        ctx.E('FAQPage without mainEntity')
+        return
+    faq_problems = []
+    for q in _faq_questions(n, faq_problems):
+        _ld_question(ctx, q)
+    for detail in faq_problems:
+        ctx.E(f'JSON-LD with an unexpected shape: {detail}')
+
+
+def _ld_check_type(ctx, t):
+    """`@type` is text or a list of texts (["Restaurant", "LocalBusiness"]); anything else is odd. Absent is fine."""
+    if t is None or isinstance(t, str):
+        return
+    if not (isinstance(t, list) and all(isinstance(x, str) for x in t)):
+        ctx.W(f'JSON-LD @type is not text or a list of texts: {json.dumps(t)[:40]}')
+
+
+def _ld_structure(ctx):
+    """The JSON-LD of the page: presence, ids, required nodes, page nodes and FAQ."""
+    if not ctx.p.ld_raw:
+        if ctx.indexable and not ctx.is404:
+            ctx.E('indexable page without JSON-LD')
+        return
+    defined, refs, graph_nodes = _ld_collect(ctx)
+    _ld_references(ctx, defined, refs)
+    if ctx.indexable:
+        _ld_required_nodes(ctx, graph_nodes)
+    for n in graph_nodes:
+        t = n.get('@type')
+        _ld_check_type(ctx, t)
+        if t in PAGE_TYPES:
+            _ld_page_node(ctx, n, t)
         if t == 'FAQPage':
-            if not n.get('mainEntity'):
-                E('FAQPage without mainEntity')
-            else:
-                for q in n.get('mainEntity', []):
-                    if q.get('@type') != 'Question':
-                        W(f'FAQPage.mainEntity with @type {q.get("@type")!r}, expected "Question"')
-                    ans = q.get('acceptedAnswer') or {}
-                    if ans.get('@type') != 'Answer':
-                        W(f'FAQPage Question "{norm(q.get("name", ""))[:40]}" without acceptedAnswer @type="Answer"')
+            _ld_faq(ctx, n)
+
+
+def _faq_texts(q):
+    """(question, answer) of a Question as normalised texts; None when one of them is present but not text
+    (`_ld_question` already warns about it)."""
+    name, text = q.get('name'), _get(q, 'acceptedAnswer', 'text')
+    if any(v is not None and _as_text(v) is None for v in (name, text)):
+        return None
+    return norm(name or ''), norm(text or '')
+
+
+def _ld_faq_visible(ctx):
+    """JSON-LD FAQs must match the visible questions."""
+    schema_faq = []
+    for data, error in ctx.p.ld_docs:
+        if error is not None:
+            continue
+        for n in _ld_nodes(data):
+            if n.get('@type') == 'FAQPage':
+                schema_faq += [t for t in map(_faq_texts, _faq_questions(n)) if t is not None]
+    visible = dict(ctx.p.faq)
+    for q, a in schema_faq:
+        if q not in visible:
+            ctx.E(f'JSON-LD FAQ not visible on the page: "{q[:60]}"')
+        elif visible[q] != a:
+            ctx.E(f'FAQ answer differs between JSON-LD and visible text: "{q[:60]}"')
+
+
+def rules_jsonld(ctx):
+    _ld_structure(ctx)
+    _ld_faq_visible(ctx)
+
+
+def _faq_matches_schema(rel_file, p, errors, warnings):
+    """FAQ check outside `check_page` (same argument order as the page checks)."""
+    ctx = PageCtx(rel_file=rel_file, p=p, out=None, site_url=None, url='', title='', desc='',
+                  indexable=False, is404=False, findings=Findings(errors, warnings))
+    _ld_faq_visible(ctx)
 
 
 def check_faq_matches_schema(rel_file, p, warnings, errors):
-    """JSON-LD FAQs must match the visible questions."""
-    schema_faq = []
-    for raw in p.ld_raw:
-        try:
-            data = json.loads(raw)
-        except ValueError:
-            continue
-        for n in data.get('@graph') or [data]:
-            if n.get('@type') == 'FAQPage':
-                for q in n.get('mainEntity', []):
-                    schema_faq.append((norm(q.get('name', '')),
-                                       norm(_get(q, 'acceptedAnswer', 'text') or '')))
-    if not schema_faq:
-        return
-    visible = {q: a for q, a in p.faq}
-    for q, a in schema_faq:
-        if q not in visible:
-            errors.append((rel_file, f'JSON-LD FAQ not visible on the page: "{q[:60]}"'))
-        elif visible[q] != a:
-            errors.append((rel_file, f'FAQ answer differs between JSON-LD and visible text: "{q[:60]}"'))
+    """Public entry point; keeps the original argument order (warnings, errors)."""
+    _faq_matches_schema(rel_file, p, errors, warnings)
+
+
+PAGE_RULES = (
+    rules_head, rules_canonical, rules_social, rules_headings, rules_images,
+    rules_link_safety, rules_sample_domains, rules_aria, rules_leftovers, rules_content, rules_jsonld,
+)
+
+
+def check_page(rel_file, p: PageParser, out: Path, site_url: str, errors, warnings):
+    ctx = PageCtx(
+        rel_file=rel_file, p=p, out=out, site_url=site_url,
+        url=page_url(rel_file, site_url), title=norm(p.title),
+        desc=norm(p.metas.get('description', '')), indexable=is_indexable(p),
+        is404=rel_file == '404.html', findings=Findings(errors, warnings),
+    )
+    for rule in PAGE_RULES:
+        rule(ctx)
 
 
 # --------------------------------------------------------------------------- site rules
 
-def check_links(pages, out: Path, site_url: str, errors, warnings):
-    """Internal links and resources: file and anchor existence."""
-    inlinks = {rel: set() for rel in pages}
-    for rel_file, p in pages.items():
-        E = lambda msg, r=rel_file: errors.append((r, msg))
-        W = lambda msg, r=rel_file: warnings.append((r, msg))
-        for href, in_main, _ in p.links:
-            href = href.strip()
-            if not href:
-                E('link with empty href')
-                continue
-            if href.startswith('mailto:'):
-                if not re.fullmatch(r'mailto:[^@\s]+@[^@\s]+\.[^@\s?]+(\?.*)?', href):
-                    E(f'malformed mailto: {href[:60]}')
-                continue
-            if href.startswith('tel:'):
-                if not re.fullmatch(r'tel:\+?[\d\s().-]{6,}', href):
-                    E(f'malformed tel: {href}')
-                continue
-            own_http = 'http://' + site_url.split('://', 1)[1]
-            if href.startswith(own_http) and href[len(own_http):len(own_http) + 1] in ('', '/', '?', '#'):
-                E(f'internal link with http instead of https: {href}')
-                continue
-            if href.startswith(('http://', 'https://')) and not href.startswith(site_url):
-                if href.startswith('http://'):
-                    W(f'external link without HTTPS: {href[:60]}')
-                continue
-            if href.startswith('//'):
-                continue
-            if href.startswith('#'):
-                frag = href[1:]
-                if frag and frag not in p.ids:
-                    E(f'anchor not found on the same page: {href}')
-                continue
-            if not (href.startswith('/') or href.startswith(site_url)):
-                W(f'relative link (an absolute path is better): {href[:60]}')
-                continue
-            target, frag, err = resolve_internal(href, out, site_url)
-            if err:
-                E(err)
-                continue
-            if target is None or not target.exists():
-                E(f'broken internal link: {href}')
-                continue
-            if frag:
-                key = target.relative_to(out).as_posix()
-                tp = pages.get(key)
-                if tp is not None and frag not in tp.ids:
-                    E(f'anchor not found: {href}')
-            key = target.relative_to(out).as_posix() if target.exists() else None
-            if key in inlinks and key != rel_file and in_main:
-                inlinks[key].add(rel_file)
-        for url, kind in p.resources:
-            if url.startswith(('data:', 'http://', 'https://')) and not url.startswith(site_url):
-                continue
-            if kind.startswith('link:') and kind not in ('link:stylesheet', 'link:icon', 'link:apple-touch-icon', 'link:preload'):
-                # alternate, describedby, canonical, sitemap... are checked the same way if internal
-                pass
-            target, _, err = resolve_internal(url, out, site_url)
-            if err:
-                continue
-            if target is not None and not target.exists():
-                E(f'missing resource ({kind}): {url}')
-    # orphans: indexable pages without inbound contextual links
+_MAILTO_RE = re.compile(r'mailto:[^@\s]+@[^@\s]+\.[^@\s?]+(\?.*)?')
+_TEL_RE = re.compile(r'tel:\+?[\d\s().-]{6,}')
+
+
+def _classify_href(href: str, site_url: str) -> str:
+    """Label an href: empty, mailto, tel, own_http, external, protocol_relative, fragment, relative or internal."""
+    if not href:
+        return 'empty'
+    if href.startswith('mailto:'):
+        return 'mailto'
+    if href.startswith('tel:'):
+        return 'tel'
+    own_http = 'http://' + site_url.split('://', 1)[1]
+    if href.startswith(own_http) and href[len(own_http):len(own_http) + 1] in ('', '/', '?', '#'):
+        return 'own_http'
+    if href.startswith(('http://', 'https://')) and not href.startswith(site_url):
+        return 'external'
+    if href.startswith('//'):
+        return 'protocol_relative'
+    if href.startswith('#'):
+        return 'fragment'
+    if not (href.startswith('/') or href.startswith(site_url)):
+        return 'relative'
+    return 'internal'
+
+
+def _check_mailto(href, E):
+    if not _MAILTO_RE.fullmatch(href):
+        E(f'malformed mailto: {href[:60]}')
+
+
+def _check_tel(href, E):
+    if not _TEL_RE.fullmatch(href):
+        E(f'malformed tel: {href}')
+
+
+def _check_external(href, W):
+    if href.startswith('http://'):
+        W(f'external link without HTTPS: {href[:60]}')
+
+
+def _check_fragment(href, p, E):
+    frag = href[1:]
+    if frag and frag not in p.ids:
+        E(f'anchor not found on the same page: {href}')
+
+
+def _check_internal(href, pages, out: Path, site_url: str, E):
+    """Check an internal link (file and anchor). Returns the target's key in `pages` when it exists, else None."""
+    target, frag, err = resolve_internal(href, out, site_url)
+    if err:
+        E(err)
+        return None
+    if target is None or not target.exists():
+        E(f'broken internal link: {href}')
+        return None
+    key = target.relative_to(out).as_posix()
+    if frag:
+        tp = pages.get(key)
+        if tp is not None and frag not in tp.ids:
+            E(f'anchor not found: {href}')
+    return key
+
+
+def _check_href(href, p, pages, out: Path, site_url: str, E, W):
+    """Check one link by kind. Returns the target page key for a valid internal link, else None."""
+    kind = _classify_href(href, site_url)
+    if kind == 'empty':
+        E('link with empty href')
+    elif kind == 'mailto':
+        _check_mailto(href, E)
+    elif kind == 'tel':
+        _check_tel(href, E)
+    elif kind == 'own_http':
+        E(f'internal link with http instead of https: {href}')
+    elif kind == 'external':
+        _check_external(href, W)
+    elif kind == 'fragment':
+        _check_fragment(href, p, E)
+    elif kind == 'relative':
+        W(f'relative link (an absolute path is better): {href[:60]}')
+    elif kind == 'internal':
+        return _check_internal(href, pages, out, site_url, E)
+    return None
+
+
+def _check_resources(p, out: Path, site_url: str, E):
+    """Internal resources (stylesheets, icons, ...) must exist in the output."""
+    for url, kind in p.resources:
+        if url.startswith(('data:', 'http://', 'https://')) and not url.startswith(site_url):
+            continue
+        target, _, err = resolve_internal(url, out, site_url)
+        if err:
+            continue
+        if target is not None and not target.exists():
+            E(f'missing resource ({kind}): {url}')
+
+
+def _orphans(pages, inlinks, warnings):
+    """Indexable pages without inbound contextual links."""
     for rel_file, p in pages.items():
         if rel_file in ('404.html', 'index.html') or not is_indexable(p):
             continue
         if len(inlinks[rel_file]) < MIN_CONTEXTUAL_INLINKS:
             warnings.append((rel_file, 'no inbound contextual links from other pages (menu/footer only)'))
+
+
+def check_links(pages, out: Path, site_url: str, errors, warnings):
+    """Internal links and resources: file and anchor existence."""
+    findings = Findings(errors, warnings)
+    inlinks = {rel: set() for rel in pages}
+    for rel_file, p in pages.items():
+        E, W = partial(findings.error, rel_file), partial(findings.warn, rel_file)
+        for href, in_main, _kind in p.links:
+            key = _check_href(href.strip(), p, pages, out, site_url, E, W)
+            if key in inlinks and key != rel_file and in_main:
+                inlinks[key].add(rel_file)
+        _check_resources(p, out, site_url, E)
+    _orphans(pages, inlinks, warnings)
 
 
 def check_duplicates(pages, errors):
@@ -664,15 +1024,28 @@ def check_duplicates(pages, errors):
         seen_d[d] = rel_file
 
 
-def check_sitemap(pages, out: Path, site_url: str, errors, warnings):
-    sm = out / 'sitemap.xml'
-    if not sm.exists():
-        return
+def _read_sitemap(sm: Path, errors):
+    """Parse sitemap.xml; returns its root element, or None (with an error recorded) when it is invalid."""
     try:
-        root = ET.fromstring(sm.read_text(encoding='utf-8'))
+        return ET.fromstring(sm.read_text(encoding='utf-8'))
     except ET.ParseError as e:
         errors.append(('sitemap.xml', f'invalid XML: {e}'))
+        return None
+
+
+def _check_sitemap_entry(loc, lm, out: Path, site_url: str, errors, warnings):
+    if not loc.startswith(site_url + '/'):
+        errors.append(('sitemap.xml', f'URL outside the domain: {loc}'))
         return
+    target, _, err = resolve_internal(loc, out, site_url)
+    if err or target is None or not target.exists():
+        errors.append(('sitemap.xml', f'sitemap URL without a generated page: {loc}'))
+    if lm and not re.fullmatch(r'\d{4}-\d{2}-\d{2}', lm):
+        warnings.append(('sitemap.xml', f'lastmod in non-ISO format: {loc} → {lm}'))
+
+
+def _check_sitemap_entries(root, out: Path, site_url: str, errors, warnings):
+    """Per-URL checks. Returns ({loc: True}, {loc: lastmod}) for the coverage checks."""
     ns = {'s': 'http://www.sitemaps.org/schemas/sitemap/0.9'}
     in_sitemap, lastmods = {}, {}
     for u in root.findall('s:url', ns):
@@ -682,14 +1055,12 @@ def check_sitemap(pages, out: Path, site_url: str, errors, warnings):
             errors.append(('sitemap.xml', f'duplicate URL: {loc}'))
         in_sitemap[loc] = True
         lastmods[loc] = lm
-        if not loc.startswith(site_url + '/'):
-            errors.append(('sitemap.xml', f'URL outside the domain: {loc}'))
-            continue
-        target, _, err = resolve_internal(loc, out, site_url)
-        if err or target is None or not target.exists():
-            errors.append(('sitemap.xml', f'sitemap URL without a generated page: {loc}'))
-        if lm and not re.fullmatch(r'\d{4}-\d{2}-\d{2}', lm):
-            warnings.append(('sitemap.xml', f'lastmod in non-ISO format: {loc} → {lm}'))
+        _check_sitemap_entry(loc, lm, out, site_url, errors, warnings)
+    return in_sitemap, lastmods
+
+
+def _check_sitemap_coverage(pages, in_sitemap, site_url: str, errors):
+    """Indexable pages must be listed and nothing else. Returns {url: parser} of the indexable pages."""
     indexable = {page_url(rel, site_url): p for rel, p in pages.items()
                  if is_indexable(p) and rel != '404.html'}
     for u in sorted(set(indexable) - set(in_sitemap)):
@@ -697,17 +1068,31 @@ def check_sitemap(pages, out: Path, site_url: str, errors, warnings):
     for u in sorted(set(in_sitemap) - set(indexable)):
         if u.startswith(site_url + '/'):
             errors.append(('sitemap.xml', f'the sitemap includes a noindex or non-existent page: {u}'))
-    # lastmod <-> JSON-LD dateModified consistency
+    return indexable
+
+
+def _check_lastmod_vs_jsonld(indexable, lastmods, warnings):
+    """lastmod <-> JSON-LD dateModified consistency."""
     for u, p in indexable.items():
-        for raw in p.ld_raw:
-            try:
-                data = json.loads(raw)
-            except ValueError:
+        for data, error in p.ld_docs:
+            if error is not None:
                 continue
-            for n in data.get('@graph') or [data]:
-                dm = n.get('dateModified')
+            for n in _ld_nodes(data):
+                dm = _as_text(n.get('dateModified'))
                 if dm and lastmods.get(u) and dm != lastmods[u]:
                     warnings.append(('sitemap.xml', f'lastmod {lastmods[u]} ≠ dateModified {dm} in {u}'))
+
+
+def check_sitemap(pages, out: Path, site_url: str, errors, warnings):
+    sm = out / 'sitemap.xml'
+    if not sm.exists():
+        return
+    root = _read_sitemap(sm, errors)
+    if root is None:
+        return
+    in_sitemap, lastmods = _check_sitemap_entries(root, out, site_url, errors, warnings)
+    indexable = _check_sitemap_coverage(pages, in_sitemap, site_url, errors)
+    _check_lastmod_vs_jsonld(indexable, lastmods, warnings)
 
 
 def check_robots(out: Path, site_url: str, errors, warnings):
@@ -730,6 +1115,42 @@ def check_robots(out: Path, site_url: str, errors, warnings):
 
 # --------------------------------------------------------------------------- API
 
+def _check_required_files(out, errors, warnings):
+    for req in REQUIRED_FILES:
+        if not (out / req).exists():
+            errors.append((req, 'required file missing'))
+    for rec in RECOMMENDED_FILES:
+        if not (out / rec).exists():
+            warnings.append((rec, 'recommended file missing'))
+
+
+def _load_pages(out, files, errors):
+    """Parse every page: `{relative path: PageParser}`. A page that cannot be read goes to `errors`."""
+    pages = {}
+    for f in files:
+        rel = str(f.relative_to(out)).replace('\\', '/')
+        try:
+            pages[rel] = parse_page(f)
+        except (OSError, UnicodeError, ValueError) as e:
+            errors.append((rel, f'could not read/parse: {e}'))
+    return pages
+
+
+def _check_one_page(rel, p, out, site_url, errors, warnings):
+    page_errors = []
+    check_page(rel, p, out, site_url, page_errors, warnings)
+    if page_errors:
+        # Only a page that already fails gets the cause (the other messages stay): this never changes which
+        # sites build, and a tag that merely looks odd but breaks nothing is not reported.
+        try:
+            cause = find_broken_markup((out / rel).read_text(encoding='utf-8'))
+        except (OSError, UnicodeError):
+            cause = None
+        if cause:
+            errors.append((rel, cause))
+    errors.extend(page_errors)
+
+
 def run_checks(out_dir, site_url=None):
     """Return (errors, warnings): lists of (file, message) tuples. Without `site_url`, the one of the project."""
     if site_url is None:
@@ -741,32 +1162,10 @@ def run_checks(out_dir, site_url=None):
     files = sorted(out.rglob('*.html'))
     if not files:
         return [(str(out), 'no .html page found: the build is empty')], []
-    for req in REQUIRED_FILES:
-        if not (out / req).exists():
-            errors.append((req, 'required file missing'))
-    for rec in RECOMMENDED_FILES:
-        if not (out / rec).exists():
-            warnings.append((rec, 'recommended file missing'))
-    pages = {}
-    for f in files:
-        rel = str(f.relative_to(out)).replace('\\', '/')
-        try:
-            pages[rel] = parse_page(f)
-        except (OSError, UnicodeError, ValueError) as e:
-            errors.append((rel, f'could not read/parse: {e}'))
+    _check_required_files(out, errors, warnings)
+    pages = _load_pages(out, files, errors)
     for rel, p in pages.items():
-        page_errors = []
-        check_page(rel, p, out, site_url, page_errors, warnings)
-        if page_errors:
-            # Only a page that already fails gets the cause (the other messages stay): this never changes which
-            # sites build, and a tag that merely looks odd but breaks nothing is not reported.
-            try:
-                cause = find_broken_markup((out / rel).read_text(encoding='utf-8'))
-            except (OSError, UnicodeError):
-                cause = None
-            if cause:
-                errors.append((rel, cause))
-        errors.extend(page_errors)
+        _check_one_page(rel, p, out, site_url, errors, warnings)
     check_duplicates(pages, errors)
     check_links(pages, out, site_url, errors, warnings)
     check_sitemap(pages, out, site_url, errors, warnings)
@@ -797,28 +1196,29 @@ _NOT_VISIBLE = re.compile(r'<!--.*?-->|<script\b.*?</script>|<style\b.*?</style>
 _PENDING_TEXT = re.compile(r'\bTODO\b|\[CONFIRM')
 
 
-def prelaunch_findings(root, out, site_url_override=None):
-    """What still says "example" in the project `root` and its built folder `out`: a list of
-    `(file, finding, action)`. Empty = ready to publish. Never changes anything. A site whose address comes
-    from `--site-url` or the SITE_URL variable (as on a host that sets it) does not need `site_url` in site.json."""
-    root, out = Path(root), Path(out)
+def _prelaunch_site_json(root, url_given):
     found = []
     config = load_site_config(root)
-    url_given = bool(site_url_override or os.environ.get('SITE_URL'))
     for key, sample in SAMPLE_VALUES.items():
         if key == 'site_url' and url_given:
             continue
         if config.get(key) == sample:
             found.append(('src/data/site.json', f'"{key}" still has the example value "{sample}"',
                           f'write the real value of "{key}"'))
+    return found
+
+
+def _prelaunch_pages(root):
+    found = []
     for page in sorted((root / 'src' / 'pages').rglob('*.html')):
         if '<!-- SAMPLE COPY' in read_text(page):
             found.append((str(page.relative_to(root)), 'it still has the <!-- SAMPLE COPY --> comment',
                           'replace the sample text with the real one and delete the comment'))
-    if not out.is_dir():
-        found.append((str(out), 'the built folder does not exist, so the output was not checked',
-                      'run ./legible/build.sh first'))
-        return found
+    return found
+
+
+def _prelaunch_output(out):
+    found = []
     where = {}  # what was found in the output -> the files that have it (one finding each, not one per file)
     for path in sorted(p for p in out.rglob('*') if p.is_file() and p.suffix in ('.html', '.txt', '.xml')):
         text = read_text(path)
@@ -838,6 +1238,20 @@ def prelaunch_findings(root, out, site_url_override=None):
     return found
 
 
+def prelaunch_findings(root, out, site_url_override=None):
+    """What still says "example" in the project `root` and its built folder `out`: a list of
+    `(file, finding, action)`. Empty = ready to publish. Never changes anything. A site whose address comes
+    from `--site-url` or the SITE_URL variable (as on a host that sets it) does not need `site_url` in site.json."""
+    root, out = Path(root), Path(out)
+    url_given = bool(site_url_override or os.environ.get('SITE_URL'))
+    found = _prelaunch_site_json(root, url_given) + _prelaunch_pages(root)
+    if not out.is_dir():
+        found.append((str(out), 'the built folder does not exist, so the output was not checked',
+                      'run ./legible/build.sh first'))
+        return found
+    return found + _prelaunch_output(out)
+
+
 def print_prelaunch_report(findings):
     if not findings:
         print('✓ Ready to publish: no example data left.')
@@ -848,62 +1262,60 @@ def print_prelaunch_report(findings):
     print('\nThe base itself is fine (`check_site.py --strict` passes): this list is what to do before going live.')
 
 
-def print_check_report(success, errors, warnings, n_pages, check_time, git_branch, git_commit, out_dir, strict):
+class _Box:
+    """The frame of the console report: `W` is the interior width."""
     COL = 50
     LBL = 15
-    W = 2 + LBL + 2 + COL  # interior width
-    BANNER = 'Legible • Site validator'
+    W = 2 + LBL + 2 + COL
 
-    def hr(): print('╠' + '═' * W + '╣')
-    def row(label, value): print(f'║  {label:<{LBL}}: {str(value):<{COL}}║')
-    def centered(text): print(f'║{text.center(W)}║')
-    def empty(): print(f'║{" " * W}║')
+    def top(self): print('╔' + '═' * self.W + '╗')
+    def bottom(self): print('╚' + '═' * self.W + '╝')
+    def hr(self): print('╠' + '═' * self.W + '╣')
+    def row(self, label, value): print(f'║  {label:<{self.LBL}}: {str(value):<{self.COL}}║')
+    def centered(self, text): print(f'║{text.center(self.W)}║')
+    def empty(self): print(f'║{" " * self.W}║')
 
-    print('╔' + '═' * W + '╗')
-    empty()
-    centered(BANNER)
-    empty()
-    hr()
+    def lines(self, items):
+        for line in report_lines(items, self.W - 2):
+            print(f'║  {line:<{self.W - 2}}║')
 
+
+def _report_issues(box, success, errors, warnings, strict):
+    box.hr()
     if success:
-        centered('✓  CHECK PASSED')
-    else:
-        centered('✗  CHECK FAILED')
-    hr()
+        box.centered('✓  No issues')
+        return
+    if errors:
+        box.centered('✗  Errors')
+        box.lines(errors)
+    if warnings:
+        box.centered('⚠  Warnings (treated as errors)' if strict else '⚠  Warnings')
+        box.lines(warnings)
 
-    centered('CHECK REPORT')
-    hr()
 
-    status = '✓  PASSED' if success else '✗  FAILED'
-    row('Status', status)
-    row('Branch', git_branch)
-    row('Commit', git_commit)
-    row('Check Time', check_time)
-    row('Pages Checked', str(n_pages))
-    row('Output Dir', str(out_dir))
-    row('Strict Mode', str(strict))
-
-    if success:
-        hr()
-        centered('✓  No issues')
-    else:
-        hr()
-        if errors:
-            centered('✗  Errors')
-            for line in report_lines(errors, W - 2):
-                print(f'║  {line:<{W-2}}║')
-        if warnings:
-            centered('⚠  Warnings (treated as errors)' if strict else '⚠  Warnings')
-            for line in report_lines(warnings, W - 2):
-                print(f'║  {line:<{W-2}}║')
-
-    empty()
-    if success:
-        centered('Site checks passed')
-    else:
-        centered('Site checks failed — fix issues above')
-    empty()
-    print('╚' + '═' * W + '╝')
+def print_check_report(success, errors, warnings, n_pages, check_time, git_branch, git_commit, out_dir, strict):
+    box = _Box()
+    box.top()
+    box.empty()
+    box.centered('Legible • Site validator')
+    box.empty()
+    box.hr()
+    box.centered('✓  CHECK PASSED' if success else '✗  CHECK FAILED')
+    box.hr()
+    box.centered('CHECK REPORT')
+    box.hr()
+    box.row('Status', '✓  PASSED' if success else '✗  FAILED')
+    box.row('Branch', git_branch)
+    box.row('Commit', git_commit)
+    box.row('Check Time', check_time)
+    box.row('Pages Checked', str(n_pages))
+    box.row('Output Dir', str(out_dir))
+    box.row('Strict Mode', str(strict))
+    _report_issues(box, success, errors, warnings, strict)
+    box.empty()
+    box.centered('Site checks passed' if success else 'Site checks failed — fix issues above')
+    box.empty()
+    box.bottom()
 
 
 def main(argv=None):
