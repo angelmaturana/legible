@@ -29,6 +29,18 @@ import check_site  # noqa: E402
 import fixtures  # noqa: E402
 
 LEGIBLE = REPO / 'legible'
+
+
+def repo_is_still_the_template():
+    """True while `src/data/site.json` carries the example values. Once a real site is built in this folder
+    (the normal flow), the tests that assert 'the base ships with example data' have nothing to check and skip."""
+    config = json.loads((REPO / 'src' / 'data' / 'site.json').read_text(encoding='utf-8'))
+    return config.get('site_name') == check_site.SAMPLE_VALUES['site_name']
+
+
+ONLY_ON_THE_BASE = unittest.skipUnless(
+    repo_is_still_the_template(), 'this folder already holds a real site, not the base: nothing to check')
+
 def copy_project(dest):
     """Copy src/ and legible/ to `dest` so the project can be changed without touching the original."""
     ignore = shutil.ignore_patterns('__pycache__', '*.pyc', 'dist', '.dev-dist')
@@ -164,7 +176,8 @@ class TestTemplateContactIsOptional(TemplateCopy):
         self.assertNotIn('mailto:', self.dist('contact/index.html'))
         self.site(contact_email='', phone_e164='')
         self.build(validate=False)
-        self.assertIn(build.UI['en']['contact_empty'], self.dist('contact/index.html'))
+        language = json.loads((self.root / 'src' / 'data' / 'site.json').read_text(encoding='utf-8'))['language']
+        self.assertIn(build.UI[language]['contact_empty'], self.dist('contact/index.html'))
         self.assertNotIn('wa.me', pages())
 
     def test_the_template_has_no_hand_written_contact_links(self):
@@ -191,6 +204,7 @@ class TestTemplateOgImage(TemplateCopy):
         self.assertEqual([w for w in self.strict_checks() if 'og:image' in str(w)], [])
 
 
+@ONLY_ON_THE_BASE
 class TestSampleValues(unittest.TestCase):
     def test_the_table_matches_the_site_json_that_ships(self):
         config = json.loads((REPO / 'src' / 'data' / 'site.json').read_text(encoding='utf-8'))
@@ -199,6 +213,7 @@ class TestSampleValues(unittest.TestCase):
                 self.assertEqual(config.get(key), sample)
 
 
+@ONLY_ON_THE_BASE
 class TestPrelaunchCommand(TemplateCopy):
     """`check_site.py --prelaunch` through the command line: fails with the base, passes with real data."""
 

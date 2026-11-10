@@ -4,6 +4,10 @@ All notable changes to `legible` are recorded here. The format follows [Keep a C
 
 ## [Unreleased]
 
+### Tests no longer break once a real site lives in the folder
+
+- Tests only, no engine change. `run_all.py` stopped at step 1 as soon as `src/data/site.json` held real data, because three tests assumed the folder is always the pristine base: `TestSampleValues` and `TestPrelaunchCommand` (they check the base *ships* with example values and that `--prelaunch` fails on it) and the contact-channels test (it asked for the English text whatever `language` was). The first two now skip themselves (`ONLY_ON_THE_BASE`) when `site_name` is no longer the example value; the third reads the text for the site's own `language`. On the base nothing changes: all 400 tests still run.
+
 ### Validator no longer crashes on malformed JSON-LD
 
 - A page whose JSON-LD had an unexpected shape (root that is a list or `null`, a `@graph` item that is not an object, `FAQPage.mainEntity` that is an object or a list of texts, `dateModified` or `name` that is not text) made `run_checks`, and so the build, fail with a Python traceback. It now reports a validator message instead: an error `JSON-LD with an unexpected shape: <detail>` for the structural cases, and the warnings `dateModified is not text: <value>` / `name is not text: <value>`. No existing message changed.
