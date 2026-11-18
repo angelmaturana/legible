@@ -77,10 +77,26 @@ def resolve_site_url(config, override=None):
     return url
 
 
+# CI hosts check the repo out in detached HEAD, so `git rev-parse --abbrev-ref HEAD` cannot name the branch;
+# they expose it in the environment instead. First variable that is set wins (Render, Cloudflare Workers
+# Builds, Cloudflare Pages).
+_BRANCH_ENV_VARS = ('RENDER_GIT_BRANCH', 'WORKERS_CI_BRANCH', 'CF_PAGES_BRANCH')
+_COMMIT_ENV_VARS = ('RENDER_GIT_COMMIT', 'WORKERS_CI_COMMIT_SHA', 'CF_PAGES_COMMIT_SHA')
+
+
+def _first_env(names):
+    """Value of the first environment variable in `names` that is set and not blank, else None."""
+    for name in names:
+        value = os.environ.get(name, '').strip()
+        if value:
+            return value
+    return None
+
+
 def get_git_info(root):
     """(branch, commit) for the reports. Git is optional: any failure gives 'unknown'."""
-    git_branch = os.environ.get('RENDER_GIT_BRANCH')
-    git_commit = os.environ.get('RENDER_GIT_COMMIT')
+    git_branch = _first_env(_BRANCH_ENV_VARS)
+    git_commit = _first_env(_COMMIT_ENV_VARS)
     if not git_branch:
         try:
             git_branch = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD'], cwd=root, text=True,
