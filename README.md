@@ -51,13 +51,13 @@ The zip is a generic base. Attach it to an AI assistant and give one command, al
 | `legible continue` | Keeps working on a site already adapted |
 | `legible help` | Explains `legible` and this command list |
 
-The assistant follows [`AGENTS.md`](AGENTS.md): it edits `site.json`, `entity.json`, the pages, the menu and the design tokens, never invents a fact (a phone, an address, a price, a legal detail) it was not given, and marks any short placeholder copy it writes with `<!-- SAMPLE COPY -->`. It does not touch `legible/` or `tests/`, and it does not handle deployment. A request to change the engine itself only proceeds as an explicit, confirmed **engine mode**, recorded in `CHANGELOG.md`.
+The assistant follows [`AGENTS.md`](AGENTS.md): it edits `site.json`, `entity.json`, the pages, the menu and the design tokens, never invents a fact (a phone, an address, a price, a legal detail) it was not given, and marks any short placeholder copy it writes with `<!-- SAMPLE COPY -->`. For a new page, article or guide it writes a JSON file and runs `legible/new_page.py` instead of editing HTML by hand. It does not edit `legible/` or `tests/`, and it does not handle deployment. A request to change the engine itself only proceeds as an explicit, confirmed **engine mode**, recorded in `CHANGELOG.md`.
 
 ## Configure a site
 
 - `src/data/site.json` — the single source of facts and settings: identity, contact, place, legal data, menus (`nav`, `legal_nav`), interface wording (`ui`).
 - `src/data/entity.json` — the Schema.org node of the main entity and the `WebSite` node, in JSON-LD.
-- `src/pages/` — one folder per page (`index.html` inside); copy `src/pages/example/` for a new one.
+- `src/pages/` — one folder per page (`index.html` inside); copy `src/pages/example/` for a new one, or create an article or guide from a JSON file with `python3 -B -I legible/new_page.py page.json` (`--template` prints an example, `--dry-run` only checks; see [`DOCUMENTATION.md`](DOCUMENTATION.md)).
 - `src/css/site.css` — one stylesheet; every colour is a token in `:root`.
 
 Write `{{key}}` in a page, a partial or a static text file to use a value from `site.json`, or one of the markers the build derives (page URL, date, generated menus…). The build fails on an unresolved or unknown marker, with a message that names it. The full data model is in [`DOCUMENTATION.md`](DOCUMENTATION.md).

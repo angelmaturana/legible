@@ -26,6 +26,7 @@ Example: `legible start name: Casa Lola; activity: family restaurant; city: Sevi
 | `legible start` and the base still holds example data | Interview or quick start, as below |
 | `legible start` and the site is already adapted | Ask one question: start over (overwrites the site) or `legible continue`? |
 | `legible continue` | Run `python3 legible/check_site.py --prelaunch`, tell the user in a few lines what is still pending, and work on what they choose |
+| A new page, article or guide | Write the JSON for `legible/new_page.py` with only the facts the user gave (`--template` prints the shape); a missing fact gets an example value and a pending note; generic copy with nothing checkable carries `<!-- SAMPLE COPY -->`. Then `--dry-run`, run it, link the page from the menu or another page if it warns, and verify with the three commands in Verify. The script is **run, never edited** (editing it is engine mode). See `DOCUMENTATION.md`, "Creating pages with `new_page.py`" |
 | Any other change to the site (a page, a text, colours, a menu) | Do it under the rules below |
 | An audit, review or diagnosis | Only read and report; change no file unless asked |
 | Improve, refactor or change `legible/`, `tests/` or the architecture | Explain that the engine is deliberately fixed and ask which need it would solve. Check whether `src/` can meet it. Enter engine mode only if the user confirms (the words `engine mode` plus a named change count as confirmation) |

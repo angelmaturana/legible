@@ -4,6 +4,10 @@ All notable changes to `legible` are recorded here. The format follows [Keep a C
 
 ## [Unreleased]
 
+### Added: `legible/new_page.py` (engine mode, one new file)
+
+- Stand-alone script (standard library only, run with `python3 -B -I`) that creates a page (article, guide, post...) from a JSON file: it checks everything before writing, never overwrites, and with a section adds the page to that section's index between `<!-- legible:list -->` and `<!-- /legible:list -->`, newest first. It writes only to `src/pages/`; the engine, the validator and the tests are unchanged and no CSS was added. Derived from `nueva_leccion.py` of EDUCA CIBER, without its site-specific parts. Tests: `tests/test_new_page.py`, `tests/test_new_page_index.py`, `tests/test_new_page_errors.py` and `tests/test_new_page_cli.py` (45 tests, with `tests/new_page_kit.py` as their shared helper): happy path against the strict build and the validator, section index order and markers, atomic writing, a 58-row table of refused inputs that must leave `src/` untouched, escaping, language, options and the command line. They use `fixtures.make_clean_project` in a temporary folder and do not touch `src/`. Documented in `DOCUMENTATION.md`, `AGENTS.md` and `README.md`. Fix found by the tests: if a rename fails after the page was already placed, `commit()` now undoes it (the page and any folder it created are removed, the index is restored) and says so only when the undo worked.
+
 ### Tests no longer break once a real site lives in the folder
 
 - Tests only, no engine change. `run_all.py` stopped at step 1 as soon as `src/data/site.json` held real data, because three tests assumed the folder is always the pristine base: `TestSampleValues` and `TestPrelaunchCommand` (they check the base *ships* with example values and that `--prelaunch` fails on it) and the contact-channels test (it asked for the English text whatever `language` was). The first two now skip themselves (`ONLY_ON_THE_BASE`) when `site_name` is no longer the example value; the third reads the text for the site's own `language`. On the base nothing changes: all 400 tests still run.

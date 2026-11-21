@@ -56,10 +56,11 @@ src/
   css/site.css      one stylesheet; every colour is a token in :root
   static/           copied as they are: favicon.ico, robots.txt, llms.txt, images/
 tests/              fixtures.py, report_cases.py, test_engine.py, test_build_directed.py, test_site.py,
-                    test_validator*.py (rules, branches, console, infra, golden), golden/ (validator output)
+                    test_validator*.py (rules, branches, console, infra, golden), golden/ (validator output),
+                    new_page_kit.py and test_new_page*.py (the page generator)
 ```
 
-A page's URL is its folder: `src/pages/contact/index.html` is `/contact/`, `src/pages/index.html` is `/`, `404.html` is `/404.html`. A new page is a new folder (copy `example/`); a new slug is a renamed folder plus its `nav`/`legal_nav` entry and links.
+A page's URL is its folder: `src/pages/contact/index.html` is `/contact/`, `src/pages/index.html` is `/`, `404.html` is `/404.html`. A new page is a new folder (copy `example/`, or run `legible/new_page.py`, see "Creating pages with `new_page.py`"); a new slug is a renamed folder plus its `nav`/`legal_nav` entry and links.
 
 ## Data model
 
@@ -106,6 +107,53 @@ A page starts with a block between `---` lines of `key: value` pairs, then its H
 | `active` | no | the page's own menu entry, or its closest parent | Menu link to highlight |
 
 The `updated` date and the JSON-LD `dateModified` must agree; writing `{{page_updated}}` in both makes that automatic.
+
+## Creating pages with `new_page.py`
+
+`legible/new_page.py` writes one page (a service page, a guide, an article) from a JSON file. It is a stand-alone script: standard library only, no change to the build, the validator or the CSS, and it writes only inside `src/pages/`. It states no fact of its own: what the JSON says is what gets published.
+
+1. Print an example with `python3 -B -I legible/new_page.py --template > page.json` and replace every value. The example is **not valid as it stands**: its text is too short and it links to `/contact/`.
+2. Check it with `--dry-run`. It runs every check of a real run and writes nothing; it prints the word count.
+3. Run it without `--dry-run`. It computes everything first, writes `.tmp` files next to their place and renames them at the end. It never overwrites: an existing slug is an error. If a write fails halfway, it undoes what it had already placed and tells you if anything could not be restored.
+4. Read the `⚠` lines. They do not stop the run: a section that is neither in `nav` nor linked from a page, and a loose page that no page links to, would both be orphans for the validator.
+5. Run `python3 legible/build.py --all` and `python3 legible/check_site.py --prelaunch`.
+
+| Field | Required | Meaning |
+|---|---|---|
+| `title`, `slug`, `description`, `lead`, `blocks`, `related` | yes | `title` plus ` \| <site_name>` must be 20-60 characters and `description` 70-160, as the validator demands. `slug` is lowercase letters, digits and hyphens, never `index` or `404`. `lead` is the sentence under the title. `related` is a list of `{"text", "url"}` internal links, shown under "Keep reading" |
+| `section` | no | A folder under `src/pages/` (also `--section`, which wins). The page goes to `/<section>/<slug>/` and into that section's index. Without it, to `/<slug>/` |
+| `kind` | no | `page` (default) or `article`. An article adds `Article` JSON-LD and a visible date |
+| `published` | no | `YYYY-MM-DD`; only with `article`, default today, never later than the run date. `--date` replaces today as the run date and as `updated` |
+| `eyebrow`, `short_title` | no | The small text above the title (default: the section's name) and the last crumb of the breadcrumb (default: the title) |
+
+**Blocks.** A text is a paragraph. The first block must be an `h2` (the title is the `h1`; headings may not skip a level) and each `h2` opens a section.
+
+| Block | HTML |
+|---|---|
+| `{"type": "h2", "text"}` | a new `<section>` with `<h2 id>`; the id comes from the text and must be unique |
+| `"text"` or `{"type": "p", "text"}` | `<p>` |
+| `{"type": "h3", "text"}` | `<h3>` |
+| `{"type": "ul" \| "ol", "items": [...]}` | `<ul>` / `<ol>`, at least one item |
+| `{"type": "cards", "items": [{"title", "text"}]}` | a `card-grid` of 2 to 4 `card`s |
+| `{"type": "note", "text"}` | `<p class="page-note">` |
+| `{"type": "button", "text", "url"}` | `<a class="button primary">` |
+
+Inside any text, `**bold**` and `[label](url)` are the only markup; everything else is escaped. An internal link must start and end with `/` and point to an existing page; an external one must be `https://` and opens with `rel="noopener"`. No text may contain `{{` or `}}` (they are build markers); a page about them is written by hand. Only CSS classes that already exist are used.
+
+**The section index.** A section needs its own `src/pages/<section>/index.html`; the script does not create it, and without it the error says what to do. The easiest way is to copy `src/pages/example/`, change its front matter (including a **different `description`**, which must be unique), `h1`, breadcrumb and JSON-LD name, and replace the cards inside `<div class="card-grid">` by the two markers:
+
+```html
+<div class="card-grid">
+<!-- legible:list -->
+<!-- /legible:list -->
+</div>
+```
+
+For each new page the script inserts a `card` between the markers, newest first (a card with the same date goes first), never twice, and sets the index's `updated` to the run date. The index is an indexable page like any other, so it needs **JSON-LD, at least 250 words in `<main>` and an `h2` before the cards** (the cards are `h3`); otherwise the strict build fails, and the validator's message names the cause. Only the first pair of markers is used. The breadcrumb takes the section's name from the index's `h1`. Add the section to `nav` or link it from a page.
+
+**Language.** The label of the related list comes from `language` in `site.json`: "Keep reading" in `en`, "Sigue leyendo" in `es`, English in any other language. The rest of the interface text (`Home`, the breadcrumb label) is the build's, so a site in Spanish gets "Inicio" and "Ruta de navegación" without any change.
+
+**What it does not do:** images (they need `alt`, `width` and `height`), `h4`, RSS, pagination, tags, search, overwriting or deleting a page, and any page that is not a title, a lead, sections and a related list. It compares only titles and descriptions (not the body): a title or description almost the same as another page's (similarity of 0.9 or more, punctuation ignored) is a warning and an identical one is an error. One page, one real subject; a page per city with the same text is not what it is for. Its tests are `tests/test_new_page*.py`.
 
 ## Menus
 
@@ -179,6 +227,7 @@ Lists what still looks like the template, grouped by finding: a `site.json` key 
 |---|---|
 | Tests, build and local server | `python3 legible/run_all.py [--skip-tests] [--no-dev] [--port N]` |
 | Strict build, wrapper | `./legible/build.sh` (same as `python3 legible/build.py --all`) |
+| Create a page or article from a JSON file | `python3 -B -I legible/new_page.py page.json [--section blog] [--dry-run] [--date YYYY-MM-DD] [--root DIR]` (an example JSON: `python3 -B -I legible/new_page.py --template`) |
 | Validate an existing build | `python3 legible/check_site.py --dir dist --strict --site-url https://your-domain.com` |
 
 `run_all.py` runs the tests, then `build.py --all`, then `dev.py`, in that order; `--skip-tests` or `--no-dev` drop a step. `build.sh` is a three-line wrapper so a host with no Python-first build step can still call a shell script; it reads the same `SITE_URL`, `CSS_MINIFY` and `CHECK_STRICT` variables as `build.py --all` (unset or anything other than `FALSE` keeps minifying and strict validation on).
