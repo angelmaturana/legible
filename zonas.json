@@ -1,0 +1,58 @@
+{
+    "title": "Inmobiliaria en Alcorcón, Móstoles, Fuenlabrada, Leganés y Getafe",
+    "short_title": "Zonas",
+    "slug": "zonas",
+    "section": "zonas",
+    "kind": "page",
+    "published": "2026-01-15",
+    "eyebrow": "Zonas",
+    "description": "Conoce los barrios donde operamos en el sur de Madrid: Alcorcón, Móstoles, Fuenlabrada, Leganés, Getafe. Precios, tipologías, colegios, transporte y ventas reales.",
+    "lead": "Conocemos cada barrio donde trabajamos. Guías reales de Alcorcón, Móstoles, Fuenlabrada, Leganés y Getafe: tipologías, transporte, colegios, rangos de precios con fuente y fecha, y operaciones cerradas.",
+    "blocks": [
+        {
+            "type": "h2",
+            "text": "Barrios donde operamos"
+        },
+        "Operamos en Alcorcón, Móstoles, Fuenlabrada, Leganés, Getafe y alrededores. Conocemos cada calle, cada tipo de finca, los colegios, el transporte y los desarrollos urbanísticos en marcha. No somos un portal: conocemos el terreno.",
+        {
+            "type": "h2",
+            "text": "Alcorcón"
+        },
+        "Nuestro origen. Zona centro, Parque Lisboa, Parque Oeste, Ensanche Sur, Parque Coimbra. Predominan bloques de los 70-90, chalets adosados en Parque Lisboa y unifamiliares en zonas nuevas. Metro L12, Cercanías C5. Precio medio 2024: 1.850–2.300 €/m² (fuente: Registradores, 2024).",
+        {
+            "type": "h2",
+            "text": "Móstoles"
+        },
+        "Centro, PAU-4, El Soto, Parque Coimbra, Parque Coímbra Norte. Bloques de los 80-2000, chalets en El Soto y PAU-4. Metro L12, Cercanías C5. Precio medio 2024: 1.750–2.200 €/m².",
+        {
+            "type": "h2",
+            "text": "Fuenlabrada"
+        },
+        "Centro, Loranca, Parque Miraflores, El Naranjo, Vivero-Hospital. Bloques de los 80-2000, PAU de Loranca. Metro L12, Cercanías C5. Hospital Universitario. Precio medio 2024: 1.650–2.000 €/m².",
+        {
+            "type": "h2",
+            "text": "Leganés"
+        },
+        "Centro, Zarzaquemada, El Carrascal, La Fortuna, Leganés Norte. Metro L11, L12, Cercanías C5. Universidad Carlos III. Precio medio 2024: 1.900–2.350 €/m².",
+        {
+            "type": "h2",
+            "text": "Getafe"
+        },
+        "Centro, Sector III, El Bercial, Los Molinos, Buenavista. Metro L12, Cercanías C4. Base aérea, Universidad Carlos III. Precio medio 2024: 1.800–2.250 €/m².",
+        {
+            "type": "button",
+            "text": "Ver inmuebles por zona",
+            "url": "/inmuebles/"
+        }
+    ],
+    "related": [
+        {
+            "text": "Ver inmuebles",
+            "url": "/inmuebles/"
+        },
+        {
+            "text": "Vender en tu zona",
+            "url": "/vender/"
+        }
+    ]
+}

@@ -1,0 +1,53 @@
+{
+    "title": "Inmuebles en venta y alquiler en Alcorcón y sur de Madrid",
+    "short_title": "Inmuebles",
+    "slug": "inmuebles",
+    "section": "inmuebles",
+    "kind": "page",
+    "published": "2026-01-15",
+    "eyebrow": "Catálogo",
+    "description": "Busca tu vivienda en Alcorcón, Móstoles, Fuenlabrada, Leganés y Getafe. Filtros por operación, zona, precio, habitaciones y baños. Fotos reales, planos y gastos detallados.",
+    "lead": "Buscador móvil ágil con tres filtros visibles (operación, zona, precio). Fichas completas con fotos propias, planos, certificado energético, gastos de comunidad e IBI. Sin número de portal en viviendas habitadas.",
+    "blocks": [
+        {
+            "type": "h2",
+            "text": "Busca tu vivienda ideal"
+        },
+        "Tres filtros visibles de entrada: operación (venta/alquiler), zona y precio. El resto de filtros (habitaciones, baños, metros, tipo) quedan plegados. La lista se actualiza sin recargar y el botón volver conserva tus filtros.",
+        {
+            "type": "h2",
+            "text": "Fichas completas y honestas"
+        },
+        "Cada ficha supera las 400 palabras: descripción única, 10–20 fotos propias, plano con medidas, certificado energético visible, gastos de comunidad e IBI en texto, gastos de compraventa/alquiler desglosados. Sin número exacto de portal en viviendas habitadas.",
+        {
+            "type": "h2",
+            "text": "Filtra sin recargar"
+        },
+        "Filtros por operación, zona, precio, habitaciones, baños, metros y tipo. Actualización sin recargar y botón volver que conserva la búsqueda. En móvil, solo tres filtros visibles inicialmente; el resto, plegado.",
+        {
+            "type": "h2",
+            "text": "¿No encuentras lo que buscas?"
+        },
+        "Activa alertas por zona y tipología. Te avisamos en cuanto entre una vivienda que encaje. También puedes solicitarnos una búsqueda activa: nosotros la encontramos por ti.",
+        {
+            "type": "button",
+            "text": "Ver inmuebles en venta",
+            "url": "/inmuebles/venta/"
+        },
+        {
+            "type": "button",
+            "text": "Ver inmuebles en alquiler",
+            "url": "/inmuebles/alquiler/"
+        }
+    ],
+    "related": [
+        {
+            "text": "Zonas",
+            "url": "/zonas/"
+        },
+        {
+            "text": "Vender",
+            "url": "/vender/"
+        }
+    ]
+}

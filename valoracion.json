@@ -1,0 +1,48 @@
+{
+    "title": "Valoración de vivienda en Alcorcón y sur de Madrid",
+    "short_title": "Valoración",
+    "slug": "valoracion",
+    "section": "servicios",
+    "kind": "page",
+    "published": "2026-01-15",
+    "eyebrow": "Servicio",
+    "description": "Obtén una valoración gratuita y sin compromiso de tu vivienda en Alcorcón y sur de Madrid basada en ventas reales, no en precios de portales.",
+    "lead": "Descubre por cuánto se venden hoy las viviendas como la tuya en Alcorcón, Móstoles, Fuenlabrada, Leganés y Getafe. Recibe un informe con comparables reales y sin compromiso de exclusiva.",
+    "blocks": [
+        {
+            "type": "h2",
+            "text": "Descubre el valor real de tu vivienda"
+        },
+        "Sabemos que vender tu casa es una decisión importante. No te fíes de los precios inflados de los portales: te damos un rango de precio basado en escrituras reales de tu zona, no en precios de anuncio.",
+        {
+            "type": "h2",
+            "text": "Qué vas a recibir"
+        },
+        "En menos de 24 horas laborables te contactamos para confirmar tres detalles clave de tu vivienda (reformas, orientación y planta). Recibes por escrito un rango orientativo con comparables vendidos en tu entorno y estimación de gastos. Si deseas afinar la cifra exacta, concertamos una visita presencial sin coste.",
+        {
+            "type": "h2",
+            "text": "Lo que NO te vamos a pedir"
+        },
+        "Esta valoración es gratuita, no te obliga a trabajar con nuestra agencia ni a firmar ninguna exclusiva. Decides con los datos sobre la mesa.",
+        {
+            "type": "h2",
+            "text": "Cómo trabajamos"
+        },
+        "Nuestro método se basa en tres pilares: comparables reales de escritura, reportaje profesional y seguimiento quincenal por escrito. Vendemos viviendas en Alcorcón, Móstoles, Fuenlabrada, Leganés y Getafe con valoración basada en ventas reales y plan de difusión en 7 días.",
+        {
+            "type": "button",
+            "text": "Solicitar valoración gratuita",
+            "url": "/contact/"
+        }
+    ],
+    "related": [
+        {
+            "text": "Vender mi vivienda",
+            "url": "/vender/"
+        },
+        {
+            "text": "Contactar",
+            "url": "/contact/"
+        }
+    ]
+}

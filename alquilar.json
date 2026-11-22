@@ -1,0 +1,48 @@
+{
+    "title": "Gestión de alquileres en Alcorcón y sur de Madrid",
+    "short_title": "Alquilar",
+    "slug": "alquilar",
+    "section": "servicios",
+    "kind": "page",
+    "published": "2026-01-15",
+    "eyebrow": "Servicio",
+    "description": "Gestión integral de alquileres en Alcorcón y sur de Madrid: selección de inquilinos, contratos seguros y defensa de tus intereses. Los gastos de gestión los paga el arrendador.",
+    "lead": "Alquila tu vivienda con seguridad: filtramos inquilinos, redactamos contratos conforme a la LAU y defendemos tus intereses. Los gastos de gestión los paga el arrendador (art. 20.1 LAU).",
+    "blocks": [
+        {
+            "type": "h2",
+            "text": "Alquila con seguridad, sin sorpresas"
+        },
+        "Filtramos inquilinos con criterios objetivos: solvencia, historial de pagos y referencias. Redactamos contratos conforme a la LAU vigente, con cláusulas claras y actualizadas. Tú solo firmas; nosotros gestionamos incidencias, reparaciones y renovaciones.",
+        {
+            "type": "h2",
+            "text": "Qué incluye nuestra gestión"
+        },
+        "Publicación en portales premium, reportaje fotográfico, filtrado de inquilinos (solvencia, referencias, seguros de impago), redacción de contrato LAU con cláusulas actualizadas, gestión de fianzas y depósitos, coordinación de entradas/salidas, gestión de incidencias y reparaciones, control de revisiones de renta (IPC/ICC), renovaciones y finales de contrato.",
+        {
+            "type": "h2",
+            "text": "Honorarios claros: paga el arrendador"
+        },
+        "Conforme al art. 20.1 LAU, los gastos de gestión inmobiliaria y formalización de contrato corren a cargo del arrendador. Cualquier cláusula que los traslade al inquilino es nula. Sin sorpresas ni gastos ocultos.",
+        {
+            "type": "h2",
+            "text": "Seguro de impago y defensa jurídica"
+        },
+        "Ofrecemos seguro de impago de alquileres con cobertura jurídica completa: reclamación judicial, lanzamiento, daños materiales y defensa jurídica. Tú cobras el día 1 de cada mes; nosotros gestionamos incidencias y reclamaciones.",
+        {
+            "type": "button",
+            "text": "Quiero alquilar mi vivienda",
+            "url": "/contact/"
+        }
+    ],
+    "related": [
+        {
+            "text": "Vender mi vivienda",
+            "url": "/vender/"
+        },
+        {
+            "text": "Contactar",
+            "url": "/contact/"
+        }
+    ]
+}

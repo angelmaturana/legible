@@ -1,0 +1,57 @@
+{
+    "title": "Guías para vender y alquilar tu vivienda",
+    "short_title": "Guías",
+    "slug": "guias",
+    "section": "blog",
+    "kind": "page",
+    "published": "2026-01-15",
+    "eyebrow": "Guías",
+    "description": "Guías fiscales y prácticas para vender o alquilar tu vivienda en 2026: impuestos, herencias, plusvalía, gastos de compraventa y alquiler. Información verificada, no asesoramiento legal.",
+    "lead": "Guías fiscales y prácticas para propietarios que van a vender o alquilar: IRPF, plusvalía municipal, gastos de compraventa, alquiler con LAU, herencias y donaciones. Información verificada, no asesoramiento legal.",
+    "blocks": [
+        {
+            "type": "h2",
+            "text": "Impuestos al vender una vivienda en 2026"
+        },
+        "El vendedor no tributa por el precio total, sino por la ganancia patrimonial (valor de transmisión − valor de adquisición). Se restan gastos de transmisión (agencia, plusvalía, cancelación hipoteca, certificado energético) y se suman gastos de adquisición y reformas justificadas. Si hay pérdidas, no hay IRPF y la pérdida compensa ganancias futuras (4 años). Exenciones: reinversión en vivienda habitual (2 años), mayores de 65 años, dación en pago. No residentes: retención 3% (Modelo 211) y Modelo 210.",
+        {
+            "type": "h2",
+            "text": "Plusvalía municipal (IIVTNU)"
+        },
+        "Impuesto local sobre el incremento de valor del suelo. Tipo máximo legal 30%. Se liquida en 30 días hábiles tras la firma. Exento si se acredita que no hubo incremento de valor del terreno o se vendió con pérdidas. Tipo máximo legal 30%.",
+        {
+            "type": "h2",
+            "text": "Gastos de compraventa: quién paga qué"
+        },
+        "Vivienda usada: ITP 6–10% según CCAA (sobre mayor de precio, tasación o valor catastral). Obra nueva: IVA 10% (4% VPO) + AJD 0,5–1,5%. Notaría y registro ~0,3–0,8%. Gastos de notaría a cargo del comprador salvo pacto. En obra nueva: IVA 10% (4% VPO) + AJD 0,5–1,5%. Notario libre elección.",
+        {
+            "type": "h2",
+            "text": "Alquiler: gastos y fianza"
+        },
+        "Renta mensual: incluye lo pactado. Suministros individualizados. Comunidad/IBI solo si pacto escrito con importe anual. Fianza legal: 1 mes (vivienda) o 2 meses (uso distinto). Gastos de gestión y formalización: siempre a cargo del arrendador (art. 20.1 LAU). En zona tensionada: informar de zona tensionada, gran tenedor y última renta/índice.",
+        {
+            "type": "h2",
+            "text": "Certificado energético obligatorio"
+        },
+        "Obligatorio antes de publicitar. Escala A–G. Vigencia 10 años (5 años si calificación G desde 2021). Sanciones: 300–600€ (leve), 601–1.000€ (grave), 1.001–6.000€ (muy grave). Multa igual al beneficio si supera la sanción.",
+        {
+            "type": "h2",
+            "text": "Documentación obligatoria antes de firmar"
+        },
+        "Identificación de vendedor/intermediario, cédula de habitabilidad, datos registrales y cargas, planos, instalaciones, antigüedad, amianto. Certificado energético obligatorio. Fotos propias con autorización escrita. No reutilizar fotos de portales. Calle/zona aproximada, no número exacto en viviendas habitadas.",
+        {
+            "type": "note",
+            "text": "Estas guías son información general, no asesoramiento legal ni fiscal. Consulte a su asesor fiscal para su caso concreto."
+        }
+    ],
+    "related": [
+        {
+            "text": "Vender mi vivienda",
+            "url": "/vender/"
+        },
+        {
+            "text": "Gestión de alquileres",
+            "url": "/alquilar/"
+        }
+    ]
+}

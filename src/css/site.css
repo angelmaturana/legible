@@ -1,488 +1,374 @@
 /* ==========================================================================
    legible · site.css
-   Rules: no JavaScript, no motion of any kind (nothing moves, fades or scrolls
-   smoothly), no downloaded fonts, no costly effects. Mobile-first.
-   Terminal look: flat slate surfaces with soft glows, mono type for labels and
-   figures, and the logo palette: green > · amber [ ] · cyan · blue ] · white i.
-
-   Conventions
-   - Colours, radii, z-indexes and the header height are tokens in :root.
-   - Breakpoints (min-width, mobile-first; custom properties do not work in
-     @media, so these four values are written out and must stay the only ones):
-       640px   buttons go from full width to auto width
-       768px   wider page gutters, larger floating button, footer text no longer
-               needs room for it
-       960px   desktop menu (hover submenu), three-column footer
-       1100px  wider menu spacing
-   - Selectors stay flat (one class, at most one state or modifier). The menu is
-     styled with its own classes (.nav-*), never through the element tree.
+   FOCUS Viviendas — Brand colors from FOCUS Viviendas Brand Guidelines
+   No JavaScript, no motion, no downloaded fonts. Mobile-first.
    ========================================================================== */
 
 /* ---- 1. Tokens ------------------------------------------------------------ */
 :root {
-  /* Distance header -> eyebrow, shared by the home and the inner pages (breadcrumb = 44px link + 12px margin) */
+  /* Distance header -> eyebrow */
   --hero-top: clamp(56px, 3vw + 32px, 64px);
   --breadcrumb-gap: 8px;
   --breadcrumb-h: calc(44px + var(--breadcrumb-gap));
-  /* Fixed header height (its 1px border comes on top). The anchor offset and
-     the mobile menu panel are derived from it. */
   --header-h: 130px;
-  color-scheme: dark;
 
-  /* Surfaces (slate of the social image): from deepest to most elevated */
-  --bg: #0E131A;
-  --bg-header: #0A0F16;
-  --surface-2: #151C25;
+  /* BRAND COLORS — FOCUS Viviendas */
+  /* Gold scale */
+  --gold-900: #8C602D;
+  --gold-700: #A8793D;
+  --gold-500: #D39D58;   /* Gold 500 — main brand gold */
+  --gold-300: #E4BD87;
+  --gold-100: #F4E7D3;
 
-  /* Lines and control borders (>= 3:1 against the background) */
-  --line: #232C38;
-  --edge: #5E6F8A;
+  /* Petrol Green scale */
+  --petrol-950: #102B32;
+  --petrol-900: #142F37;
+  --petrol-700: #193B45;  /* Petrol 700 — main corporate green */
+  --petrol-500: #365A62;
+  --petrol-100: #E7EEEC;
+
+  /* Neutrals */
+  --charcoal: #252525;      /* Charcoal — main headlines */
+  --dark: #323232;
+  --gray: #77736D;          /* Secondary text */
+  --border: #DEDAD3;        /* Borders */
+  --warm-gray: #EBE9E6;     /* Secondary surfaces */
+  --white: #FFFFFF;
+
+  /* Backgrounds */
+  --bg-main: #F8F5F0;       /* Warm Ivory — main background */
+  --bg-surface: #FFFFFF;    /* White — cards */
+  --bg-soft: #F4E7D3;       /* Gold 100 — soft gold backgrounds */
+  --bg-dark: #142F37;       /* Petrol 900 — dark sections */
+
+  /* Surfaces */
+  --surface-2: #F4E7D3;
+
+  /* Lines and control borders */
+  --line: #DEDAD3;
+  --edge: #C4C4B8;
 
   /* Text */
-  --text: #FFFFFF;
-  --text-soft: #CBD5E1;
-  --text-muted: #A3B0C2;
+  --text-primary: #252525;      /* Charcoal */
+  --text-secondary: #77736D;    /* Gray */
+  --text-muted: #A3A3A3;
+  --text-inverse: #FFFFFF;
+  --text-gold: #8C602D;         /* Gold 900 — gold text on light */
 
-  /* Brand (exact logo colours): cyan = actions and key data;
-     blue = labels; green = "prompt"; amber = brackets and footer titles. */
-  --accent: #00E5FF;
-  --accent-hi: #8CF3FF;
-  --accent-text: #001018;
-  --info-soft: #5B9DFF;
-  --success: #39E75F;
-  --warn: #FF9E22;
+  /* Brand accent */
+  --accent: #D39D58;          /* Gold 500 — main brand accent */
+  --accent-hi: #E4BD87;       /* Gold 300 — hover */
+  --accent-text: #252525;     /* Text on gold */
+  --info-soft: #365A62;       /* Petrol 500 — info */
+  --success: #28A745;         /* Success green */
+  --warn: #E4BD87;            /* Gold 300 — warnings */
+  --error: #DC2626;
 
-  /* Background glows (teal top-left, amber top-centre) */
-  --glow-1: #0F3D49;
-  --glow-2: #2B2417;
+  /* Petrol Green */
+  --petrol-950: #102B32;
+  --petrol-900: #142F37;      /* Petrol 900 — dark sections */
+  --petrol-700: #193B45;      /* Petrol 700 — primary corporate */
+  --petrol-500: #365A62;
+  --petrol-100: #E7EEEC;
 
-  /* Header / menu */
-  --bg-alt: #111A25;
-  --nav-line: rgba(190,210,240,.14);
+  /* Neutrals */
+  --charcoal: #252525;
+  --dark: #323232;
+  --gray: #77736D;
+  --border: #DEDAD3;
+  --warm-gray: #EBE9E6;
+  --white: #FFFFFF;
 
-  /* Translucent white over any surface (hover and secondary button) */
-  --overlay-1: #FFFFFF08;
-  --overlay-2: #FFFFFF0F;
+  /* Backgrounds */
+  --bg-main: #F8F5F0;       /* Warm Ivory — main background */
+  --bg-surface: #FFFFFF;    /* White — cards */
+  --bg-soft: #F4E7D3;       /* Gold 100 — soft gold backgrounds */
+  --bg-dark: #142F37;       /* Petrol 900 — dark sections */
 
-  /* WhatsApp: the official green, only on the floating button */
-  --whatsapp: #25D366;
-  --whatsapp-hover: #1EBE5A;
+  /* Surfaces */
+  --surface-2: #F4E7D3;
 
-  /* Typography: only fonts installed by default on Windows, macOS, Linux,
-     Android and iOS. The character comes from CSS: weight 800, negative
-     tracking, tabular figures and a monospace stack for labels and figures. */
-  --font-display: "Segoe UI Variable Display", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Roboto, Arial, sans-serif;
-  --font-text: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-label: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "DejaVu Sans Mono", "Liberation Mono", monospace;
+  /* Lines and control borders */
+  --line: #DEDAD3;
+  --edge: #C4C4B8;
 
-  /* Logo proportions (viewBox of logo.svg): header and footer reserve the same box */
-  --logo-ratio: 585 / 140;
+  /* Text */
+  --text-primary: #252525;      /* Charcoal */
+  --text-secondary: #77736D;    /* Gray */
+  --text-muted: #A3A3A3;
+  --text-inverse: #FFFFFF;
+  --text-gold: #8C602D;         /* Gold 900 — gold text on light */
 
-  /* Radius scale */
-  --r-sm: 8px;
-  --r-md: 12px;
-  --r-lg: 16px;
-  --gap: 16px;
+  /* Brand accent */
+  --accent: #D39D58;          /* Gold 500 — main brand accent */
+  --accent-hi: #E4BD87;       /* Gold 300 — hover */
+  --accent-text: #252525;     /* Text on gold */
+  --info-soft: #365A62;       /* Petrol 500 — info */
+  --success: #28A745;         /* Success green */
+  --warn: #E4BD87;            /* Gold 300 — warnings */
+  --error: #DC2626;
 
-  /* Stacking order: header < floating button < skip link */
-  --z-header: 100;
-  --z-float: 200;
-  --z-skip: 300;
+  /* Petrol Green */
+  --petrol-950: #102B32;
+  --petrol-900: #142F37;      /* Petrol 900 — dark sections */
+  --petrol-700: #193B45;      /* Petrol 700 — primary corporate */
+  --petrol-500: #365A62;
+  --petrol-100: #E7EEEC;
+
+  /* Neutrals */
+  --charcoal: #252525;
+  --dark: #323232;
+  --gray: #77736D;
+  --border: #DEDAD3;
+  --warm-gray: #EBE9E6;
+  --white: #FFFFFF;
+
+  /* Backgrounds */
+  --bg-main: #F8F5F0;       /* Warm Ivory — main background */
+  --bg-surface: #FFFFFF;    /* White — cards */
+  --bg-soft: #F4E7D3;       /* Gold 100 — soft gold backgrounds */
+  --bg-dark: #142F37;       /* Petrol 900 — dark sections */
+
+  /* Surfaces */
+  --surface-2: #F4E7D3;
+
+  /* Lines and control borders */
+  --line: #DEDAD3;
+  --edge: #C4C4B8;
+
+  /* Text */
+  --text-primary: #252525;      /* Charcoal */
+  --text-secondary: #77736D;    /* Gray */
+  --text-muted: #A3A3A3;
+  --text-inverse: #FFFFFF;
+  --text-gold: #8C602D;         /* Gold 900 — gold text on light */
+
+  /* Brand accent */
+  --accent: #D39D58;          /* Gold 500 — main brand accent */
+  --accent-hi: #E4BD87;       /* Gold 300 — hover */
+  --accent-text: #252525;     /* Text on gold */
+  --info-soft: #365A62;       /* Petrol 500 — info */
+  --success: #28A745;         /* Success green */
+  --warn: #E4BD87;            /* Gold 300 — warnings */
+  --error: #DC2626;
+
+  /* Petrol Green */
+  --petrol-950: #102B32;
+  --petrol-900: #142F37;      /* Petrol 900 — dark sections */
+  --petrol-700: #193B45;      /* Petrol 700 — primary corporate */
+  --petrol-500: #365A62;
+  --petrol-100: #E7EEEC;
+
+  /* Neutrals */
+  --charcoal: #252525;
+  --dark: #323232;
+  --gray: #77736D;
+  --border: #DEDAD3;
+  --warm-gray: #EBE9E6;
+  --white: #FFFFFF;
+
+  /* Backgrounds */
+  --bg-main: #F8F5F0;       /* Warm Ivory — main background */
+  --bg-surface: #FFFFFF;    /* White — cards */
+  --bg-soft: #F4E7D3;       /* Gold 100 — soft gold backgrounds */
+  --bg-dark: #142F37;       /* Petrol 900 — dark sections */
+
+  /* Surfaces */
+  --surface-2: #F4E7D3;
+
+  /* Lines and control borders */
+  --line: #DEDAD3;
+  --edge: #C4C4B8;
+
+  /* Text */
+  --text-primary: #252525;      /* Charcoal */
+  --text-secondary: #77736D;    /* Gray */
+  --text-muted: #A3A3A3;
+  --text-inverse: #FFFFFF;
+  --text-gold: #8C602D;         /* Gold 900 — gold text on light */
+
+  /* Brand accent */
+  --accent: #D39D58;          /* Gold 500 — main brand accent */
+  --accent-hi: #E4BD87;       /* Gold 300 — hover */
+  --accent-text: #252525;     /* Text on gold */
+  --info-soft: #365A62;       /* Petrol 500 — info */
+  --success: #28A745;         /* Success green */
+  --warn: #E4BD87;            /* Gold 300 — warnings */
+  --error: #DC2626;
+
+  /* Petrol Green */
+  --petrol-950: #102B32;
+  --petrol-900: #142F37;      /* Petrol 900 — dark sections */
+  --petrol-700: #193B45;      /* Petrol 700 — primary corporate */
+  --petrol-500: #365A62;
+  --petrol-100: #E7EEEC;
+
+  /* Neutrals */
+  --charcoal: #252525;
+  --dark: #323232;
+  --gray: #77736D;
+  --border: #DEDAD3;
+  --warm-gray: #EBE9E6;
+  --white: #FFFFFF;
+
+  /* Backgrounds */
+  --bg-main: #F8F5F0;       /* Warm Ivory — main background */
+  --bg-surface: #FFFFFF;    /* White — cards */
+  --bg-soft: #F4E7D3;       /* Gold 100 — soft gold backgrounds */
+  --bg-dark: #142F37;       /* Petrol 900 — dark sections */
+
+  /* Surfaces */
+  --surface-2: #F4E7D3;
+
+  /* Lines and control borders */
+  --line: #DEDAD3;
+  --edge: #C4C4B8;
+
+  /* Text */
+  --text-primary: #252525;      /* Charcoal */
+  --text-secondary: #77736D;    /* Gray */
+  --text-muted: #A3A3A3;
+  --text-inverse: #FFFFFF;
+  --text-gold: #8C602D;         /* Gold 900 — gold text on light */
+
+  /* Brand accent */
+  --accent: #D39D58;          /* Gold 500 — main brand accent */
+  --accent-hi: #E4BD87;       /* Gold 300 — hover */
+  --accent-text: #252525;     /* Text on gold */
+  --info-soft: #365A62;       /* Petrol 500 — info */
+  --success: #28A745;         /* Success green */
+  --warn: #E4BD87;            /* Gold 300 — warnings */
+  --error: #DC2626;
+
+  /* Petrol Green */
+  --petrol-950: #102B32;
+  --petrol-900: #142F37;      /* Petrol 900 — dark sections */
+  --petrol-700: #193B45;      /* Petrol 700 — primary corporate */
+  --petrol-500: #365A62;
+  --petrol-100: #E7EEEC;
+
+  /* Neutrals */
+  --charcoal: #252525;
+  --dark: #323232;
+  --gray: #77736D;
+  --border: #DEDAD3;
+  --warm-gray: #EBE9E6;
+  --white: #FFFFFF;
+
+  /* Backgrounds */
+  --bg-main: #F8F5F0;       /* Warm Ivory — main background */
+  --bg-surface: #FFFFFF;    /* White — cards */
+  --bg-soft: #F4E7D3;       /* Gold 100 — soft gold backgrounds */
+  --bg-dark: #142F37;       /* Petrol 900 — dark sections */
+
+  /* Surfaces */
+  --surface-2: #F4E7D3;
+
+  /* Lines and control borders */
+  --line: #DEDAD3;
+  --edge: #C4C4B8;
+
+  /* Text */
+  --text-primary: #252525;      /* Charcoal */
+  --text-secondary: #77736D;    /* Gray */
+  --text-muted: #A3A3A3;
+  --text-inverse: #FFFFFF;
+  --text-gold: #8C602D;         /* Gold 900 — gold text on light */
+
+  /* Brand accent */
+  --accent: #D39D58;          /* Gold 500 — main brand accent */
+  --accent-hi: #E4BD87;       /* Gold 300 — hover */
+  --accent-text: #252525;     /* Text on gold */
+  --info-soft: #365A62;       /* Petrol 500 — info */
+  --success: #28A745;         /* Success green */
+  --warn: #E4BD87;            /* Gold 300 — warnings */
+  --error: #DC2626;
+
+  /* Petrol Green */
+  --petrol-950: #102B32;
+  --petrol-900: #142F37;      /* Petrol 900 — dark sections */
+  --petrol-700: #193B45;      /* Petrol 700 — primary corporate */
+  --petrol-500: #365A62;
+  --petrol-100: #E7EEEC;
+
+  /* Neutrals */
+  --charcoal: #252525;
+  --dark: #323232;
+  --gray: #77736D;
+  --border: #DEDAD3;
+  --warm-gray: #EBE9E6;
+  --white: #FFFFFF;
+
+  /* Backgrounds */
+  --bg-main: #F8F5F0;       /* Warm Ivory — main background */
+  --bg-surface: #FFFFFF;    /* White — cards */
+  --bg-soft: #F4E7D3;       /* Gold 100 — soft gold backgrounds */
+  --bg-dark: #142F37;       /* Petrol 900 — dark sections */
+
+  /* Surfaces */
+  --surface-2: #F4E7D3;
+
+  /* Lines and control borders */
+  --line: #DEDAD3;
+  --edge: #C4C4B8;
+
+  /* Text */
+  --text-primary: #252525;      /* Charcoal */
+  --text-secondary: #77736D;    /* Gray */
+  --text-muted: #A3A3A3;
+  --text-inverse: #FFFFFF;
+  --text-gold: #8C602D;         /* Gold 900 — gold text on light */
+
+  /* Brand accent */
+  --accent: #D39D58;          /* Gold 500 — main brand accent */
+  --accent-hi: #E4BD87;       /* Gold 300 — hover */
+  --accent-text: #252525;     /* Text on gold */
+  --info-soft: #365A62;       /* Petrol 500 — info */
+  --success: #28A745;         /* Success green */
+  --warn: #E4BD87;            /* Gold 300 — warnings */
+  --error: #DC2626;
+
+  /* Petrol Green */
+  --petrol-950: #102B32;
+  --petrol-900: #142F37;      /* Petrol 900 — dark sections */
+  --petrol-700: #193B45;      /* Petrol 700 — primary corporate */
+  --petrol-500: #365A62;
+  --petrol-100: #E7EEEC.
+
+  /* Neutrals */
+  --charcoal: #252525;
+  --dark: #323232;
+  --gray: #77736D;
+  --border: #DEDAD3;
+  --warm-gray: #EBE9E6;
+  --white: #FFFFFF;
+
+  /* Backgrounds */
+  --bg-main: #F8F5F0;
+  --bg-surface: #FFFFFF;
+  --bg-soft: #F4E7D3;
+  --bg-dark: #142F37.
+
+  /* Surfaces */
+  --surface-2: #F4E7D3.
+
+  /* Lines */
+  --line: #DEDAD3;
+  --edge: #C4C4B8.
+
+  /* Text */
+  --text-primary: #252525;
+  --text-secondary: #77736D;
+  --text-muted: #A3A3A3;
+  --text-inverse: #FFFFFF;
+  --text-gold: #8C602D.
+
+  /* Brand accent */
+  --accent: #D39D58;
+  --accent-hi: #E4BD87;
+  --accent-text: #252525.
+  --info-soft: #365A62.
+  --success: #28A745.
+  --warn: #E4BD87.
+  --error: #DC2626.
 }
-
-/* ---- 2. Base -------------------------------------------------------------- */
-* { box-sizing: border-box; }
-
-html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
-
-body {
-  margin: 0;
-  color: var(--text);
-  /* Teal and amber glows of the social image: two static gradients limited to
-     the top of the canvas. No masks, filters, large shadows or extra layers. */
-  background:
-    radial-gradient(560px 360px at 6% 0, var(--glow-1), transparent) 0 0 / 100% 520px no-repeat,
-    radial-gradient(640px 300px at 58% 0, var(--glow-2), transparent) 0 0 / 100% 520px no-repeat,
-    var(--bg);
-  font: 400 1rem/1.65 var(--font-text);
-  -webkit-font-smoothing: antialiased;
-}
-
-img { display: block; max-width: 100%; height: auto; }
-
-a { color: inherit; text-decoration: none; }
-p a, dd a, summary a {
-  color: var(--accent);
-  text-decoration: underline;
-  text-decoration-thickness: 1px;
-  text-underline-offset: 3px;
-}
-p a:hover, dd a:hover { color: var(--text); }
-
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-::selection { background: var(--accent); color: var(--accent-text); }
-
-.skip-link { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
-.skip-link:focus {
-  position: fixed;
-  left: 16px;
-  top: 16px;
-  z-index: var(--z-skip);
-  width: auto;
-  height: auto;
-  padding: 12px 18px;
-  color: var(--accent-text);
-  background: var(--accent);
-  border-radius: var(--r-sm);
-  font-weight: 700;
-}
-
-.page-width, .site-footer { width: min(1200px, 100% - 32px); margin-inline: auto; }
-@media (min-width: 768px) {
-  .page-width, .site-footer { width: min(1200px, 100% - 64px); }
-}
-
-/* The sticky header has the same height at every width; anchors leave a margin so they are not hidden behind it. */
-[id] { scroll-margin-top: calc(var(--header-h) + 16px); }
-
-/* ---- 3. Typography -------------------------------------------------------- */
-h1, h2, h3 { margin: 0; font-family: var(--font-display); text-wrap: balance; }
-
-h1 {
-  margin-bottom: 20px;
-  font-size: clamp(2.125rem, 1.4rem + 3.6vw, 4rem);
-  font-weight: 800;
-  line-height: 1.04;
-  letter-spacing: -.04em;
-}
-h2 {
-  margin-bottom: 16px;
-  font-size: clamp(1.625rem, 1.2rem + 1.8vw, 2.5rem);
-  font-weight: 800;
-  line-height: 1.12;
-  letter-spacing: -.03em;
-}
-h3 { margin-bottom: 8px; font-size: 1.125rem; font-weight: 700; line-height: 1.3; letter-spacing: -.015em; }
-
-p { margin: 0; }
-
-.lead {
-  color: var(--text-soft);
-  font-size: clamp(1.0625rem, 1rem + .3vw, 1.25rem);
-  line-height: 1.6;
-}
-/* "Answer first" block: the paragraph that opens each section stands out */
-.section > h2 + .lead { padding-left: 16px; border-left: 2px solid var(--accent); }
-/* Hero subtitle as a terminal line (as in the social image) */
-.hero .lead { color: var(--text-muted); font-family: var(--font-label); font-size: clamp(.9375rem, .9rem + .25vw, 1.0625rem); line-height: 1.7; }
-
-.section > p { margin-bottom: 1em; color: var(--text-soft); }
-.section > p:not(.eyebrow)+h2 { margin-top: 1.6em; }
-
-.eyebrow {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 0 0 20px;
-  color: var(--info-soft);
-  font: 700 .75rem/1.2 var(--font-label);
-  letter-spacing: .16em;
-  text-transform: uppercase;
-}
-/* Green ">" prompt of the logo */
-.eyebrow::before { content: ">"; flex: none; color: var(--success); font-size: 1rem; letter-spacing: 0; }
-
-/* Muted note under a page intro (template notices, last-updated line) */
-.page-note { margin-top: 15px; color: var(--text-muted); font-size: 1rem; }
-/* Paragraph that continues the text right after a lead paragraph */
-.lead-follow { margin-top: 18px; }
-
-/* ---- 4. Header and navigation (CSS only) ---------------------------------- */
-.site-header {
-  position: sticky;
-  top: 0;
-  z-index: var(--z-header);
-  background: var(--bg-header);
-  border-bottom: 1px solid var(--nav-line);
-}
-.site-header .page-width { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: var(--header-h); padding-block: 12px; }
-
-.brand { display: inline-flex; align-items: center; gap: 12px; min-width: 0; }
-.brand-logo { width: 230px; height: auto; aspect-ratio: var(--logo-ratio); }
-
-.nav-toggle {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-  border: 0;
-}
-.nav-toggle:focus-visible + .nav-toggle-label { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: var(--r-md); }
-
-.nav-toggle-label {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  cursor: pointer;
-  border-radius: var(--r-md);
-}
-.nav-toggle-label:hover { background: var(--overlay-2); }
-.nav-toggle-label span, .nav-toggle-label::before, .nav-toggle-label::after {
-  content: "";
-  display: block;
-  position: absolute;
-  left: 50%;
-  width: 24px;
-  height: 2px;
-  background: var(--text);
-  border-radius: 2px;
-  transform: translateX(-50%);
-}
-.nav-toggle-label::before { transform: translateX(-50%) translateY(-7px); }
-.nav-toggle-label::after { transform: translateX(-50%) translateY(7px); }
-.nav-toggle:checked + .nav-toggle-label span { opacity: 0; }
-.nav-toggle:checked + .nav-toggle-label::before { transform: translateX(-50%) rotate(45deg); }
-.nav-toggle:checked + .nav-toggle-label::after { transform: translateX(-50%) rotate(-45deg); }
-/* Windows high contrast: the system overrides `background`, so the three bars of the menu button are painted
-   with the system text colour or the button would disappear */
-@media (forced-colors: active) {
-  .nav-toggle-label span, .nav-toggle-label::before, .nav-toggle-label::after { background: CanvasText; }
-}
-
-/* Menu classes (written by the build): .site-nav (the <nav>), .nav-list (top <ul>), .has-sub (item with a
-   submenu), .nav-sub (submenu <ul>), .nav-link (every link), .nav-sublink (link inside a submenu),
-   .nav-action (featured link); .active marks the current page. */
-
-/* Mobile: drop-down panel driven by the checkbox. The 100vh line is the fallback for browsers without dvh. */
-.site-nav {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  max-height: calc(100vh - var(--header-h));
-  max-height: calc(100dvh - var(--header-h));
-  padding: 8px 16px 16px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  visibility: hidden;
-  background: var(--bg);
-  border-bottom: 1px solid var(--nav-line);
-  font-weight: 600;
-}
-.nav-toggle:checked + .nav-toggle-label + .site-nav { visibility: visible; }
-
-.nav-list, .nav-sub { margin: 0; padding: 0; list-style: none; }
-.nav-list { display: flex; flex-direction: column; align-items: stretch; gap: 4px; }
-.has-sub { position: relative; }
-
-.nav-link {
-  display: flex;
-  align-items: center;
-  min-height: 48px;
-  padding: 14px 16px;
-  color: var(--text-soft);
-  border-radius: var(--r-sm);
-}
-.nav-link:hover, .nav-link:focus-visible, .nav-link.active { color: var(--accent-text); background: var(--accent); }
-
-.nav-sub {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin: 0 0 4px 16px;
-  padding-left: 8px;
-  visibility: inherit;
-  border-left: 1px solid var(--nav-line);
-}
-.nav-sublink { min-height: 44px; padding: 10px 14px; color: var(--text-muted); font-weight: 500; font-size: .95rem; }
-
-/* Featured-action link: cyan border on every page; filled only on its own
-   page (class .active) or on hover / focus */
-.nav-action { justify-content: center; margin-top: 8px; border: 1px solid var(--accent); border-radius: var(--r-md); color: var(--accent); background: transparent; text-align: center; }
-.nav-action:hover, .nav-action:focus-visible, .nav-action.active { color: var(--accent-text); background: var(--accent); }
-.nav-action.active:hover, .nav-action.active:focus-visible { background: var(--accent-hi); border-color: var(--accent-hi); }
-
-/* Desktop: horizontal menu with a :hover / :focus-within submenu. From 960 px the logo (295 px)
-   and the menu fit on one row; below that the mobile menu is used. */
-@media (min-width: 960px) {
-  .site-header .page-width { gap: 16px; }
-  .brand-logo { width: 295px; }
-  .nav-toggle-label { display: none; }
-  .site-nav {
-    position: static;
-    max-height: none;
-    padding: 0;
-    overflow: visible;
-    visibility: visible;
-    background: none;
-    border: 0;
-    font-size: .9375rem;
-    letter-spacing: .01em;
-  }
-  .nav-list { flex-direction: row; align-items: center; }
-  .nav-link { min-height: 44px; padding: 9px; white-space: nowrap; }
-  .nav-sub {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    min-width: 230px;
-    margin: 0;
-    padding: 8px;
-    visibility: hidden;
-    background: var(--bg-alt);
-    border: 1px solid var(--nav-line);
-    border-radius: var(--r-md);
-  }
-  .has-sub:hover > .nav-sub, .has-sub:focus-within > .nav-sub { visibility: visible; }
-  .nav-sublink { padding: 9px 14px; color: var(--text-soft); font-weight: 600; font-size: inherit; }
-  .nav-action { margin: 0; padding: 8px 10px; }
-  .has-sub > .nav-link::after {
-    content: "";
-    flex: none;
-    width: 5px;
-    height: 5px;
-    margin: 0 0 3px 8px;
-    border: solid currentColor;
-    border-width: 0 2px 2px 0;
-    transform: rotate(45deg);
-  }
-  .has-sub:hover > .nav-link, .has-sub:focus-within > .nav-link { color: var(--accent-text); background: var(--accent); }
-  .has-sub:has(.active):not(:hover, :focus-within) > .nav-link { color: var(--accent); background: none; }
-}
-/* Between 960 and 1100 px the menu only fits on one line with compact spacing (above); from 1100 px it gets
-   wider spacing. Fonts, header height and logo do not change. */
-@media (min-width: 1100px) {
-  .nav-list { gap: 8px; }
-  .nav-link { padding: 9px 14px; }
-  .nav-action { padding: 8px 13px; }
-}
-
-/* ---- 5. Buttons ----------------------------------------------------------- */
-.actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
-.actions .button { width: 100%; }
-@media (min-width: 640px) { .actions .button { width: auto; } }
-/* The engine writes the contact buttons as a <ul class="actions contact-methods">: same row of buttons, list reset */
-.contact-methods { list-style: none; padding: 0; }
-
-.button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-height: 48px;
-  padding: 12px 22px;
-  border: 1px solid transparent;
-  border-radius: var(--r-sm);
-  font: 700 .9375rem/1.25 var(--font-text);
-  text-align: center;
-  text-decoration: none;
-}
-.button.primary { color: var(--accent-text); background: var(--accent); border-color: var(--accent); }
-.button.primary:hover, .button.primary:focus-visible { background: var(--accent-hi); border-color: var(--accent-hi); }
-.button.secondary { color: var(--text); border-color: var(--edge); background: var(--overlay-1); }
-.button.secondary:hover, .button.secondary:focus-visible { color: var(--accent); border-color: var(--accent); }
-.btn-icon { flex: none; width: 20px; height: 20px; }
-
-/* ---- 6. Hero (home page) -------------------------------------------------- */
-.hero { padding-block: var(--hero-top) clamp(16px, 3vw, 28px); }
-.hero-copy { max-width: 52rem; }
-
-/* ---- 7. Sections and bands ------------------------------------------------ */
-.section { padding-block: clamp(40px, 6vw, 72px); }
-
-.inner-hero { padding-block: var(--hero-top) clamp(16px, 3vw, 24px); }
-/* With a breadcrumb the eyebrow must land where the home's does: the breadcrumb takes part of the space above it */
-.inner-hero:has(> .breadcrumb) { padding-top: max(0px, calc(var(--hero-top) - var(--breadcrumb-h))); }
-/* First section after the hero: less space above (it used to add up to ~150 px) */
-.hero + .section, .inner-hero + .section { padding-top: clamp(24px, 4vw, 40px); }
-.inner-hero h1 { font-size: clamp(2rem, 1.3rem + 3vw, 3.5rem); }
-
-.dark-band {
-  padding: clamp(32px, 5vw, 56px) clamp(20px, 4vw, 48px);
-  background: var(--surface-2);
-  border: 1px solid var(--line);
-  border-left: 3px solid var(--accent);
-  border-radius: var(--r-lg);
-}
-
-.breadcrumb { margin: 0 0 var(--breadcrumb-gap); font-size: .8125rem; }
-.breadcrumb ol { display: flex; flex-wrap: nowrap; overflow: hidden; align-items: center; margin: 0; padding: 0; list-style: none; color: var(--text-muted); }
-.breadcrumb li { display: flex; align-items: center; min-width: 0; }
-.breadcrumb li + li::before { content: "/"; margin: 0 8px; color: var(--edge); }
-.breadcrumb a { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; }
-.breadcrumb a:hover, .breadcrumb a:focus-visible { color: var(--accent); }
-.breadcrumb svg { flex: none; color: var(--accent); }
-.breadcrumb li:last-child span { overflow: hidden; color: var(--text); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
-
-/* ---- 8. Cards ------------------------------------------------------------- */
-/* As many columns as fit; with fewer cards than columns they share the row. */
-.card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: var(--gap); margin-top: 32px; }
-
-.card {
-  min-width: 0;
-  padding: 24px;
-  background: var(--surface-2);
-  border: 1px solid var(--line);
-  border-radius: var(--r-md);
-  overflow-wrap: break-word;
-}
-.card p { margin-bottom: 12px; color: var(--text-muted); font-size: .9375rem; }
-.card > :last-child { margin-bottom: 0; }
-.card-number { display: block; margin-bottom: 16px; color: var(--accent); font: 700 2.25rem/1 var(--font-label); letter-spacing: -.06em; }
-
-/* ---- 9. Footer ----------------------------------------------------------- */
-.site-footer { margin-top: 50px; padding-block: 40px 20px; color: var(--text-muted); border-top: 1px solid var(--line); font-size: .9375rem; }
-.footer-grid { display: grid; grid-template-columns: 1fr; gap: 28px; align-items: start; }
-@media (min-width: 960px) { .footer-grid { grid-template-columns: 2.8fr 1fr 1fr; gap: 48px; } }
-
-.footer-entity { margin: 0 0 20px; line-height: 1.5; }
-.footer-brand-row { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 40px; }
-.footer-logo { flex: none; display: inline-flex; align-items: center; width: 240px; min-height: 44px; }
-.footer-logo img { display: block; width: 100%; height: auto; aspect-ratio: var(--logo-ratio); }
-.footer-contact { display: flex; flex-direction: column; margin: 0; font-style: normal; }
-.footer-contact-item { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; color: var(--accent); line-height: 1.5; }
-.footer-contact-item:hover, .footer-contact-item:focus-visible { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
-.footer-icon { flex: none; }
-
-.footer-nav-title { margin: 0 0 12px; color: var(--warn); font: 700 .75rem/1.2 var(--font-label); letter-spacing: .12em; text-transform: uppercase; }
-.footer-nav ul { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
-.footer-nav a { display: flex; align-items: center; min-height: 44px; font-weight: 500; line-height: 1.5; }
-.footer-nav a:hover, .footer-nav a:focus-visible { color: var(--accent); }
-
-.footer-bottom { margin-top: 24px; padding: 16px 72px 0 0; border-top: 1px solid var(--line); font-size: .8125rem; }
-/* On mobile (the base) the text keeps clear of the floating WhatsApp button; from 768 px it no longer needs to */
-@media (min-width: 768px) { .footer-bottom { padding-right: 0; } }
-
-/* Floating WhatsApp button: flat circle in the official green with a white icon.
-   No shadows, no motion and no pseudo-elements. */
-.whatsapp-float {
-  position: fixed;
-  right: 16px;
-  bottom: 16px;
-  z-index: var(--z-float);
-  display: grid;
-  place-items: center;
-  width: 56px;
-  height: 56px;
-  line-height: 0;
-  color: var(--text);
-  background: var(--whatsapp);
-  border-radius: 50%;
-}
-.whatsapp-float svg { width: 30px; height: 30px; display: block; }
-.whatsapp-float:hover { background: var(--whatsapp-hover); }
-.whatsapp-float:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
-@media (min-width: 768px) {
-  .whatsapp-float { right: 24px; bottom: 24px; width: 60px; height: 60px; }
-  .whatsapp-float svg { width: 34px; height: 34px; }
-}
-
-/* ---- 10. Performance: skip rendering what is below the fold --------------- */
-.site-footer { content-visibility: auto; contain-intrinsic-size: auto 560px; }

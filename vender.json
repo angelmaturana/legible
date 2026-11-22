@@ -1,0 +1,48 @@
+{
+    "title": "Vender piso en Alcorcón y sur de Madrid",
+    "short_title": "Vender",
+    "slug": "vender",
+    "section": "servicios",
+    "kind": "page",
+    "published": "2026-01-15",
+    "eyebrow": "Servicio",
+    "description": "Vende tu piso en Alcorcón, Móstoles, Fuenlabrada, Leganés y Getafe con comparables reales, reportaje profesional y seguimiento escrito. Sin sorpresas.",
+    "lead": "Vende tu vivienda al precio real de mercado con comparables de escritura, reportaje profesional y seguimiento quincenal por escrito. Sin exclusivas obligatorias ni sorpresas.",
+    "blocks": [
+        {
+            "type": "h2",
+            "text": "Vende al precio real, no al de los portales"
+        },
+        "Los portales inflan los precios. Nosotros usamos comparables reales de escritura —ventas cerradas ante notario— para fijar el precio correcto desde el primer día. Así se vende antes y mejor.",
+        {
+            "type": "h2",
+            "text": "Nuestro método en tres pasos"
+        },
+        "Primero, valoración con comparables reales de escritura y visita sin coste. Segundo, reportaje profesional (fotos, plano, vídeo si procede) y publicación en portales premium. Tercero, filtrado de visitas, negociación y acompañamiento hasta la firma. Informe quincenal por escrito incluido.",
+        {
+            "type": "h2",
+            "text": "Transparencia en honorarios"
+        },
+        "Trabajamos a éxito: solo cobramos en la firma de escritura. El vendedor paga la comisión acordada; el comprador no paga honorarios salvo que firme su propio encargo. En alquiler, los gastos de gestión los paga siempre el arrendador (art. 20.1 LAU).",
+        {
+            "type": "h2",
+            "text": "Resolvemos tus dudas antes de la visita"
+        },
+        "Las seis objeciones habituales a la exclusiva —preferir varias agencias, miedo a tardar más, mala experiencia anterior, no querer atarse, otra agencia sin exclusiva, vender por cuenta propia— las respondemos por escrito en nuestra web. Transparencia total.",
+        {
+            "type": "button",
+            "text": "Solicitar valoración gratuita",
+            "url": "/valoracion/"
+        }
+    ],
+    "related": [
+        {
+            "text": "Valoración gratuita",
+            "url": "/valoracion/"
+        },
+        {
+            "text": "Contactar",
+            "url": "/contact/"
+        }
+    ]
+}

@@ -1,46 +1,62 @@
 {
-  "site_url": "https://YOUR-DOMAIN.com",
-  "site_name": "Your Business",
-  "language": "en",
-  "site_description": "One sentence about what the site is and who it is for.",
-  "theme_color": "#0E131A",
-  "contact_email": "hello@example.com",
-  "phone_e164": "+15550100",
-  "whatsapp_message": "Hello, I am interested in your services. My business is:",
-  "city": "Your City",
-  "region": "Your Region",
-  "country_code": "XX",
-  "legal_name": "Your legal name",
-  "legal_tax_id": "Your registration number",
-  "legal_address": "Your registered address",
-  "legal_jurisdiction": "Your jurisdiction",
+  "site_url": "https://focus-viviendas.s1tes.workers.dev",
+  "site_name": "Focus Viviendas",
+  "language": "es",
+  "site_description": "Agencia inmobiliaria en Alcorcón especializada en la intermediación en la compraventa de inmuebles. Vende tu vivienda al precio real de mercado con trato directo y transparente.",
+  "theme_color": "#193B45",
+  "contact_email": "hola@focus-viviendas.s1tes.workers.dev",
+  "phone_e164": "+34613625223",
+  "whatsapp_message": "Hola, me interesa vuestro servicio inmobiliario.",
+  "city": "Alcorcón",
+  "region": "Madrid",
+  "country_code": "ES",
+  "legal_name": "FOCUS VIVIENDAS S.L. (Sociedad Limitada Unipersonal)",
+  "legal_tax_id": "B70952684",
+  "legal_address": "Calle de los Pinos, 40, Puerta 15, 28922 Alcorcón, Madrid",
+  "legal_jurisdiction": "España",
   "nav": [
     {
-      "label": "Home",
+      "label": "Inicio",
       "url": "/"
     },
     {
-      "label": "Example page",
-      "url": "/example/"
+      "label": "Vender",
+      "url": "/vender/"
     },
     {
-      "label": "Contact",
-      "url": "/contact/",
+      "label": "Alquilar",
+      "url": "/alquilar/"
+    },
+    {
+      "label": "Inmuebles",
+      "url": "/inmuebles/"
+    },
+    {
+      "label": "Zonas",
+      "url": "/zonas/"
+    },
+    {
+      "label": "Nosotros",
+      "url": "/nosotros/"
+    },
+    {
+      "label": "Valoración",
+      "url": "/valoracion/",
       "action": true
     }
   ],
   "legal_nav": [
     {
-      "label": "Legal notice",
-      "url": "/legal-notice/"
+      "label": "Aviso legal",
+      "url": "/aviso-legal/"
     },
     {
-      "label": "Privacy policy",
-      "url": "/privacy-policy/"
+      "label": "Política de privacidad",
+      "url": "/politica-privacidad/"
     },
     {
-      "label": "Cookie policy",
-      "url": "/cookie-policy/"
+      "label": "Política de cookies",
+      "url": "/politica-cookies/"
     }
   ]
 }

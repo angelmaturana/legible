@@ -1,0 +1,48 @@
+{
+    "title": "Equipo Focus Viviendas",
+    "short_title": "Nosotros",
+    "slug": "nosotros",
+    "section": "nosotros",
+    "kind": "page",
+    "published": "2026-01-15",
+    "eyebrow": "Equipo",
+    "description": "Conoce al equipo de Focus Viviendas: Óscar Velasco Díaz, socio único y director. Trato directo, fotos reales y trayectoria en Alcorcón y sur de Madrid.",
+    "lead": "En Focus Viviendas no hay intermediarios anónimos: te atienden los responsables. Óscar Velasco Díaz, socio único y director, y su equipo te acompañan en todo el proceso con fotos reales, nombres y trayectorias verificables.",
+    "blocks": [
+        {
+            "type": "h2",
+            "text": "Óscar Velasco Díaz — Socio único y director"
+        },
+        "Licenciado en Derecho, Agente de la Propiedad Inmobiliaria colegiado. Más de 15 años de experiencia en intermediación inmobiliaria en el sur de Madrid. Especialista en valoración por comparables de escritura, negociación de compraventas complejas y gestión de herencias. Miembro de Colegio Oficial de Agentes de la Propiedad Inmobiliaria de Madrid.",
+        {
+            "type": "h2",
+            "text": "Equipo de oficina"
+        },
+        "Un equipo estable de asesores inmobiliarios, gestor administrativo y apoyo jurídico. Todos con formación API continua y formación continua en fiscalidad inmobiliaria (IRPF, plusvalía, IVA/ITP, plusvalía municipal). Atención presencial en oficina (Calle de los Pinos, 40, Puerta 15, Alcorcón) y por WhatsApp.",
+        {
+            "type": "h2",
+            "text": "Reseñas verificables"
+        },
+        "Más de 40 reseñas en Google con 4,9/5 de media. Clientes destacan cercanía, transparencia, agilidad y trato personalizado de Óscar y su equipo. Reseñas verificables en Google Maps: busca 'Focus Viviendas Alcorcón'.",
+        {
+            "type": "h2",
+            "text": "Acreditaciones y registro"
+        },
+        "Agente de la Propiedad Inmobiliaria colegiado (API Madrid). Seguro de responsabilidad civil y caución. Inscrito en el Registro de Agentes Inmobiliarios de la Comunidad de Madrid (RAIN). Formación continua en fiscalidad inmobiliaria y normativa urbanística.",
+        {
+            "type": "button",
+            "text": "Conoce al equipo completo",
+            "url": "/contact/"
+        }
+    ],
+    "related": [
+        {
+            "text": "Vender",
+            "url": "/vender/"
+        },
+        {
+            "text": "Contactar",
+            "url": "/contact/"
+        }
+    ]
+}

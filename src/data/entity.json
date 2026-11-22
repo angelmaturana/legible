@@ -1,6 +1,6 @@
 [
     {
-        "@type": "Organization",
+        "@type": "RealEstateAgent",
         "@id": "{{site_url}}/#business",
         "name": "{{site_name}}",
         "description": "{{site_description}}",
@@ -11,9 +11,37 @@
         "image": "{{site_url}}/images/og-image.png",
         "address": {
             "@type": "PostalAddress",
-            "addressLocality": "{{city}}",
-            "addressRegion": "{{region}}",
-            "addressCountry": "{{country_code}}"
+            "streetAddress": "Calle de los Pinos, 40, Puerta 15",
+            "addressLocality": "Alcorcón",
+            "addressRegion": "Madrid",
+            "postalCode": "28922",
+            "addressCountry": "ES"
+        },
+        "openingHoursSpecification": [
+            {
+                "@type": "OpeningHoursSpecification",
+                "dayOfWeek": [
+                    "Monday",
+                    "Tuesday",
+                    "Wednesday",
+                    "Thursday",
+                    "Friday"
+                ],
+                "opens": "10:00",
+                "closes": "20:00"
+            }
+        ],
+        "priceRange": "€€",
+        "currenciesAccepted": "EUR",
+        "paymentAccepted": "Cash, Credit Card, Bank Transfer",
+        "areaServed": {
+            "@type": "GeoCircle",
+            "geoMidpoint": {
+                "@type": "GeoCoordinates",
+                "latitude": 40.3469,
+                "longitude": -3.8264
+            },
+            "geoRadius": "15000"
         }
     },
     {
@@ -21,7 +49,7 @@
         "@id": "{{site_url}}/#website",
         "url": "{{site_url}}/",
         "name": "{{site_name}}",
-        "inLanguage": "{{in_language}}",
+        "inLanguage": "es",
         "publisher": {
             "@id": "{{site_url}}/#business"
         }
