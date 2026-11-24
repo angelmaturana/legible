@@ -1,0 +1,30 @@
+# Focus Viviendas
+
+> Agencia inmobiliaria en Alcorcón especializada en la intermediación en la compraventa de inmuebles. Vende tu vivienda al precio real de mercado con trato directo y transparente.
+
+## About
+
+- **Name:** Focus Viviendas
+- **Website:** https://focus-viviendas.s1tes.workers.dev/
+- **Email:** hola@focus-viviendas.s1tes.workers.dev
+- **Location:** Alcorcón, Madrid
+
+## Pages
+
+- [Focus Viviendas | Agencia inmobiliaria en Alcorcón y sur de Madrid](https://focus-viviendas.s1tes.workers.dev/): Vende tu vivienda al precio real de mercado con Focus Viviendas. Agencia inmobiliaria en Alcorcón especializada en compraventa y alquiler. Valoración gratuita, comparables reales, reportaje profesional.
+- [Servicios | Focus Viviendas](https://focus-viviendas.s1tes.workers.dev/servicios/): Nuestros servicios inmobiliarios en Alcorcón y sur de Madrid: venta, alquiler y valoración gratuita. Trato directo y profesional.
+- [Vender piso en Alcorcón y sur de Madrid | Focus Viviendas](https://focus-viviendas.s1tes.workers.dev/servicios/vender/): Vende tu piso en Alcorcón, Móstoles, Fuenlabrada, Leganés y Getafe con comparables reales, reportaje profesional y seguimiento escrito. Sin sorpresas.
+- [Gestión de alquileres en Alcorcón y sur de Madrid | Focus Viviendas](https://focus-viviendas.s1tes.workers.dev/servicios/alquilar/): Gestión integral de alquileres en Alcorcón y sur de Madrid: selección de inquilinos, contratos seguros y defensa de tus intereses. Los gastos de gestión los paga el arrendador.
+- [Valoración de vivienda en Alcorcón y sur de Madrid | Focus Viviendas](https://focus-viviendas.s1tes.workers.dev/servicios/valoracion/): Obtén una valoración gratuita y sin compromiso de tu vivienda en Alcorcón y sur de Madrid basada en ventas reales, no en precios de portales.
+- [Inmuebles en venta y alquiler en Alcorcón y sur de Madrid | Focus Viviendas](https://focus-viviendas.s1tes.workers.dev/inmuebles/): Busca tu vivienda en Alcorcón, Móstoles, Fuenlabrada, Leganés y Getafe. Filtros por operación, zona, precio, habitaciones y baños. Fotos reales, planos y gastos detallados.
+- [Inmobiliaria en Alcorcón, Móstoles, Fuenlabrada, Leganés y Getafe | Focus Viviendas](https://focus-viviendas.s1tes.workers.dev/zonas/): Conoce los barrios donde operamos en el sur de Madrid: Alcorcón, Móstoles, Fuenlabrada, Leganés, Getafe. Precios, tipologías, colegios, transporte y ventas reales.
+- [Equipo Focus Viviendas | Focus Viviendas](https://focus-viviendas.s1tes.workers.dev/nosotros/): Conoce al equipo de Focus Viviendas: Óscar Velasco Díaz, socio único y director. Trato directo, fotos reales y trayectoria en Alcorcón y sur de Madrid.
+- [Guías y artículos | Focus Viviendas](https://focus-viviendas.s1tes.workers.dev/blog/): Guías fiscales, artículos de mercado y consejos para vender, comprar o alquilar tu vivienda en Alcorcón y sur de Madrid.
+- [Guías para vender y alquilar tu vivienda | Focus Viviendas](https://focus-viviendas.s1tes.workers.dev/blog/guias/): Guías fiscales y prácticas para vender o alquilar tu vivienda en 2026: impuestos, herencias, plusvalía, gastos de compraventa y alquiler. Información verificada, no asesoramiento legal.
+- [Contacto | Focus Viviendas](https://focus-viviendas.s1tes.workers.dev/contact/): Cómo contactar con Focus Viviendas por email, teléfono o WhatsApp, y qué incluir en tu primer mensaje para que podamos darte una respuesta útil.
+- [Example page | Focus Viviendas](https://focus-viviendas.s1tes.workers.dev/example/): A reusable page layout for Focus Viviendas: a title, an introduction, two sections, a grid of cards and a call to action. Copy it for any new page.
+
+## Machine-readable files
+
+- **sitemap.xml:** https://focus-viviendas.s1tes.workers.dev/sitemap.xml
+- **robots.txt:** https://focus-viviendas.s1tes.workers.dev/robots.txt

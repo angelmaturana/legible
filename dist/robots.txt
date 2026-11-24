@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://focus-viviendas.s1tes.workers.dev/sitemap.xml
