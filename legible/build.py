@@ -386,7 +386,8 @@ def render_nav_markers(config):
         else:
             lines.append(f'<li>{_link(entry, f"{link} {action}" if entry.get("action") else link)}</li>')
     lines.append('</ul>')
-    flat = [e for entry in nav for e in [entry] + (entry.get('children') or [])]
+    # Only top-level entries with their own URL in footer_nav, not children or parent-only entries
+    flat = [entry for entry in nav if 'url' in entry and entry.get('url')]
     return {
         '{{nav}}': '\n'.join(lines),
         '{{footer_nav}}': '<ul>' + ''.join(f'<li>{_link(e)}</li>' for e in flat) + '</ul>',

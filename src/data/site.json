@@ -20,12 +20,22 @@
       "url": "/"
     },
     {
-      "label": "Vender",
-      "url": "/vender/"
-    },
-    {
-      "label": "Alquilar",
-      "url": "/alquilar/"
+      "label": "Servicios",
+      "url": "/servicios/",
+      "children": [
+        {
+          "label": "Vender",
+          "url": "/servicios/vender/"
+        },
+        {
+          "label": "Alquilar",
+          "url": "/servicios/alquilar/"
+        },
+        {
+          "label": "Valoración",
+          "url": "/servicios/valoracion/"
+        }
+      ]
     },
     {
       "label": "Inmuebles",
@@ -38,25 +48,35 @@
     {
       "label": "Nosotros",
       "url": "/nosotros/"
-    },
-    {
-      "label": "Valoración",
-      "url": "/valoracion/",
-      "action": true
     }
   ],
   "legal_nav": [
     {
       "label": "Aviso legal",
-      "url": "/aviso-legal/"
+      "url": "/legal-notice/"
     },
     {
       "label": "Política de privacidad",
-      "url": "/politica-privacidad/"
+      "url": "/privacy-policy/"
     },
     {
       "label": "Política de cookies",
-      "url": "/politica-cookies/"
+      "url": "/cookie-policy/"
     }
-  ]
+  ],
+  "ui": {
+    "skip_to_content": "Saltar al contenido",
+    "open_menu": "Abrir menú",
+    "main_navigation": "Navegación principal",
+    "home": "Inicio",
+    "home_aria": "inicio",
+    "breadcrumb_label": "Ruta de navegación",
+    "footer_based_in": "tiene su sede en",
+    "footer_site": "Sitio",
+    "footer_legal": "Legal",
+    "rights_reserved": "Todos los derechos reservados.",
+    "whatsapp_open": "Abrir el chat de WhatsApp",
+    "whatsapp_contact": "Escríbenos por WhatsApp",
+    "contact_empty": "Los datos de contacto aún no están disponibles."
+  }
 }
